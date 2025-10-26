@@ -22,3 +22,48 @@
 *.njsproj
 *.sln
 *.sw?
+# Environment files
+*.env
+*.env.*
+
+# Frontend (React)
+frontend/build/
+frontend/.cache/
+frontend/coverage/
+frontend/.parcel-cache/
+frontend/.next/
+frontend/.env.local
+frontend/.env.* 
+
+# Auth (MERN)
+auth-proxy-server/.env
+auth-proxy-server/.env.local
+auth-proxy-server/.env.*
+auth-proxy-server/uploads/
+auth-proxy-server/uploads/** 
+auth-proxy-server/.cache/
+auth-proxy-server/coverage/
+auth-proxy-server/.next/
+auth-proxy-server/.parcel-cache/
+
+# API (Node.js)
+api/.env
+api/.env.local
+api/.env.*
+api/pids/
+api/logs/
+api/tmp/
+api/coverage/
+api/build/
+api/.parcel-cache/
+
+# Backend (Node.js)
+backend/.env
+backend/.env.local
+backend/.env.*
+backend/pids/
+backend/logs/
+backend/tmp/
+backend/coverage/
+backend/build/
+backend/.parcel-cache/
