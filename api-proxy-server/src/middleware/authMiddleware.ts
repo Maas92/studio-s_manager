@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { promisify } from "util";
-import AppError from "../utils/appError";
-import catchAsync from "../utils/catchAsync";
+import AppError from "../utils/appError.js";
+import catchAsync from "../utils/catchAsync.js";
 
 interface JwtPayload {
   id: string;

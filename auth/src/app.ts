@@ -1,5 +1,4 @@
-import path from "path";
-import express, { Request } from "express";
+import express, { Application, Request, Response, NextFunction } from "express";
 import morgan from "morgan";
 
 // Extend Express Request interface
@@ -13,19 +12,15 @@ declare global {
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import mongoSanitize from "express-mongo-sanitize";
-import xss from "xss";
 import hpp from "hpp";
 import cookieParser from "cookie-parser";
 import compression from "compression";
 import cors from "cors";
 
 // Start express app
-const app = express();
+const app: Application = express();
 
 app.enable("trust proxy");
-
-app.set("view engine", "pug");
-app.set("views", path.join(__dirname, "views"));
 
 // 1) GLOBAL MIDDLEWARES
 // Implement CORS
@@ -35,12 +30,6 @@ app.use(cors());
 // app.use(cors({
 //   origin: 'https://www.natours.com'
 // }))
-
-app.options("*", cors());
-// app.options('/api/v1/tours/:id', cors());
-
-// Serving static files
-app.use(express.static(path.join(__dirname, "public")));
 
 // Set security HTTP headers
 app.use(helmet());
@@ -66,9 +55,6 @@ app.use(cookieParser());
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
 
-// Data sanitization against XSS
-app.use(xss('<script>alert("xss");</script>'));
-
 // Prevent parameter pollution
 app.use(
   hpp({
@@ -85,21 +71,11 @@ app.use(
 
 app.use(compression());
 
-// Test middleware
-app.use((req, res, next) => {
-  req.requestTime = new Date().toISOString();
-  // console.log(req.cookies);
-  next();
-});
-
 // 3) ROUTES
-// app.use('/', viewRouter);
-// app.use('/api/v1/tours', tourRouter);
+// app.use('/api/v1/auth', authRouter);
 // app.use('/api/v1/users', userRouter);
-// app.use('/api/v1/reviews', reviewRouter);
-// app.use('/api/v1/bookings', bookingRouter);
 
-// app.all('*', (req, res, next) => {
+// app.all('*', (req: Request, res: Response, next: NextFunction) => {
 //   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 // });
 

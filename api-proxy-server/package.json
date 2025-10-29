@@ -4,14 +4,12 @@
   "description": "api proxy server for Studio S manager",
   "license": "ISC",
   "author": "Mansoor",
-  "type": "commonjs",
-  "main": "dist/server.ts",
+  "type": "module",
+  "main": "dist/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --skipLibCheck",
     "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
-    "watch": "tsc -w"
+    "dev": "tsx watch src/server.ts"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
@@ -22,6 +20,8 @@
     "@types/node": "^24.9.1",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   },
   "dependencies": {

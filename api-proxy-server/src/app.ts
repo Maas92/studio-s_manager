@@ -9,9 +9,9 @@ import {
   Options,
   RequestHandler,
 } from "http-proxy-middleware";
-import AppError from "./utils/appError";
-import globalErrorHandler from "./controllers/errorController";
-import { protect } from "./middleware/authMiddleware";
+import AppError from "./utils/appError.js";
+import globalErrorHandler from "./controllers/errorController.js";
+import { protect } from "./middleware/authMiddleware.js";
 
 const app: Application = express();
 
