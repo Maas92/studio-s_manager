@@ -11,7 +11,7 @@ process.on("uncaughtException", (err) => {
 import app from "./app.js";
 
 const DB = (process.env.DATABASE || "").replace(
-  "<PASSWORD>",
+  "<db_password>",
   process.env.DATABASE_PASSWORD || ""
 );
 

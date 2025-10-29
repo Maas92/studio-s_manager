@@ -1,20 +1,19 @@
-import express from "express";
+import express, { Application, Request, Response, NextFunction } from "express";
 import morgan from "morgan";
 import helmet from "helmet";
 import cors from "cors";
+import AppError from "./utils/appError.js";
+import globalErrorHandler from "./controllers/errorController.js";
+import { extractUser } from "./middleware/userMiddleware.js";
 
-// import AppError from './utils/appError';
-// import globalErrorHandler from './controllers/errorController';
-// import userMiddleware from './middleware/userMiddleware';
+// Route imports
+import productRouter from "./routes/productRoutes.js";
+import inventoryRouter from "./routes/inventoryRoutes.js";
+import categoryRouter from "./routes/categoryRoutes.js";
+import supplierRouter from "./routes/supplierRoutes.js";
+import locationRouter from "./routes/locationRoutes.js";
 
-// // Route imports
-// import productRouter from './routes/productRoutes';
-// import inventoryRouter from './routes/inventoryRoutes';
-// import categoryRouter from './routes/categoryRoutes';
-// import supplierRouter from './routes/supplierRoutes';
-// import locationRouter from './routes/locationRoutes';
-
-const app = express();
+const app: Application = express();
 
 // 1) GLOBAL MIDDLEWARES
 app.use(helmet());
@@ -30,26 +29,26 @@ app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cors());
 
 // Extract user info from headers (set by API Gateway)
-// app.use(userMiddleware.extractUser);
+app.use(extractUser);
 
 // 2) ROUTES
-// app.use('/api/v1/products', productRouter);
-// app.use('/api/v1/inventory', inventoryRouter);
-// app.use('/api/v1/categories', categoryRouter);
-// app.use('/api/v1/suppliers', supplierRouter);
-// app.use('/api/v1/locations', locationRouter);
+app.use("/api/v1/products", productRouter);
+app.use("/api/v1/inventory", inventoryRouter);
+app.use("/api/v1/categories", categoryRouter);
+app.use("/api/v1/suppliers", supplierRouter);
+app.use("/api/v1/locations", locationRouter);
 
 // Health check
-app.get("/health", (req, res) => {
+app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "healthy", service: "inventory-service" });
 });
 
 // Handle undefined routes
-// app.all('*', (req, res, next) => {
-//   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
-// });
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
 
 // Global error handler
-// app.use(globalErrorHandler);
+app.use(globalErrorHandler);
 
 export default app;

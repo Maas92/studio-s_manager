@@ -1,10 +1,10 @@
-const app = require("./app");
+import app from "./app";
 import { pool } from "./config/database";
 
 const port = process.env.PORT || 4001;
 
 // Test database connection
-pool.query("SELECT NOW()", (err: any, res: { rows: { now: any }[] }) => {
+pool.query("SELECT NOW()", (err, res) => {
   if (err) {
     console.error("❌ Database connection failed:", err);
     process.exit(1);
@@ -16,13 +16,9 @@ const server = app.listen(port, () => {
   console.log(`🚀 Inventory Service running on port ${port}`);
 });
 
-process.on("unhandledRejection", (err) => {
+process.on("unhandledRejection", (err: Error) => {
   console.log("UNHANDLED REJECTION! 💥 Shutting down...");
-  if (err instanceof Error) {
-    console.log(err.name, err.message);
-  } else {
-    console.log("Unknown error", err);
-  }
+  console.log(err.name, err.message);
   server.close(() => {
     process.exit(1);
   });
