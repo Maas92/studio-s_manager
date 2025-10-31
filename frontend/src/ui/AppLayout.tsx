@@ -1,41 +1,29 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from "./Sidebar";
-import Header from "./Header";
 import styled from "styled-components";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
 
-const StyledAppLayout = styled.div`
+const Shell = styled.div`
   display: grid;
-  grid-template-columns: 26rem 1fr;
-  grid-template-rows: auto 1fr;
-  height: 100vh;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 64px 1fr;
+  grid-template-areas: "sidebar topbar" "sidebar main";
+  height: 100dvh;
 `;
-
 const Main = styled.main`
-  background-color: var(--color-grey-50);
-  padding: 4rem 4.8rem 6.4rem;
-  overflow: scroll;
+  grid-area: main;
+  padding: 24px;
+  border-left: 1px solid ${(p) => p.theme.colors.border};
 `;
 
-const Container = styled.div`
-  max-width: 120rem;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 3.2rem;
-`;
-
-function AppLayout() {
+export default function AppLayout() {
   return (
-    <StyledAppLayout>
-      <Header />
+    <Shell>
       <Sidebar />
+      <Topbar />
       <Main>
-        <Container>
-          <Outlet />
-        </Container>
+        <Outlet />
       </Main>
-    </StyledAppLayout>
+    </Shell>
   );
 }
-
-export default AppLayout;

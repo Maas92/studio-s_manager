@@ -1,26 +1,42 @@
+import { NavLink } from "react-router-dom";
 import styled from "styled-components";
-// import Logo from "./Logo";
-// import MainNav from "./MainNav";
 
-const StyledSidebar = styled.aside`
-  background-color: var(--color-grey-0);
-  padding: 3.2rem 2.4rem;
-  border-right: 1px solid var(--color-grey-100);
-
-  grid-row: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 3.2rem;
+const Aside = styled.aside`
+  grid-area: sidebar;
+  padding: 24px;
+  border-right: 1px solid ${(p) => p.theme.colors.border};
+  background: #111;
+`;
+const Brand = styled.div`
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 24px;
+  color: ${(p) => p.theme.colors.brand};
+`;
+const Nav = styled.nav`
+  display: grid;
+  gap: 8px;
+  a {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  a.active {
+    background: ${(p) => p.theme.colors.panel};
+  }
 `;
 
-function Sidebar() {
+export default function Sidebar() {
   return (
-    <StyledSidebar>
-      {/* <Logo />
-      <MainNav /> */}
-      <h1>Hello World</h1>
-    </StyledSidebar>
+    <Aside>
+      <Brand>Studio S • Manager</Brand>
+      <Nav>
+        <NavLink to="/">Dashboard</NavLink>
+        <NavLink to="/products">Products</NavLink>
+        <NavLink to="/stock">Stock</NavLink>
+        <NavLink to="/treatments">Treatments</NavLink>
+        <NavLink to="/clients">Clients</NavLink>
+        <NavLink to="/appointments">Appointments</NavLink>
+      </Nav>
+    </Aside>
   );
 }
-
-export default Sidebar;
