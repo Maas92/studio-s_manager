@@ -1,28 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import styled from "styled-components";
+import { Form, FormRow } from "../../ui/components/Form";
+import Input from "../../ui/components/Input";
+import Button from "../../ui/components/Button";
 import { createProduct, listProducts, type Product } from "./api";
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 24px;
-`;
-const Card = styled.div`
-  background: #121212;
-  border: 1px solid #222;
-  border-radius: 12px;
-  padding: 16px;
-`;
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  th,
-  td {
-    padding: 10px;
-    border-bottom: 1px solid #222;
-  }
-`;
+import { Table } from "lucide-react";
+import { useForm } from "react-hook-form";
+import Row from "../../ui/components/Row";
+import H from "../../ui/components/Heading";
 
 export default function Products() {
   const qc = useQueryClient();
@@ -30,12 +14,17 @@ export default function Products() {
     queryKey: ["products"],
     queryFn: listProducts,
   });
+  const rows: Product[] = Array.isArray(data) ? data : [];
 
   const { register, handleSubmit, reset } = useForm<Omit<Product, "id">>({
     defaultValues: { name: "", sku: "", price: 0, retail: true },
   });
 
-  const { mutate, isPending } = useMutation({
+  const { mutate, isPending } = useMutation<
+    Product,
+    unknown,
+    Omit<Product, "id">
+  >({
     mutationFn: createProduct,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -43,17 +32,15 @@ export default function Products() {
     },
   });
 
-  const safeData: Product[] = Array.isArray(data) ? data : [];
-
   return (
-    <Grid>
-      <Card>
-        <h2>Products</h2>
+    <Row>
+      <div>
+        <H>Products</H>
         {isLoading ? (
           <p>Loading…</p>
         ) : isError ? (
           <p>Error loading products.</p>
-        ) : safeData.length === 0 ? (
+        ) : rows.length === 0 ? (
           <p>No products found.</p>
         ) : (
           <Table>
@@ -66,7 +53,7 @@ export default function Products() {
               </tr>
             </thead>
             <tbody>
-              {safeData.map((p) => (
+              {rows.map((p) => (
                 <tr key={p.id}>
                   <td>{p.sku}</td>
                   <td>{p.name}</td>
@@ -79,37 +66,35 @@ export default function Products() {
             </tbody>
           </Table>
         )}
-      </Card>
+      </div>
 
-      <Card>
-        <h3>Add product</h3>
-        <form onSubmit={handleSubmit((v) => mutate({ ...v, price: v.price }))}>
-          <div style={{ display: "grid", gap: 8 }}>
-            <label>
-              SKU
-              <input {...register("sku", { required: true })} />
-            </label>
-            <label>
-              Name
-              <input {...register("name", { required: true })} />
-            </label>
-            <label>
-              Price
-              <input
-                type="number"
-                step="0.01"
-                {...register("price", { valueAsNumber: true, min: 0 })}
-              />
-            </label>
-            <label>
-              <input type="checkbox" {...register("retail")} /> Retail
-            </label>
-            <button disabled={isPending} type="submit">
+      <div>
+        <H as="h3">Add product</H>
+        <Form onSubmit={handleSubmit((v) => mutate({ ...v, price: v.price }))}>
+          <FormRow>
+            <label htmlFor="sku">SKU</label>
+            <Input id="sku" {...register("sku", { required: true })} />
+          </FormRow>
+          <FormRow>
+            <label htmlFor="name">Name</label>
+            <Input id="name" {...register("name", { required: true })} />
+          </FormRow>
+          <FormRow>
+            <label htmlFor="price">Price</label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              {...register("price", { valueAsNumber: true, min: 0 })}
+            />
+          </FormRow>
+          <div>
+            <Button type="submit" disabled={isPending}>
               {isPending ? "Saving…" : "Create"}
-            </button>
+            </Button>
           </div>
-        </form>
-      </Card>
-    </Grid>
+        </Form>
+      </div>
+    </Row>
   );
 }

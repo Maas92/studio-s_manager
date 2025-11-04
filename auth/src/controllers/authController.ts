@@ -4,7 +4,7 @@ import crypto from "crypto";
 import User, { IUser } from "../models/userModel.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
-import { signToken, verifyToken } from "../utils/jwt.js";
+import { signAccess, verifyAccessRS256 } from "../utils/jwt.js";
 
 interface AuthRequest extends Request {
   user?: IUser;
@@ -16,9 +16,10 @@ const createSendToken = (
   res: Response
 ): void => {
   // JWT payload aligns with src/utils/jwt.ts (Claims: { sub, role? })
-  const token = signToken({
+  const token = signAccess({
     sub: user._id.toString(),
     role: user.role,
+    email: user.email,
   });
 
   const cookieDays = parseInt(process.env.JWT_COOKIE_EXPIRES_IN || "90", 10);
@@ -101,17 +102,17 @@ export const protect = catchAsync(
     }
 
     // 2) Verify token
-    const decoded = verifyToken(token); // matches Claims: { sub, role?, iat, exp, ... }
+    const decoded = await verifyAccessRS256(token); // matches Claims: { sub, role?, iat, exp, ... }
 
     // 3) Check if user still exists
-    const userId = decoded.sub as string;
+    const userId = decoded.payload.sub as string;
     const currentUser = await User.findById(userId);
     if (!currentUser) {
       return next(new AppError("The user no longer exists.", 401));
     }
 
     // 4) Check if user changed password after token was issued
-    if (currentUser.changedPasswordAfter(decoded.iat ?? 0)) {
+    if (currentUser.changedPasswordAfter(decoded.payload.iat ?? 0)) {
       return next(
         new AppError(
           "User recently changed password! Please log in again.",

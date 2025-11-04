@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
+import mongoose from "mongoose";
 
 process.on("uncaughtException", (err) => {
   console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
@@ -10,7 +10,13 @@ process.on("uncaughtException", (err) => {
 
 import app from "./app.js";
 
-const DB = (process.env.DATABASE || "").replace(
+const mustEnv = (k: string) => {
+  const v = process.env[k];
+  if (!v) throw new Error(`Missing env: ${k}`);
+  return v;
+};
+
+const DB = (process.env.MONGODB_URI || "").replace(
   "<db_password>",
   process.env.DATABASE_PASSWORD || ""
 );

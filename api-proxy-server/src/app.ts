@@ -9,6 +9,8 @@ import {
   Options,
   RequestHandler,
 } from "http-proxy-middleware";
+import jwksRsa from "jwks-rsa";
+import { expressjwt } from "express-jwt";
 import AppError from "./utils/appError.js";
 import globalErrorHandler from "./controllers/errorController.js";
 import { protect } from "./middleware/authMiddleware.js";
@@ -46,6 +48,9 @@ app.use(
   })
 );
 
+const ISSUER = process.env.JWT_ISSUER ?? "studio-s-auth";
+const AUDIENCE = process.env.JWT_AUDIENCE ?? "studio-s-clients";
+
 // 2) ROUTES
 
 // Health check
@@ -77,6 +82,18 @@ const authProxyOptions: Options = {
 };
 
 app.use("/api/v1/auth", createProxyMiddleware(authProxyOptions));
+
+const checkJwt = expressjwt({
+  algorithms: ["RS256"],
+  issuer: ISSUER,
+  audience: AUDIENCE,
+  secret: jwksRsa.expressJwtSecret({
+    jwksUri: `${process.env.AUTH_SERVICE_URL}/.well-known/jwks.json`,
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 10,
+  }),
+});
 
 // Users routes - proxy to auth-service (MongoDB) with user info
 const usersProxyOptions: Options = {

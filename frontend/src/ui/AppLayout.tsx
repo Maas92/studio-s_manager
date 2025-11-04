@@ -13,7 +13,7 @@ const Shell = styled.div`
 const Main = styled.main`
   grid-area: main;
   padding: 24px;
-  border-left: 1px solid ${(p) => p.theme.colors.border};
+  border-left: 1px solid ${(p) => p.theme.color.border};
 `;
 
 export default function AppLayout() {

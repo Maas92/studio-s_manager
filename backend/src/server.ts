@@ -23,3 +23,12 @@ process.on("unhandledRejection", (err: Error) => {
     process.exit(1);
   });
 });
+
+process.on("SIGTERM", async () => {
+  await pool.end();
+  server.close();
+});
+process.on("SIGINT", async () => {
+  await pool.end();
+  server.close();
+});

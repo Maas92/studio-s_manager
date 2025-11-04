@@ -4,7 +4,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "styled-components";
 import GlobalStyles from "./styles/GlobalStyles";
-import "./App.css";
+// import "./App.css";
 import { AuthProvider } from "./modules/auth/AuthContext.js";
 import { router } from "./routes/router.js";
 import { theme } from "./ui/Theme.js";

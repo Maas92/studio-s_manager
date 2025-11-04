@@ -17,19 +17,24 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import cors from "cors";
 
+import { initKeys, jwks } from "./utils/jwt.js";
+import authRouter from "./routes/authRoutes.js";
+import userRouter from "./routes/userRoutes.js";
+import AppError from "./utils/appError.js";
+import globalErrorHandler from "./controllers/errorController.js";
+
 // Start express app
 const app: Application = express();
 
 app.enable("trust proxy");
 
 // 1) GLOBAL MIDDLEWARES
+
+await initKeys();
+app.get("/.well-known/jwks.json", (_req, res) => res.json(jwks()));
+
 // Implement CORS
-app.use(cors());
-// Access-Control-Allow-Origin *
-// api.natours.com, front-end natours.com
-// app.use(cors({
-//   origin: 'https://www.natours.com'
-// }))
+app.use(cors({ origin: true, credentials: true }));
 
 // Set security HTTP headers
 app.use(helmet());
@@ -72,13 +77,13 @@ app.use(
 app.use(compression());
 
 // 3) ROUTES
-// app.use('/api/v1/auth', authRouter);
-// app.use('/api/v1/users', userRouter);
+app.use("/api/v1/auth", limiter, authRouter);
+app.use("/api/v1/users", userRouter);
 
-// app.all('*', (req: Request, res: Response, next: NextFunction) => {
-//   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
-// });
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
 
-// app.use(globalErrorHandler);
+app.use(globalErrorHandler);
 
 export default app;

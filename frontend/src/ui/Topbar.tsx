@@ -7,11 +7,11 @@ const Bar = styled.header`
   align-items: center;
   justify-content: flex-end;
   padding: 0 16px;
-  border-bottom: 1px solid ${(p) => p.theme.colors.border};
+  border-bottom: 1px solid ${(p) => p.theme.color.border};
 `;
 const Button = styled.button`
   background: transparent;
-  border: 1px solid ${(p) => p.theme.colors.border};
+  border: 1px solid ${(p) => p.theme.color.border};
   color: inherit;
   padding: 8px 12px;
   border-radius: 10px;

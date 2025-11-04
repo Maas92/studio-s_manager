@@ -4,14 +4,14 @@ import styled from "styled-components";
 const Aside = styled.aside`
   grid-area: sidebar;
   padding: 24px;
-  border-right: 1px solid ${(p) => p.theme.colors.border};
+  border-right: 1px solid ${(p) => p.theme.color.border};
   background: #111;
 `;
 const Brand = styled.div`
   font-weight: 700;
   letter-spacing: 0.08em;
   margin-bottom: 24px;
-  color: ${(p) => p.theme.colors.brand};
+  color: ${(p) => p.theme.color.brand600};
 `;
 const Nav = styled.nav`
   display: grid;
@@ -21,7 +21,7 @@ const Nav = styled.nav`
     border-radius: 10px;
   }
   a.active {
-    background: ${(p) => p.theme.colors.panel};
+    background: ${(p) => p.theme.color.panel};
   }
 `;
 
