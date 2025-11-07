@@ -1,16 +1,10 @@
 import dotenv from "dotenv";
 dotenv.config();
 import mongoose from "mongoose";
-
-process.on("uncaughtException", (err) => {
-  console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
-  console.log(err.name, err.message);
-  process.exit(1);
-});
-
 import app from "./app.js";
+import { initKeys } from "./utils/jwt.js";
 
-const mustEnv = (k: string) => {
+const must = (k: string) => {
   const v = process.env[k];
   if (!v) throw new Error(`Missing env: ${k}`);
   return v;
@@ -21,28 +15,31 @@ const DB = (process.env.MONGODB_URI || "").replace(
   process.env.DATABASE_PASSWORD || ""
 );
 
-mongoose.connect(DB).then(() => console.log("DB connection successful!"));
+const PORT = process.env.DB_PORT || 5432;
 
-const port = process.env.PORT || 3000;
-const server = app.listen(port, () => {
-  console.log(`App running on port ${port}...`);
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION 💥", err);
+  process.exit(1);
+});
+
+let server: import("http").Server;
+
+(async () => {
+  await initKeys();
+  await mongoose.connect(DB);
+  console.log("✅ MongoDB connected");
+  server = app.listen(PORT, () => console.log(`🚀 Auth on :${PORT}`));
+})().catch((e) => {
+  console.error("❌ Boot error", e);
+  process.exit(1);
 });
 
 process.on("unhandledRejection", (err) => {
-  console.log("UNHANDLED REJECTION! 💥 Shutting down...");
-  if (err instanceof Error) {
-    console.log(err.name, err.message);
-  } else {
-    console.log("Unknown error", err);
-  }
-  server.close(() => {
-    process.exit(1);
-  });
+  console.error("UNHANDLED REJECTION 💥", err);
+  server?.close(() => process.exit(1));
 });
 
 process.on("SIGTERM", () => {
-  console.log("👋 SIGTERM RECEIVED. Shutting down gracefully");
-  server.close(() => {
-    console.log("💥 Process terminated!");
-  });
+  console.log("👋 SIGTERM received");
+  server?.close(() => console.log("💥 Process terminated"));
 });

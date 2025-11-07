@@ -77,6 +77,10 @@ app.use(
 app.use(compression());
 
 // 3) ROUTES
+
+// Health
+app.get("/health", (_req, res) => res.json({ ok: true, service: "auth" }));
+
 app.use("/api/v1/auth", limiter, authRouter);
 app.use("/api/v1/users", userRouter);
 

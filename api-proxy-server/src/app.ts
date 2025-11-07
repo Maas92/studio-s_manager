@@ -10,10 +10,10 @@ import {
   RequestHandler,
 } from "http-proxy-middleware";
 import jwksRsa from "jwks-rsa";
-import { expressjwt } from "express-jwt";
+import { expressjwt, Request as JWTRequest } from "express-jwt";
+import crypto from "crypto";
 import AppError from "./utils/appError.js";
 import globalErrorHandler from "./controllers/errorController.js";
-import { protect } from "./middleware/authMiddleware.js";
 
 const app: Application = express();
 
@@ -34,6 +34,7 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later!",
 });
 app.use("/api", limiter);
+app.use("/auth", limiter);
 
 // Body parser
 app.use(express.json({ limit: "10kb" }));
@@ -48,189 +49,107 @@ app.use(
   })
 );
 
-const ISSUER = process.env.JWT_ISSUER ?? "studio-s-auth";
-const AUDIENCE = process.env.JWT_AUDIENCE ?? "studio-s-clients";
-
-// 2) ROUTES
-
-// Health check
-app.get("/health", (req: Request, res: Response) => {
-  res.status(200).json({
-    status: "healthy",
-    service: "api-gateway",
-    timestamp: new Date().toISOString(),
-  });
+// Request ID for correlation
+app.use((req, _res, next) => {
+  (req as any).requestId =
+    req.headers["x-request-id"] ||
+    crypto.randomUUID?.() ||
+    Math.random().toString(36).slice(2);
+  next();
 });
 
-// Auth routes - proxy to auth-service (MongoDB)
-const authProxyOptions: Options = {
-  target: process.env.AUTH_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/auth": "/api/v1/auth",
-  },
-  on: {
-    error: (err, req, res) => {
-      console.error("Auth Service Proxy Error:", err);
-      const response = res as Response;
-      response.status(503).json({
-        status: "error",
-        message: "Auth service is currently unavailable",
-      });
-    },
-  },
-};
-
-app.use("/api/v1/auth", createProxyMiddleware(authProxyOptions));
+// ---------- JWT (RS256 via JWKS) ----------
+const ISSUER = process.env.JWT_ISSUER ?? "studio-s-auth";
+const AUDIENCE = process.env.JWT_AUDIENCE ?? "studio-s-clients";
+const AUTH_URL = process.env.AUTH_SERVICE_URL!;
+const BACKEND_URL = process.env.INVENTORY_SERVICE_URL!; // your inventory/backend aggregator
 
 const checkJwt = expressjwt({
   algorithms: ["RS256"],
   issuer: ISSUER,
   audience: AUDIENCE,
+  credentialsRequired: true,
+  requestProperty: "auth", // attaches to req.auth
   secret: jwksRsa.expressJwtSecret({
-    jwksUri: `${process.env.AUTH_SERVICE_URL}/.well-known/jwks.json`,
+    jwksUri: `${AUTH_URL}/.well-known/jwks.json`,
     cache: true,
     rateLimit: true,
     jwksRequestsPerMinute: 10,
   }),
 });
 
-// Users routes - proxy to auth-service (MongoDB) with user info
-const usersProxyOptions: Options = {
-  target: process.env.AUTH_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/users": "/api/v1/users",
-  },
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user.id);
-        proxyReq.setHeader("X-User-Role", req.user.role);
-        proxyReq.setHeader("X-User-Email", req.user.email);
-      }
+// ---------- Proxy Factory ----------
+function makeProxy(target: string, pathRewrite?: Record<string, string>) {
+  const options: Options = {
+    target,
+    changeOrigin: true,
+    xfwd: true,
+    proxyTimeout: 25_000,
+    timeout: 25_000,
+    pathRewrite,
+    on: {
+      proxyReq: (proxyReq, req: any, _res) => {
+        // add correlation id
+        proxyReq.setHeader("X-Request-ID", req.requestId);
+
+        // propagate user claims if present (after checkJwt)
+        if (req.auth) {
+          const { sub, email, role } = req.auth as any;
+          if (sub) proxyReq.setHeader("X-User-Id", String(sub));
+          if (email) proxyReq.setHeader("X-User-Email", String(email));
+          if (role) proxyReq.setHeader("X-User-Role", String(role));
+        }
+      },
+      error: (err, _req, res) => {
+        const response = res as Response;
+        console.error("Proxy Error:", err?.message || err);
+        response.status(503).json({
+          status: "error",
+          message: "Upstream service is unavailable",
+        });
+      },
     },
-    error: (err, req, res) => {
-      console.error("Auth Service Proxy Error:", err);
-      const response = res as Response;
-      response.status(503).json({
-        status: "error",
-        message: "User service is currently unavailable",
-      });
-    },
-  },
-};
+  };
+  return createProxyMiddleware(options);
+}
 
-app.use("/api/v1/users", protect, createProxyMiddleware(usersProxyOptions));
+// ---------- Routes ----------
 
-// Protected routes - All other routes require authentication
-app.use("/api/v1/*", protect);
+// Health for the gateway itself
+app.get("/health", (_req, res) => res.json({ ok: true, service: "gateway" }));
 
-// Products routes - proxy to inventory-service (PostgreSQL)
-const productsProxyOptions: Options = {
-  target: process.env.INVENTORY_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/products": "/api/v1/products",
-  },
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user.id);
-        proxyReq.setHeader("X-User-Role", req.user.role);
-      }
-    },
-    error: (err, req, res) => {
-      console.error("Inventory Service Proxy Error:", err);
-      const response = res as Response;
-      response.status(503).json({
-        status: "error",
-        message: "Inventory service is currently unavailable",
-      });
-    },
-  },
-};
+// Public auth routes (no JWT here). They are handled by the Auth service.
+app.use("/auth", makeProxy(AUTH_URL, { "^/auth": "/auth" }));
 
-app.use("/api/v1/products", createProxyMiddleware(productsProxyOptions));
+// EVERYTHING under /api requires a valid RS256 access token
+app.use("/api", checkJwt);
 
-// Inventory routes
-const inventoryProxyOptions: Options = {
-  target: process.env.INVENTORY_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/inventory": "/api/v1/inventory",
-  },
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user.id);
-        proxyReq.setHeader("X-User-Role", req.user.role);
-      }
-    },
-  },
-};
+// Users (lives in auth service; protected)
+app.use(
+  "/api/v1/users",
+  makeProxy(AUTH_URL, { "^/api/v1/users": "/api/v1/users" })
+);
 
-app.use("/api/v1/inventory", createProxyMiddleware(inventoryProxyOptions));
+// Inventory / products / categories / suppliers / locations — protected
+app.use(
+  "/api/v1/products",
+  makeProxy(BACKEND_URL, { "^/api/v1/products": "/api/v1/products" })
+);
+app.use(
+  "/api/v1/categories",
+  makeProxy(BACKEND_URL, { "^/api/v1/categories": "/api/v1/categories" })
+);
+app.use(
+  "/api/v1/suppliers",
+  makeProxy(BACKEND_URL, { "^/api/v1/suppliers": "/api/v1/suppliers" })
+);
+app.use(
+  "/api/v1/locations",
+  makeProxy(BACKEND_URL, { "^/api/v1/locations": "/api/v1/locations" })
+);
 
-// Categories routes
-const categoriesProxyOptions: Options = {
-  target: process.env.INVENTORY_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/categories": "/api/v1/categories",
-  },
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user.id);
-        proxyReq.setHeader("X-User-Role", req.user.role);
-      }
-    },
-  },
-};
-
-app.use("/api/v1/categories", createProxyMiddleware(categoriesProxyOptions));
-
-// Suppliers routes
-const suppliersProxyOptions: Options = {
-  target: process.env.INVENTORY_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/suppliers": "/api/v1/suppliers",
-  },
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user.id);
-        proxyReq.setHeader("X-User-Role", req.user.role);
-      }
-    },
-  },
-};
-
-app.use("/api/v1/suppliers", createProxyMiddleware(suppliersProxyOptions));
-
-// Locations routes
-const locationsProxyOptions: Options = {
-  target: process.env.INVENTORY_SERVICE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    "^/api/v1/locations": "/api/v1/locations",
-  },
-  on: {
-    proxyReq: (proxyReq, req: any) => {
-      if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user.id);
-        proxyReq.setHeader("X-User-Role", req.user.role);
-      }
-    },
-  },
-};
-
-app.use("/api/v1/locations", createProxyMiddleware(locationsProxyOptions));
-
-// Handle undefined routes
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
+// 404 for undefined routes
+app.all("*", (req: Request, _res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 

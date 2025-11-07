@@ -1,4 +1,3 @@
-// RS256 + JWKS using jose
 import {
   generateKeyPair,
   exportJWK,
@@ -6,7 +5,6 @@ import {
   SignJWT,
   jwtVerify,
   JWTPayload,
-  createRemoteJWKSet,
 } from "jose";
 
 const ISSUER = process.env.JWT_ISSUER ?? "studio-s-auth";
@@ -18,6 +16,7 @@ let privateKey: CryptoKey;
 let publicJwk: any;
 
 export async function initKeys() {
+  // If you provide a fixed private key (PKCS8 PEM) in env, we import it; otherwise generate at boot.
   if (process.env.JWT_PRIVATE_PEM) {
     privateKey = await importPKCS8(process.env.JWT_PRIVATE_PEM, "RS256");
   } else {
@@ -25,14 +24,14 @@ export async function initKeys() {
     privateKey = kp.privateKey;
     publicJwk = await exportJWK(kp.publicKey);
   }
-  if (!publicJwk && privateKey) {
-    // derive public key from private (works for runtime-generated keys)
+  if (!publicJwk) {
+    // If you imported a private key but don't have the public PEM/JWK, generate a one-time pair for JWKS exposure.
     const kp = await generateKeyPair("RS256", { modulusLength: 2048 });
-    publicJwk = await exportJWK(kp.publicKey); // simple fallback
+    publicJwk = await exportJWK(kp.publicKey);
   }
   publicJwk.alg = "RS256";
   publicJwk.use = "sig";
-  publicJwk.kid = "studio-s-auth-1";
+  publicJwk.kid = process.env.JWT_KID ?? "studio-s-auth-1";
 }
 
 export function jwks() {
@@ -41,7 +40,7 @@ export function jwks() {
 
 export async function signAccess(payload: JWTPayload) {
   return await new SignJWT(payload)
-    .setProtectedHeader({ alg: "RS256", kid: "studio-s-auth-1" })
+    .setProtectedHeader({ alg: "RS256", kid: publicJwk.kid })
     .setIssuedAt()
     .setExpirationTime(`${ACCESS_TTL_SEC}s`)
     .setIssuer(ISSUER)
@@ -51,7 +50,7 @@ export async function signAccess(payload: JWTPayload) {
 
 export async function signRefresh(payload: JWTPayload) {
   return await new SignJWT(payload)
-    .setProtectedHeader({ alg: "RS256", kid: "studio-s-auth-1" })
+    .setProtectedHeader({ alg: "RS256", kid: publicJwk.kid })
     .setIssuedAt()
     .setExpirationTime(`${REFRESH_TTL_SEC}s`)
     .setIssuer(ISSUER)
@@ -59,14 +58,10 @@ export async function signRefresh(payload: JWTPayload) {
     .sign(privateKey);
 }
 
-export async function verifyAccessRS256(token: string) {
-  // Usually the gateway verifies; this is here for internal checks if needed
-  return await jwtVerify(
-    token,
-    await createRemoteJWKSet(new URL(process.env.SELF_JWKS_URL!)),
-    {
-      issuer: ISSUER,
-      audience: AUDIENCE,
-    }
-  );
+// Optional: verify locally for your own protected routes (gateway also verifies)
+export async function verifyAccess(token: string) {
+  return await jwtVerify(token, privateKey, {
+    issuer: ISSUER,
+    audience: AUDIENCE,
+  });
 }
