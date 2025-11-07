@@ -7,19 +7,28 @@ export interface QueryString {
   [key: string]: any;
 }
 
+const DEFAULT_LIMIT = 50;
+
 class APIFeatures {
   queryText: string;
   queryParams: any[];
   queryString: QueryString;
   whereConditions: string[];
   paramCounter: number;
+  allowedSort: Record<string, string>; // map api→sql column
 
-  constructor(queryText: string, queryParams: any[], queryString: QueryString) {
+  constructor(
+    queryText: string,
+    queryParams: any[],
+    queryString: QueryString,
+    allowedSort: Record<string, string>
+  ) {
     this.queryText = queryText;
     this.queryParams = queryParams;
     this.queryString = queryString;
     this.whereConditions = [];
-    this.paramCounter = 1;
+    this.paramCounter = queryParams.length + 1;
+    this.allowedSort = allowedSort;
   }
 
   filter(): this {

@@ -4,10 +4,11 @@ import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
 import { UserRequest } from "../middleware/userMiddleware.js";
 import { PoolClient } from "pg";
+import { z } from "zod";
 
 export const getInventoryLevels = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const { location_id, product_id, low_stock } = req.query;
+    const { location_id, product_id, low_stock } = req.query as any;
 
     let queryText = `
     SELECT 

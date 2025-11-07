@@ -5,13 +5,7 @@ import cors from "cors";
 import AppError from "./utils/appError.js";
 import globalErrorHandler from "./controllers/errorController.js";
 import { extractUser } from "./middleware/userMiddleware.js";
-
-// Route imports
-import productRouter from "./routes/productRoutes.js";
-import inventoryRouter from "./routes/inventoryRoutes.js";
-import categoryRouter from "./routes/categoryRoutes.js";
-import supplierRouter from "./routes/supplierRoutes.js";
-import locationRouter from "./routes/locationRoutes.js";
+import api from "./routes/index.js";
 
 const app: Application = express();
 
@@ -26,31 +20,18 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // CORS
-const origins = (env.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-app.use(
-  cors({
-    origin: origins.length ? origins : [/^http:\/\/localhost:\d+$/],
-    credentials: true,
-  })
-);
+app.use(cors({ origin: [/^http:\/\/localhost:\d+$/], credentials: true }));
 
 // Extract user info from headers (set by API Gateway)
 app.use(extractUser);
 
 // 2) ROUTES
-app.use("/api/v1/products", productRouter);
-app.use("/api/v1/inventory", inventoryRouter);
-app.use("/api/v1/categories", categoryRouter);
-app.use("/api/v1/suppliers", supplierRouter);
-app.use("/api/v1/locations", locationRouter);
-
 // Health check
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "healthy", service: "inventory-service" });
 });
+
+app.use("/api/v1", api);
 
 // Handle undefined routes
 app.all("*", (req: Request, res: Response, next: NextFunction) => {

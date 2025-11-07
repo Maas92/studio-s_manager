@@ -13,7 +13,7 @@ pool.query("SELECT NOW()", (err, res) => {
 });
 
 const server = app.listen(port, () => {
-  console.log(`🚀 Inventory Service running on port ${port}`);
+  console.log(`🚀 Backend Service running on port ${port}`);
 });
 
 process.on("unhandledRejection", (err: Error) => {
