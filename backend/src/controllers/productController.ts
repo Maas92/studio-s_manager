@@ -106,38 +106,33 @@ export const getProduct = catchAsync(
 
 export const createProduct = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const {
-      name,
-      sku,
-      category_id,
-      brand,
-      supplier_id,
-      description,
-      unit_of_measure,
-      unit_cost,
-      retail_price,
-      reorder_level,
-      expiry_tracking,
-    } = req.body;
+    const parsed = ProductCreate.parse(req.body);
 
     const result = await pool.query(
-      `INSERT INTO products (
-      name, sku, category_id, brand, supplier_id, description,
-      unit_of_measure, unit_cost, retail_price, reorder_level, expiry_tracking
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO public.products
+      (sku, name, category_id, supplier_id, cost_cents, price_cents, retail, active)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     RETURNING *`,
       [
-        name,
-        sku,
-        category_id,
-        brand,
-        supplier_id,
-        description,
-        unit_of_measure,
-        unit_cost,
-        retail_price,
-        reorder_level,
-        expiry_tracking,
+        //   name,
+        //   parsed.sku,
+        //   parsed.category_id,
+        //   parsed.brand,
+        //   parsed.supplier_id,
+        //   parsed.description,
+        //   parsed.unit_of_measure,
+        //   parsed.unit_cost,
+        //   parsed.retail_price,
+        //   parsed.reorder_level,
+        //   parsed.expiry_tracking,
+        parsed.sku,
+        parsed.name,
+        parsed.category_id ?? null,
+        parsed.supplier_id ?? null,
+        parsed.cost_cents,
+        parsed.price_cents,
+        parsed.retail,
+        parsed.active,
       ]
     );
 
@@ -152,41 +147,35 @@ export const createProduct = catchAsync(
 
 export const updateProduct = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const allowedFields = [
-      "name",
-      "sku",
-      "category_id",
-      "brand",
-      "supplier_id",
-      "description",
-      "unit_of_measure",
-      "unit_cost",
-      "retail_price",
-      "reorder_level",
-      "expiry_tracking",
-      "is_active",
-    ];
+    const parsed = ProductUpdate.parse(req.body);
 
-    const updates: string[] = [];
+    const fields: string[] = [];
     const values: any[] = [];
-    let paramCounter = 1;
+    let idx = 1;
 
-    Object.keys(req.body).forEach((key) => {
-      if (allowedFields.includes(key) && req.body[key] !== undefined) {
-        updates.push(`${key} = ${paramCounter}`);
-        values.push(req.body[key]);
-        paramCounter++;
-      }
-    });
+    const assign = (k: string, v: any) => {
+      if (v === undefined) return;
+      fields.push(`${k} = $${idx++}`);
+      values.push(v);
+    };
 
-    if (updates.length === 0) {
+    assign("sku", parsed.sku);
+    assign("name", parsed.name);
+    assign("category_id", parsed.category_id ?? null);
+    assign("supplier_id", parsed.supplier_id ?? null);
+    assign("cost_cents", parsed.cost_cents);
+    assign("price_cents", parsed.price_cents);
+    assign("retail", parsed.retail);
+    assign("active", parsed.active);
+
+    if (fields.length === 0) {
       return next(new AppError("No valid fields to update", 400));
     }
 
     values.push(req.params.id);
     const result = await pool.query(
-      `UPDATE products SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP
-     WHERE id = ${paramCounter}
+      `UPDATE products SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ${idx}
      RETURNING *`,
       values
     );

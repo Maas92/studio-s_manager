@@ -6,9 +6,14 @@ import { UserRequest } from "../middleware/userMiddleware.js";
 import { PoolClient } from "pg";
 import { z } from "zod";
 
+/* ==============================
+   GET /inventory-levels
+   ============================== */
+
 export const getInventoryLevels = catchAsync(
-  async (req: UserRequest, res: Response, next: NextFunction) => {
-    const { location_id, product_id, low_stock } = req.query as any;
+  async (req: UserRequest, res: Response, _next: NextFunction) => {
+    const { location_id, product_id, low_stock, batch_number } = (req.query ??
+      {}) as Record<string, string | undefined>;
 
     let queryText = `
     SELECT 
@@ -25,6 +30,7 @@ export const getInventoryLevels = catchAsync(
     WHERE 1=1
   `;
 
+    const where: string[] = [];
     const params: any[] = [];
     let paramCounter = 1;
 
@@ -58,18 +64,27 @@ export const getInventoryLevels = catchAsync(
   }
 );
 
+/* ==============================
+   POST /inventory/adjust
+   ============================== */
+
+const AdjustSchema = z.object({
+  product_id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  quantity_change: z
+    .number()
+    .refine((n) => n !== 0, "quantity_change cannot be zero"),
+  reason: z.string().max(500).optional(),
+  batch_number: z.string().max(120).nullable().optional(),
+  // Accept ISO date string; coerce to string and let DB parse (or pre-parse to Date if you prefer)
+  expiry_date: z.string().optional().nullable(),
+});
+
 export const adjustInventory = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const {
-      product_id,
-      location_id,
-      quantity_change,
-      reason,
-      batch_number,
-      expiry_date,
-    } = req.body;
+    const body = AdjustSchema.parse(req.body);
 
-    if (!product_id || !location_id || !quantity_change) {
+    if (!body.product_id || !body.location_id || !body.quantity_change) {
       return next(
         new AppError(
           "Please provide product_id, location_id, and quantity_change",
@@ -85,13 +100,13 @@ export const adjustInventory = catchAsync(
 
       const checkResult = await client.query(
         "SELECT * FROM inventory_levels WHERE product_id = $1 AND location_id = $2 AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))",
-        [product_id, location_id, batch_number]
+        [body.product_id, body.location_id, body.batch_number]
       );
 
       let inventoryResult;
 
       if (checkResult.rows.length === 0) {
-        if (quantity_change < 0) {
+        if (body.quantity_change < 0) {
           throw new AppError(
             "Cannot reduce inventory that does not exist",
             400
@@ -102,11 +117,17 @@ export const adjustInventory = catchAsync(
           `INSERT INTO inventory_levels (product_id, location_id, quantity_available, batch_number, expiry_date)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-          [product_id, location_id, quantity_change, batch_number, expiry_date]
+          [
+            body.product_id,
+            body.location_id,
+            body.quantity_change,
+            body.batch_number,
+            body.expiry_date,
+          ]
         );
       } else {
         const currentQty = checkResult.rows[0].quantity_available;
-        const newQty = currentQty + quantity_change;
+        const newQty = currentQty + body.quantity_change;
 
         if (newQty < 0) {
           throw new AppError(
@@ -129,12 +150,12 @@ export const adjustInventory = catchAsync(
         product_id, to_location_id, quantity, movement_type, reason, batch_number, performed_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
-          product_id,
-          location_id,
-          Math.abs(quantity_change),
+          body.product_id,
+          body.location_id,
+          Math.abs(body.quantity_change),
           "adjustment",
-          reason,
-          batch_number,
+          body.reason,
+          body.batch_number,
           req.user?.id,
         ]
       );
