@@ -1,29 +1,51 @@
-import dotenv from "dotenv";
-dotenv.config();
+import { env } from "./config/env.js";
+import { logger } from "./utils/logger.js";
 import app from "./app.js";
 
-const port = Number(process.env.PORT || 4000);
-
-const server = app.listen(port, () => {
-  console.log(`🚀 API Gateway running on port ${port}`);
-  console.log(`📍 Auth Service: ${process.env.AUTH_SERVICE_URL}`);
-  console.log(`📍 Inventory Service: ${process.env.INVENTORY_SERVICE_URL}`);
+const server = app.listen(env.PORT, () => {
+  logger.info(`🚀 API Gateway running on port ${env.PORT}`);
+  logger.info(`📝 Environment: ${env.NODE_ENV}`);
+  logger.info(`🔐 Auth Service: ${env.AUTH_SERVICE_URL}`);
+  logger.info(`📦 Inventory Service: ${env.INVENTORY_SERVICE_URL}`);
 });
 
+// Graceful shutdown handler
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`${signal} received. Starting graceful shutdown...`);
+
+  server.close(() => {
+    logger.info("HTTP server closed");
+    process.exit(0);
+  });
+
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    logger.error(
+      "Could not close connections in time, forcefully shutting down"
+    );
+    process.exit(1);
+  }, 30000);
+};
+
+// Error handlers
 process.on("unhandledRejection", (err: any) => {
-  console.error(
-    "UNHANDLED REJECTION! 💥 Shutting down...",
-    err?.message || err
-  );
-  server.close(() => process.exit(1));
+  logger.error("UNHANDLED REJECTION! 💥", {
+    message: err?.message || err,
+    stack: err?.stack,
+  });
+  gracefulShutdown("UNHANDLED_REJECTION");
 });
 
-process.on("uncaughtException", (err) => {
-  console.error("UNCAUGHT EXCEPTION! 💥", err);
+process.on("uncaughtException", (err: Error) => {
+  logger.error("UNCAUGHT EXCEPTION! 💥", {
+    message: err.message,
+    stack: err.stack,
+  });
   process.exit(1);
 });
 
-process.on("SIGTERM", () => {
-  console.log("👋 SIGTERM received. Shutting down gracefully.");
-  server.close(() => console.log("💥 Process terminated"));
-});
+// Graceful shutdown signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+export default server;

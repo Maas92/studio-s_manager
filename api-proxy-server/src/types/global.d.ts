@@ -6,6 +6,8 @@ declare module "express-serve-static-core" {
       sub?: string;
       email?: string;
       role?: string;
+      firstName?: string;
+      lastName?: string;
       [key: string]: any;
     };
     requestId?: string;

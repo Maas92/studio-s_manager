@@ -99,7 +99,7 @@ export const adjustInventory = catchAsync(
       await client.query("BEGIN");
 
       const checkResult = await client.query(
-        "SELECT * FROM inventory_levels WHERE product_id = $1 AND location_id = $2 AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))",
+        "SELECT id, quantity_available, quantity_reserved, batch_number, expiry_date FROM inventory_levels WHERE product_id = $1 AND location_id = $2 AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))",
         [body.product_id, body.location_id, body.batch_number]
       );
 
@@ -177,26 +177,37 @@ export const adjustInventory = catchAsync(
   }
 );
 
+/* ==============================
+   POST /inventory/transfer
+   ============================== */
+
+const TransferSchema = z.object({
+  product_id: z.string().uuid(),
+  from_location_id: z.string().uuid(),
+  to_location_id: z.string().uuid(),
+  quantity: z.number().positive(),
+  reason: z.string().max(500).optional(),
+  batch_number: z.string().max(120).nullable().optional(),
+});
+
 export const transferStock = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const {
-      product_id,
-      from_location_id,
-      to_location_id,
-      quantity,
-      reason,
-      batch_number,
-    } = req.body;
+    const body = TransferSchema.parse(req.body);
 
-    if (!product_id || !from_location_id || !to_location_id || !quantity) {
+    if (
+      !body.product_id ||
+      !body.from_location_id ||
+      !body.to_location_id ||
+      !body.quantity
+    ) {
       return next(new AppError("Please provide all required fields", 400));
     }
 
-    if (quantity <= 0) {
+    if (body.quantity <= 0) {
       return next(new AppError("Quantity must be greater than zero", 400));
     }
 
-    if (from_location_id === to_location_id) {
+    if (body.from_location_id === body.to_location_id) {
       return next(
         new AppError("Source and destination locations must be different", 400)
       );
@@ -208,10 +219,10 @@ export const transferStock = catchAsync(
       await client.query("BEGIN");
 
       const sourceResult = await client.query(
-        `SELECT * FROM inventory_levels 
+        `SELECT id, quantity_available, quantity_reserved, batch_number, expiry_date FROM inventory_levels 
        WHERE product_id = $1 AND location_id = $2 
        AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
-        [product_id, from_location_id, batch_number]
+        [body.product_id, body.from_location_id, body.batch_number]
       );
 
       if (sourceResult.rows.length === 0) {
@@ -222,7 +233,7 @@ export const transferStock = catchAsync(
       const availableQty =
         sourceInventory.quantity_available - sourceInventory.quantity_reserved;
 
-      if (availableQty < quantity) {
+      if (availableQty < body.quantity) {
         throw new AppError(
           `Insufficient available quantity. Available: ${availableQty}`,
           400
@@ -233,14 +244,14 @@ export const transferStock = catchAsync(
         `UPDATE inventory_levels 
        SET quantity_available = quantity_available - $1, last_updated = CURRENT_TIMESTAMP
        WHERE id = $2`,
-        [quantity, sourceInventory.id]
+        [body.quantity, sourceInventory.id]
       );
 
       const destResult = await client.query(
         `SELECT * FROM inventory_levels 
        WHERE product_id = $1 AND location_id = $2 
        AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
-        [product_id, to_location_id, batch_number]
+        [body.product_id, body.to_location_id, body.batch_number]
       );
 
       if (destResult.rows.length === 0) {
@@ -248,10 +259,10 @@ export const transferStock = catchAsync(
           `INSERT INTO inventory_levels (product_id, location_id, quantity_available, batch_number, expiry_date)
          VALUES ($1, $2, $3, $4, $5)`,
           [
-            product_id,
-            to_location_id,
-            quantity,
-            batch_number,
+            body.product_id,
+            body.to_location_id,
+            body.quantity,
+            body.batch_number,
             sourceInventory.expiry_date,
           ]
         );
@@ -260,7 +271,7 @@ export const transferStock = catchAsync(
           `UPDATE inventory_levels 
          SET quantity_available = quantity_available + $1, last_updated = CURRENT_TIMESTAMP
          WHERE id = $2`,
-          [quantity, destResult.rows[0].id]
+          [body.quantity, destResult.rows[0].id]
         );
       }
 
@@ -270,13 +281,13 @@ export const transferStock = catchAsync(
         movement_type, reason, batch_number, performed_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
-          product_id,
-          from_location_id,
-          to_location_id,
-          quantity,
+          body.product_id,
+          body.from_location_id,
+          body.to_location_id,
+          body.quantity,
           "transfer",
-          reason,
-          batch_number,
+          body.reason,
+          body.batch_number,
           req.user?.id,
         ]
       );

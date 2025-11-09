@@ -1,32 +1,44 @@
 import { Request, Response, NextFunction } from "express";
 import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
+import { env, isProduction } from "../config/env.js";
 
 const handleCastErrorDB = (err: any): AppError => {
-  const message = `Invalid ${err.path}: ${err.value}.`;
-  return new AppError(message, 400);
+  const message = `Invalid ${err.path}: ${err.value}`;
+  return AppError.badRequest(message);
 };
 
 const handleDuplicateFieldsDB = (err: any): AppError => {
-  const kv = err.keyValue ?? {};
-  const field = Object.keys(kv)[0] ?? "field";
-  const value = kv[field];
-  const message = `Duplicate value for ${field}: ${value}. Please use another value.`;
-  return new AppError(message, 400);
+  const field = Object.keys(err.keyValue || {})[0] || "field";
+  const value = err.keyValue?.[field];
+  const message = `Duplicate value for ${field}: ${value}. Please use another value`;
+  return AppError.conflict(message);
 };
 
 const handleValidationErrorDB = (err: any): AppError => {
-  const errors = Object.values(err.errors).map((el: any) => el.message);
+  const errors = Object.values(err.errors || {}).map((el: any) => el.message);
   const message = `Invalid input data. ${errors.join(". ")}`;
-  return new AppError(message, 400);
+  return AppError.badRequest(message);
 };
 
 const handleJWTError = (): AppError =>
-  new AppError("Invalid token. Please log in again!", 401);
+  AppError.unauthorized("Invalid token. Please log in again");
 
 const handleJWTExpiredError = (): AppError =>
-  new AppError("Your token has expired! Please log in again.", 401);
+  AppError.unauthorized("Your token has expired. Please log in again");
 
-const sendErrorDev = (err: AppError, res: Response): void => {
+const handleArgon2Error = (): AppError =>
+  AppError.internal("Authentication error. Please try again");
+
+const sendErrorDev = (err: AppError, req: Request, res: Response): void => {
+  logger.error("Error:", {
+    error: err,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+  });
+
   res.status(err.statusCode).json({
     status: err.status,
     error: err,
@@ -35,17 +47,27 @@ const sendErrorDev = (err: AppError, res: Response): void => {
   });
 };
 
-const sendErrorProd = (err: AppError, res: Response): void => {
+const sendErrorProd = (err: AppError, req: Request, res: Response): void => {
+  // Operational, trusted error: send message to client
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
     });
-  } else {
-    console.error("ERROR 💥", err);
+  }
+  // Programming or unknown error: don't leak error details
+  else {
+    logger.error("Non-operational error:", {
+      error: err,
+      stack: err.stack,
+      url: req.originalUrl,
+      method: req.method,
+      ip: req.ip,
+    });
+
     res.status(500).json({
       status: "error",
-      message: "Something went very wrong!",
+      message: "Something went wrong. Please try again later",
     });
   }
 };
@@ -59,19 +81,21 @@ export default (
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
 
-  if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, res);
-  } else if (process.env.NODE_ENV === "production") {
-    let error = { ...err };
+  if (!isProduction) {
+    sendErrorDev(err, req, res);
+  } else {
+    let error = Object.create(err);
     error.message = err.message;
 
+    // Handle specific errors
     if (error.name === "CastError") error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateFieldsDB(error);
     if (error.name === "ValidationError")
       error = handleValidationErrorDB(error);
     if (error.name === "JsonWebTokenError") error = handleJWTError();
     if (error.name === "TokenExpiredError") error = handleJWTExpiredError();
+    if (error.message?.includes("Argon2")) error = handleArgon2Error();
 
-    sendErrorProd(error, res);
+    sendErrorProd(error, req, res);
   }
 };

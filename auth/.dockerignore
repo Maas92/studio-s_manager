@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build output (will be created in container)
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Environment files (should be passed at runtime)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Testing
+coverage/
+.nyc_output/
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Misc
+.editorconfig
+.prettierrc*
+.eslintrc*
+tsconfig.json
+temp/
+tmp/
+*.pem
+*.key
+.cache/
+
+# Backup files
+*.backup
+*-backup
+auth-backup/

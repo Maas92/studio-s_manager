@@ -1,28 +1,29 @@
 import express from "express";
-import * as authController from "../controllers/authController.js";
 import * as userController from "../controllers/userController.js";
+import { protect, restrictTo } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { updateUserSchema } from "../utils/validators.js";
 
 const router = express.Router();
 
-// All routes are protected
-router.use(authController.protect);
+// All routes require authentication
+router.use(protect);
 
-router.get("/me", userController.getMe, userController.getUser);
-router.patch("/updateMe", userController.updateMe);
-router.delete("/deleteMe", userController.deleteMe);
+// Current user routes
+router.get("/me", userController.getMe);
+router.patch("/me", validate(updateUserSchema), userController.updateMe);
+router.delete("/me", userController.deleteMe);
 
-// Admin only routes
-router.use(authController.restrictTo("admin", "manager"));
+// Admin/Manager only routes
+router.use(restrictTo("admin", "manager"));
 
-router
-  .route("/")
-  .get(userController.getAllUsers)
-  .post(userController.createUser);
+router.get("/", userController.getAllUsers);
+router.get("/stats", userController.getUserStats);
 
 router
   .route("/:id")
   .get(userController.getUser)
-  .patch(userController.updateUser)
+  .patch(validate(updateUserSchema), userController.updateUser)
   .delete(userController.deleteUser);
 
 export default router;

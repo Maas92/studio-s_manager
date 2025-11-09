@@ -1,54 +1,42 @@
+Code combined from: C:\Users\p01mansoorg\Documents\python\Studio-S_manager\backend
+================================================================================
+
+
+
+================================================================================
+FILE: ./backend\package-lock.json
+================================================================================
+
 {
-  "name": "auth-service",
+  "name": "backend",
   "version": "1.0.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
-      "name": "auth-service",
+      "name": "backend",
       "version": "1.0.0",
       "license": "ISC",
       "dependencies": {
-        "argon2": "^0.44.0",
-        "compression": "^1.8.1",
-        "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
         "express": "^5.1.0",
-        "express-mongo-sanitize": "^2.2.0",
-        "express-rate-limit": "^8.1.0",
         "helmet": "^8.1.0",
-        "hpp": "^0.2.3",
-        "jose": "^6.1.0",
-        "mongoose": "^8.19.1",
+        "http-errors": "^2.0.0",
         "morgan": "^1.10.1",
-        "validator": "^13.15.20",
-        "winston": "^3.18.3",
+        "pg": "^8.16.3",
         "zod": "^4.1.12"
       },
       "devDependencies": {
-        "@types/compression": "^1.8.1",
-        "@types/cookie-parser": "^1.4.9",
         "@types/cors": "^2.8.19",
-        "@types/express": "^5.0.3",
-        "@types/hpp": "^0.2.6",
+        "@types/express": "^5.0.4",
         "@types/morgan": "^1.9.10",
-        "@types/node": "^24.8.1",
-        "@types/validator": "^13.15.4",
+        "@types/node": "^24.9.1",
+        "@types/pg": "^8.15.5",
         "nodemon": "^3.1.10",
         "ts-node": "^10.9.2",
-        "ts-node-dev": "^2.0.0",
         "tsx": "^4.20.6",
         "typescript": "^5.9.3"
-      }
-    },
-    "node_modules/@colors/colors": {
-      "version": "1.6.0",
-      "resolved": "https://registry.npmjs.org/@colors/colors/-/colors-1.6.0.tgz",
-      "integrity": "sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=0.1.90"
       }
     },
     "node_modules/@cspotcode/source-map-support": {
@@ -64,27 +52,10 @@
         "node": ">=12"
       }
     },
-    "node_modules/@dabh/diagnostics": {
-      "version": "2.0.8",
-      "resolved": "https://registry.npmjs.org/@dabh/diagnostics/-/diagnostics-2.0.8.tgz",
-      "integrity": "sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@so-ric/colorspace": "^1.1.6",
-        "enabled": "2.0.x",
-        "kuler": "^2.0.0"
-      }
-    },
-    "node_modules/@epic-web/invariant": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/@epic-web/invariant/-/invariant-1.0.0.tgz",
-      "integrity": "sha512-lrTPqgvfFQtR/eY/qkIzp98OGdNJu0m5ji3q/nJI8v3SXkRKEnWiOxMmbvcSoAIzv/cGiuvRy57k4suKQSAdwA==",
-      "license": "MIT"
-    },
     "node_modules/@esbuild/aix-ppc64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.11.tgz",
-      "integrity": "sha512-Xt1dOL13m8u0WE8iplx9Ibbm+hFAO0GsU2P34UNoDGvZYkY8ifSiy6Zuc1lYxfG7svWE2fzqCUmFp5HCn51gJg==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.12.tgz",
+      "integrity": "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==",
       "cpu": [
         "ppc64"
       ],
@@ -99,9 +70,9 @@
       }
     },
     "node_modules/@esbuild/android-arm": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.11.tgz",
-      "integrity": "sha512-uoa7dU+Dt3HYsethkJ1k6Z9YdcHjTrSb5NUy66ZfZaSV8hEYGD5ZHbEMXnqLFlbBflLsl89Zke7CAdDJ4JI+Gg==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.12.tgz",
+      "integrity": "sha512-VJ+sKvNA/GE7Ccacc9Cha7bpS8nyzVv0jdVgwNDaR4gDMC/2TTRc33Ip8qrNYUcpkOHUT5OZ0bUcNNVZQ9RLlg==",
       "cpu": [
         "arm"
       ],
@@ -116,9 +87,9 @@
       }
     },
     "node_modules/@esbuild/android-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.11.tgz",
-      "integrity": "sha512-9slpyFBc4FPPz48+f6jyiXOx/Y4v34TUeDDXJpZqAWQn/08lKGeD8aDp9TMn9jDz2CiEuHwfhRmGBvpnd/PWIQ==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.12.tgz",
+      "integrity": "sha512-6AAmLG7zwD1Z159jCKPvAxZd4y/VTO0VkprYy+3N2FtJ8+BQWFXU+OxARIwA46c5tdD9SsKGZ/1ocqBS/gAKHg==",
       "cpu": [
         "arm64"
       ],
@@ -133,9 +104,9 @@
       }
     },
     "node_modules/@esbuild/android-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.11.tgz",
-      "integrity": "sha512-Sgiab4xBjPU1QoPEIqS3Xx+R2lezu0LKIEcYe6pftr56PqPygbB7+szVnzoShbx64MUupqoE0KyRlN7gezbl8g==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.12.tgz",
+      "integrity": "sha512-5jbb+2hhDHx5phYR2By8GTWEzn6I9UqR11Kwf22iKbNpYrsmRB18aX/9ivc5cabcUiAT/wM+YIZ6SG9QO6a8kg==",
       "cpu": [
         "x64"
       ],
@@ -150,9 +121,9 @@
       }
     },
     "node_modules/@esbuild/darwin-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.11.tgz",
-      "integrity": "sha512-VekY0PBCukppoQrycFxUqkCojnTQhdec0vevUL/EDOCnXd9LKWqD/bHwMPzigIJXPhC59Vd1WFIL57SKs2mg4w==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz",
+      "integrity": "sha512-N3zl+lxHCifgIlcMUP5016ESkeQjLj/959RxxNYIthIg+CQHInujFuXeWbWMgnTo4cp5XVHqFPmpyu9J65C1Yg==",
       "cpu": [
         "arm64"
       ],
@@ -167,9 +138,9 @@
       }
     },
     "node_modules/@esbuild/darwin-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.11.tgz",
-      "integrity": "sha512-+hfp3yfBalNEpTGp9loYgbknjR695HkqtY3d3/JjSRUyPg/xd6q+mQqIb5qdywnDxRZykIHs3axEqU6l1+oWEQ==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.12.tgz",
+      "integrity": "sha512-HQ9ka4Kx21qHXwtlTUVbKJOAnmG1ipXhdWTmNXiPzPfWKpXqASVcWdnf2bnL73wgjNrFXAa3yYvBSd9pzfEIpA==",
       "cpu": [
         "x64"
       ],
@@ -184,9 +155,9 @@
       }
     },
     "node_modules/@esbuild/freebsd-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.11.tgz",
-      "integrity": "sha512-CmKjrnayyTJF2eVuO//uSjl/K3KsMIeYeyN7FyDBjsR3lnSJHaXlVoAK8DZa7lXWChbuOk7NjAc7ygAwrnPBhA==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.12.tgz",
+      "integrity": "sha512-gA0Bx759+7Jve03K1S0vkOu5Lg/85dou3EseOGUes8flVOGxbhDDh/iZaoek11Y8mtyKPGF3vP8XhnkDEAmzeg==",
       "cpu": [
         "arm64"
       ],
@@ -201,9 +172,9 @@
       }
     },
     "node_modules/@esbuild/freebsd-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.11.tgz",
-      "integrity": "sha512-Dyq+5oscTJvMaYPvW3x3FLpi2+gSZTCE/1ffdwuM6G1ARang/mb3jvjxs0mw6n3Lsw84ocfo9CrNMqc5lTfGOw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.12.tgz",
+      "integrity": "sha512-TGbO26Yw2xsHzxtbVFGEXBFH0FRAP7gtcPE7P5yP7wGy7cXK2oO7RyOhL5NLiqTlBh47XhmIUXuGciXEqYFfBQ==",
       "cpu": [
         "x64"
       ],
@@ -218,9 +189,9 @@
       }
     },
     "node_modules/@esbuild/linux-arm": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.11.tgz",
-      "integrity": "sha512-TBMv6B4kCfrGJ8cUPo7vd6NECZH/8hPpBHHlYI3qzoYFvWu2AdTvZNuU/7hsbKWqu/COU7NIK12dHAAqBLLXgw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.12.tgz",
+      "integrity": "sha512-lPDGyC1JPDou8kGcywY0YILzWlhhnRjdof3UlcoqYmS9El818LLfJJc3PXXgZHrHCAKs/Z2SeZtDJr5MrkxtOw==",
       "cpu": [
         "arm"
       ],
@@ -235,9 +206,9 @@
       }
     },
     "node_modules/@esbuild/linux-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.11.tgz",
-      "integrity": "sha512-Qr8AzcplUhGvdyUF08A1kHU3Vr2O88xxP0Tm8GcdVOUm25XYcMPp2YqSVHbLuXzYQMf9Bh/iKx7YPqECs6ffLA==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.12.tgz",
+      "integrity": "sha512-8bwX7a8FghIgrupcxb4aUmYDLp8pX06rGh5HqDT7bB+8Rdells6mHvrFHHW2JAOPZUbnjUpKTLg6ECyzvas2AQ==",
       "cpu": [
         "arm64"
       ],
@@ -252,9 +223,9 @@
       }
     },
     "node_modules/@esbuild/linux-ia32": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.25.11.tgz",
-      "integrity": "sha512-TmnJg8BMGPehs5JKrCLqyWTVAvielc615jbkOirATQvWWB1NMXY77oLMzsUjRLa0+ngecEmDGqt5jiDC6bfvOw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.25.12.tgz",
+      "integrity": "sha512-0y9KrdVnbMM2/vG8KfU0byhUN+EFCny9+8g202gYqSSVMonbsCfLjUO+rCci7pM0WBEtz+oK/PIwHkzxkyharA==",
       "cpu": [
         "ia32"
       ],
@@ -269,9 +240,9 @@
       }
     },
     "node_modules/@esbuild/linux-loong64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.25.11.tgz",
-      "integrity": "sha512-DIGXL2+gvDaXlaq8xruNXUJdT5tF+SBbJQKbWy/0J7OhU8gOHOzKmGIlfTTl6nHaCOoipxQbuJi7O++ldrxgMw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.25.12.tgz",
+      "integrity": "sha512-h///Lr5a9rib/v1GGqXVGzjL4TMvVTv+s1DPoxQdz7l/AYv6LDSxdIwzxkrPW438oUXiDtwM10o9PmwS/6Z0Ng==",
       "cpu": [
         "loong64"
       ],
@@ -286,9 +257,9 @@
       }
     },
     "node_modules/@esbuild/linux-mips64el": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.25.11.tgz",
-      "integrity": "sha512-Osx1nALUJu4pU43o9OyjSCXokFkFbyzjXb6VhGIJZQ5JZi8ylCQ9/LFagolPsHtgw6himDSyb5ETSfmp4rpiKQ==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.25.12.tgz",
+      "integrity": "sha512-iyRrM1Pzy9GFMDLsXn1iHUm18nhKnNMWscjmp4+hpafcZjrr2WbT//d20xaGljXDBYHqRcl8HnxbX6uaA/eGVw==",
       "cpu": [
         "mips64el"
       ],
@@ -303,9 +274,9 @@
       }
     },
     "node_modules/@esbuild/linux-ppc64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.25.11.tgz",
-      "integrity": "sha512-nbLFgsQQEsBa8XSgSTSlrnBSrpoWh7ioFDUmwo158gIm5NNP+17IYmNWzaIzWmgCxq56vfr34xGkOcZ7jX6CPw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.25.12.tgz",
+      "integrity": "sha512-9meM/lRXxMi5PSUqEXRCtVjEZBGwB7P/D4yT8UG/mwIdze2aV4Vo6U5gD3+RsoHXKkHCfSxZKzmDssVlRj1QQA==",
       "cpu": [
         "ppc64"
       ],
@@ -320,9 +291,9 @@
       }
     },
     "node_modules/@esbuild/linux-riscv64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.25.11.tgz",
-      "integrity": "sha512-HfyAmqZi9uBAbgKYP1yGuI7tSREXwIb438q0nqvlpxAOs3XnZ8RsisRfmVsgV486NdjD7Mw2UrFSw51lzUk1ww==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.25.12.tgz",
+      "integrity": "sha512-Zr7KR4hgKUpWAwb1f3o5ygT04MzqVrGEGXGLnj15YQDJErYu/BGg+wmFlIDOdJp0PmB0lLvxFIOXZgFRrdjR0w==",
       "cpu": [
         "riscv64"
       ],
@@ -337,9 +308,9 @@
       }
     },
     "node_modules/@esbuild/linux-s390x": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.25.11.tgz",
-      "integrity": "sha512-HjLqVgSSYnVXRisyfmzsH6mXqyvj0SA7pG5g+9W7ESgwA70AXYNpfKBqh1KbTxmQVaYxpzA/SvlB9oclGPbApw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.25.12.tgz",
+      "integrity": "sha512-MsKncOcgTNvdtiISc/jZs/Zf8d0cl/t3gYWX8J9ubBnVOwlk65UIEEvgBORTiljloIWnBzLs4qhzPkJcitIzIg==",
       "cpu": [
         "s390x"
       ],
@@ -354,9 +325,9 @@
       }
     },
     "node_modules/@esbuild/linux-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.11.tgz",
-      "integrity": "sha512-HSFAT4+WYjIhrHxKBwGmOOSpphjYkcswF449j6EjsjbinTZbp8PJtjsVK1XFJStdzXdy/jaddAep2FGY+wyFAQ==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.12.tgz",
+      "integrity": "sha512-uqZMTLr/zR/ed4jIGnwSLkaHmPjOjJvnm6TVVitAa08SLS9Z0VM8wIRx7gWbJB5/J54YuIMInDquWyYvQLZkgw==",
       "cpu": [
         "x64"
       ],
@@ -371,9 +342,9 @@
       }
     },
     "node_modules/@esbuild/netbsd-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.25.11.tgz",
-      "integrity": "sha512-hr9Oxj1Fa4r04dNpWr3P8QKVVsjQhqrMSUzZzf+LZcYjZNqhA3IAfPQdEh1FLVUJSiu6sgAwp3OmwBfbFgG2Xg==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.25.12.tgz",
+      "integrity": "sha512-xXwcTq4GhRM7J9A8Gv5boanHhRa/Q9KLVmcyXHCTaM4wKfIpWkdXiMog/KsnxzJ0A1+nD+zoecuzqPmCRyBGjg==",
       "cpu": [
         "arm64"
       ],
@@ -388,9 +359,9 @@
       }
     },
     "node_modules/@esbuild/netbsd-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.25.11.tgz",
-      "integrity": "sha512-u7tKA+qbzBydyj0vgpu+5h5AeudxOAGncb8N6C9Kh1N4n7wU1Xw1JDApsRjpShRpXRQlJLb9wY28ELpwdPcZ7A==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.25.12.tgz",
+      "integrity": "sha512-Ld5pTlzPy3YwGec4OuHh1aCVCRvOXdH8DgRjfDy/oumVovmuSzWfnSJg+VtakB9Cm0gxNO9BzWkj6mtO1FMXkQ==",
       "cpu": [
         "x64"
       ],
@@ -405,9 +376,9 @@
       }
     },
     "node_modules/@esbuild/openbsd-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.25.11.tgz",
-      "integrity": "sha512-Qq6YHhayieor3DxFOoYM1q0q1uMFYb7cSpLD2qzDSvK1NAvqFi8Xgivv0cFC6J+hWVw2teCYltyy9/m/14ryHg==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.25.12.tgz",
+      "integrity": "sha512-fF96T6KsBo/pkQI950FARU9apGNTSlZGsv1jZBAlcLL1MLjLNIWPBkj5NlSz8aAzYKg+eNqknrUJ24QBybeR5A==",
       "cpu": [
         "arm64"
       ],
@@ -422,9 +393,9 @@
       }
     },
     "node_modules/@esbuild/openbsd-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.25.11.tgz",
-      "integrity": "sha512-CN+7c++kkbrckTOz5hrehxWN7uIhFFlmS/hqziSFVWpAzpWrQoAG4chH+nN3Be+Kzv/uuo7zhX716x3Sn2Jduw==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.25.12.tgz",
+      "integrity": "sha512-MZyXUkZHjQxUvzK7rN8DJ3SRmrVrke8ZyRusHlP+kuwqTcfWLyqMOE3sScPPyeIXN/mDJIfGXvcMqCgYKekoQw==",
       "cpu": [
         "x64"
       ],
@@ -439,9 +410,9 @@
       }
     },
     "node_modules/@esbuild/openharmony-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.25.11.tgz",
-      "integrity": "sha512-rOREuNIQgaiR+9QuNkbkxubbp8MSO9rONmwP5nKncnWJ9v5jQ4JxFnLu4zDSRPf3x4u+2VN4pM4RdyIzDty/wQ==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.25.12.tgz",
+      "integrity": "sha512-rm0YWsqUSRrjncSXGA7Zv78Nbnw4XL6/dzr20cyrQf7ZmRcsovpcRBdhD43Nuk3y7XIoW2OxMVvwuRvk9XdASg==",
       "cpu": [
         "arm64"
       ],
@@ -456,9 +427,9 @@
       }
     },
     "node_modules/@esbuild/sunos-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.25.11.tgz",
-      "integrity": "sha512-nq2xdYaWxyg9DcIyXkZhcYulC6pQ2FuCgem3LI92IwMgIZ69KHeY8T4Y88pcwoLIjbed8n36CyKoYRDygNSGhA==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.25.12.tgz",
+      "integrity": "sha512-3wGSCDyuTHQUzt0nV7bocDy72r2lI33QL3gkDNGkod22EsYl04sMf0qLb8luNKTOmgF/eDEDP5BFNwoBKH441w==",
       "cpu": [
         "x64"
       ],
@@ -473,9 +444,9 @@
       }
     },
     "node_modules/@esbuild/win32-arm64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.25.11.tgz",
-      "integrity": "sha512-3XxECOWJq1qMZ3MN8srCJ/QfoLpL+VaxD/WfNRm1O3B4+AZ/BnLVgFbUV3eiRYDMXetciH16dwPbbHqwe1uU0Q==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.25.12.tgz",
+      "integrity": "sha512-rMmLrur64A7+DKlnSuwqUdRKyd3UE7oPJZmnljqEptesKM8wx9J8gx5u0+9Pq0fQQW8vqeKebwNXdfOyP+8Bsg==",
       "cpu": [
         "arm64"
       ],
@@ -490,9 +461,9 @@
       }
     },
     "node_modules/@esbuild/win32-ia32": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.25.11.tgz",
-      "integrity": "sha512-3ukss6gb9XZ8TlRyJlgLn17ecsK4NSQTmdIXRASVsiS2sQ6zPPZklNJT5GR5tE/MUarymmy8kCEf5xPCNCqVOA==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.25.12.tgz",
+      "integrity": "sha512-HkqnmmBoCbCwxUKKNPBixiWDGCpQGVsrQfJoVGYLPT41XWF8lHuE5N6WhVia2n4o5QK5M4tYr21827fNhi4byQ==",
       "cpu": [
         "ia32"
       ],
@@ -507,9 +478,9 @@
       }
     },
     "node_modules/@esbuild/win32-x64": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.11.tgz",
-      "integrity": "sha512-D7Hpz6A2L4hzsRpPaCYkQnGOotdUpDzSGRIv9I+1ITdHROSFUWW95ZPZWQmGka1Fg7W3zFJowyn9WGwMJ0+KPA==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.12.tgz",
+      "integrity": "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA==",
       "cpu": [
         "x64"
       ],
@@ -551,34 +522,6 @@
         "@jridgewell/sourcemap-codec": "^1.4.10"
       }
     },
-    "node_modules/@mongodb-js/saslprep": {
-      "version": "1.3.2",
-      "resolved": "https://registry.npmjs.org/@mongodb-js/saslprep/-/saslprep-1.3.2.tgz",
-      "integrity": "sha512-QgA5AySqB27cGTXBFmnpifAi7HxoGUeezwo6p9dI03MuDB6Pp33zgclqVb6oVK3j6I9Vesg0+oojW2XxB59SGg==",
-      "license": "MIT",
-      "dependencies": {
-        "sparse-bitfield": "^3.0.3"
-      }
-    },
-    "node_modules/@phc/format": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/@phc/format/-/format-1.0.0.tgz",
-      "integrity": "sha512-m7X9U6BG2+J+R1lSOdCiITLLrxm+cWlNI3HUFA92oLO77ObGNzaKdh8pMLqdZcshtkKuV84olNNXDfMc4FezBQ==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=10"
-      }
-    },
-    "node_modules/@so-ric/colorspace": {
-      "version": "1.1.6",
-      "resolved": "https://registry.npmjs.org/@so-ric/colorspace/-/colorspace-1.1.6.tgz",
-      "integrity": "sha512-/KiKkpHNOBgkFJwu9sh48LkHSMYGyuTcSFK/qMBdnOAlrRJzRSXAOFB5qwzaVQuDl8wAvHVMkaASQDReTahxuw==",
-      "license": "MIT",
-      "dependencies": {
-        "color": "^5.0.2",
-        "text-hex": "1.0.x"
-      }
-    },
     "node_modules/@tsconfig/node10": {
       "version": "1.0.11",
       "resolved": "https://registry.npmjs.org/@tsconfig/node10/-/node10-1.0.11.tgz",
@@ -618,17 +561,6 @@
         "@types/node": "*"
       }
     },
-    "node_modules/@types/compression": {
-      "version": "1.8.1",
-      "resolved": "https://registry.npmjs.org/@types/compression/-/compression-1.8.1.tgz",
-      "integrity": "sha512-kCFuWS0ebDbmxs0AXYn6e2r2nrGAb5KwQhknjSPSPgJcGd8+HVSILlUyFhGqML2gk39HcG7D1ydW9/qpYkN00Q==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/express": "*",
-        "@types/node": "*"
-      }
-    },
     "node_modules/@types/connect": {
       "version": "3.4.38",
       "resolved": "https://registry.npmjs.org/@types/connect/-/connect-3.4.38.tgz",
@@ -637,16 +569,6 @@
       "license": "MIT",
       "dependencies": {
         "@types/node": "*"
-      }
-    },
-    "node_modules/@types/cookie-parser": {
-      "version": "1.4.9",
-      "resolved": "https://registry.npmjs.org/@types/cookie-parser/-/cookie-parser-1.4.9.tgz",
-      "integrity": "sha512-tGZiZ2Gtc4m3wIdLkZ8mkj1T6CEHb35+VApbL2T14Dew8HA7c+04dmKqsKRNC+8RJPm16JEK0tFSwdZqubfc4g==",
-      "dev": true,
-      "license": "MIT",
-      "peerDependencies": {
-        "@types/express": "*"
       }
     },
     "node_modules/@types/cors": {
@@ -660,12 +582,11 @@
       }
     },
     "node_modules/@types/express": {
-      "version": "5.0.3",
-      "resolved": "https://registry.npmjs.org/@types/express/-/express-5.0.3.tgz",
-      "integrity": "sha512-wGA0NX93b19/dZC1J18tKWVIYWyyF2ZjT9vin/NRu0qzzvfVzWjs04iq2rQ3H65vCTQYlRqs3YHfY7zjdV+9Kw==",
+      "version": "5.0.4",
+      "resolved": "https://registry.npmjs.org/@types/express/-/express-5.0.4.tgz",
+      "integrity": "sha512-g64dbryHk7loCIrsa0R3shBnEu5p6LPJ09bu9NG58+jz+cRUjFrc3Bz0kNQ7j9bXeCsrRDvNET1G54P/GJkAyA==",
       "dev": true,
       "license": "MIT",
-      "peer": true,
       "dependencies": {
         "@types/body-parser": "*",
         "@types/express-serve-static-core": "^5.0.0",
@@ -683,16 +604,6 @@
         "@types/qs": "*",
         "@types/range-parser": "*",
         "@types/send": "*"
-      }
-    },
-    "node_modules/@types/hpp": {
-      "version": "0.2.6",
-      "resolved": "https://registry.npmjs.org/@types/hpp/-/hpp-0.2.6.tgz",
-      "integrity": "sha512-6gn1RuHA1/XFCVCqCkSV+AWy07YwtGg4re4SHhLMoiARTg9XlrbYMtVR+Uvws0VlERXzzcA+1UYvxEV6O+sgPg==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/express": "*"
       }
     },
     "node_modules/@types/http-errors": {
@@ -720,14 +631,26 @@
       }
     },
     "node_modules/@types/node": {
-      "version": "24.8.1",
-      "resolved": "https://registry.npmjs.org/@types/node/-/node-24.8.1.tgz",
-      "integrity": "sha512-alv65KGRadQVfVcG69MuB4IzdYVpRwMG/mq8KWOaoOdyY617P5ivaDiMCGOFDWD2sAn5Q0mR3mRtUOgm99hL9Q==",
+      "version": "24.9.1",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-24.9.1.tgz",
+      "integrity": "sha512-QoiaXANRkSXK6p0Duvt56W208du4P9Uye9hWLWgGMDTEoKPhuenzNcC4vGUmrNkiOKTlIrBoyNQYNpSwfEZXSg==",
       "dev": true,
       "license": "MIT",
       "peer": true,
       "dependencies": {
-        "undici-types": "~7.14.0"
+        "undici-types": "~7.16.0"
+      }
+    },
+    "node_modules/@types/pg": {
+      "version": "8.15.5",
+      "resolved": "https://registry.npmjs.org/@types/pg/-/pg-8.15.5.tgz",
+      "integrity": "sha512-LF7lF6zWEKxuT3/OR8wAZGzkg4ENGXFNyiV/JeOt9z5B+0ZVwbql9McqX5c/WStFq1GaGso7H1AzP/qSzmlCKQ==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*",
+        "pg-protocol": "*",
+        "pg-types": "^2.2.0"
       }
     },
     "node_modules/@types/qs": {
@@ -745,9 +668,9 @@
       "license": "MIT"
     },
     "node_modules/@types/send": {
-      "version": "1.2.0",
-      "resolved": "https://registry.npmjs.org/@types/send/-/send-1.2.0.tgz",
-      "integrity": "sha512-zBF6vZJn1IaMpg3xUF25VK3gd3l8zwE0ZLRX7dsQyQi+jp4E8mMDJNGDYnYse+bQhYwWERTxVwHpi3dMOq7RKQ==",
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/@types/send/-/send-1.2.1.tgz",
+      "integrity": "sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==",
       "dev": true,
       "license": "MIT",
       "dependencies": {
@@ -755,9 +678,9 @@
       }
     },
     "node_modules/@types/serve-static": {
-      "version": "1.15.9",
-      "resolved": "https://registry.npmjs.org/@types/serve-static/-/serve-static-1.15.9.tgz",
-      "integrity": "sha512-dOTIuqpWLyl3BBXU3maNQsS4A3zuuoYRNIvYSxxhebPfXg2mzWQEPne/nlJ37yOse6uGgR386uTpdsx4D0QZWA==",
+      "version": "1.15.10",
+      "resolved": "https://registry.npmjs.org/@types/serve-static/-/serve-static-1.15.10.tgz",
+      "integrity": "sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw==",
       "dev": true,
       "license": "MIT",
       "dependencies": {
@@ -767,56 +690,14 @@
       }
     },
     "node_modules/@types/serve-static/node_modules/@types/send": {
-      "version": "0.17.5",
-      "resolved": "https://registry.npmjs.org/@types/send/-/send-0.17.5.tgz",
-      "integrity": "sha512-z6F2D3cOStZvuk2SaP6YrwkNO65iTZcwA2ZkSABegdkAh/lf+Aa/YQndZVfmEXT5vgAp6zv06VQ3ejSVjAny4w==",
+      "version": "0.17.6",
+      "resolved": "https://registry.npmjs.org/@types/send/-/send-0.17.6.tgz",
+      "integrity": "sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og==",
       "dev": true,
       "license": "MIT",
       "dependencies": {
         "@types/mime": "^1",
         "@types/node": "*"
-      }
-    },
-    "node_modules/@types/strip-bom": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/@types/strip-bom/-/strip-bom-3.0.0.tgz",
-      "integrity": "sha512-xevGOReSYGM7g/kUBZzPqCrR/KYAo+F0yiPc85WFTJa0MSLtyFTVTU6cJu/aV4mid7IffDIWqo69THF2o4JiEQ==",
-      "dev": true,
-      "license": "MIT"
-    },
-    "node_modules/@types/strip-json-comments": {
-      "version": "0.0.30",
-      "resolved": "https://registry.npmjs.org/@types/strip-json-comments/-/strip-json-comments-0.0.30.tgz",
-      "integrity": "sha512-7NQmHra/JILCd1QqpSzl8+mJRc8ZHz3uDm8YV1Ks9IhK0epEiTw8aIErbvH9PI+6XbqhyIQy3462nEsn7UVzjQ==",
-      "dev": true,
-      "license": "MIT"
-    },
-    "node_modules/@types/triple-beam": {
-      "version": "1.3.5",
-      "resolved": "https://registry.npmjs.org/@types/triple-beam/-/triple-beam-1.3.5.tgz",
-      "integrity": "sha512-6WaYesThRMCl19iryMYP7/x2OVgCtbIVflDGFpWnb9irXI3UjYE4AzmYuiUKY1AJstGijoY+MgUszMgRxIYTYw==",
-      "license": "MIT"
-    },
-    "node_modules/@types/validator": {
-      "version": "13.15.4",
-      "resolved": "https://registry.npmjs.org/@types/validator/-/validator-13.15.4.tgz",
-      "integrity": "sha512-LSFfpSnJJY9wbC0LQxgvfb+ynbHftFo0tMsFOl/J4wexLnYMmDSPaj2ZyDv3TkfL1UePxPrxOWJfbiRS8mQv7A==",
-      "dev": true,
-      "license": "MIT"
-    },
-    "node_modules/@types/webidl-conversions": {
-      "version": "7.0.3",
-      "resolved": "https://registry.npmjs.org/@types/webidl-conversions/-/webidl-conversions-7.0.3.tgz",
-      "integrity": "sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==",
-      "license": "MIT"
-    },
-    "node_modules/@types/whatwg-url": {
-      "version": "11.0.5",
-      "resolved": "https://registry.npmjs.org/@types/whatwg-url/-/whatwg-url-11.0.5.tgz",
-      "integrity": "sha512-coYR071JRaHa+xoEvvYqvnIHaVqaYrLPbsufM9BF63HkwI5Lgmy2QR8Q5K/lYDYo5AK82wOvSOS0UsLTpTG7uQ==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/webidl-conversions": "*"
       }
     },
     "node_modules/accepts": {
@@ -877,28 +758,6 @@
       "resolved": "https://registry.npmjs.org/arg/-/arg-4.1.3.tgz",
       "integrity": "sha512-58S9QDqG0Xx27YwPSt9fJxivjYl432YCwfDMfZ+71RAqUrZef7LrKQZ3LHLOwCS4FLNBplP533Zx895SeOCHvA==",
       "dev": true,
-      "license": "MIT"
-    },
-    "node_modules/argon2": {
-      "version": "0.44.0",
-      "resolved": "https://registry.npmjs.org/argon2/-/argon2-0.44.0.tgz",
-      "integrity": "sha512-zHPGN3S55sihSQo0dBbK0A5qpi2R31z7HZDZnry3ifOyj8bZZnpZND2gpmhnRGO1V/d555RwBqIK5W4Mrmv3ig==",
-      "hasInstallScript": true,
-      "license": "MIT",
-      "dependencies": {
-        "@phc/format": "^1.0.0",
-        "cross-env": "^10.0.0",
-        "node-addon-api": "^8.5.0",
-        "node-gyp-build": "^4.8.4"
-      },
-      "engines": {
-        "node": ">=16.17.0"
-      }
-    },
-    "node_modules/async": {
-      "version": "3.2.6",
-      "resolved": "https://registry.npmjs.org/async/-/async-3.2.6.tgz",
-      "integrity": "sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==",
       "license": "MIT"
     },
     "node_modules/balanced-match": {
@@ -983,22 +842,6 @@
         "node": ">=8"
       }
     },
-    "node_modules/bson": {
-      "version": "6.10.4",
-      "resolved": "https://registry.npmjs.org/bson/-/bson-6.10.4.tgz",
-      "integrity": "sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng==",
-      "license": "Apache-2.0",
-      "engines": {
-        "node": ">=16.20.1"
-      }
-    },
-    "node_modules/buffer-from": {
-      "version": "1.1.2",
-      "resolved": "https://registry.npmjs.org/buffer-from/-/buffer-from-1.1.2.tgz",
-      "integrity": "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==",
-      "dev": true,
-      "license": "MIT"
-    },
     "node_modules/bytes": {
       "version": "3.1.2",
       "resolved": "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz",
@@ -1062,106 +905,6 @@
         "fsevents": "~2.3.2"
       }
     },
-    "node_modules/color": {
-      "version": "5.0.2",
-      "resolved": "https://registry.npmjs.org/color/-/color-5.0.2.tgz",
-      "integrity": "sha512-e2hz5BzbUPcYlIRHo8ieAhYgoajrJr+hWoceg6E345TPsATMUKqDgzt8fSXZJJbxfpiPzkWyphz8yn8At7q3fA==",
-      "license": "MIT",
-      "dependencies": {
-        "color-convert": "^3.0.1",
-        "color-string": "^2.0.0"
-      },
-      "engines": {
-        "node": ">=18"
-      }
-    },
-    "node_modules/color-convert": {
-      "version": "3.1.2",
-      "resolved": "https://registry.npmjs.org/color-convert/-/color-convert-3.1.2.tgz",
-      "integrity": "sha512-UNqkvCDXstVck3kdowtOTWROIJQwafjOfXSmddoDrXo4cewMKmusCeF22Q24zvjR8nwWib/3S/dfyzPItPEiJg==",
-      "license": "MIT",
-      "dependencies": {
-        "color-name": "^2.0.0"
-      },
-      "engines": {
-        "node": ">=14.6"
-      }
-    },
-    "node_modules/color-name": {
-      "version": "2.0.2",
-      "resolved": "https://registry.npmjs.org/color-name/-/color-name-2.0.2.tgz",
-      "integrity": "sha512-9vEt7gE16EW7Eu7pvZnR0abW9z6ufzhXxGXZEVU9IqPdlsUiMwJeJfRtq0zePUmnbHGT9zajca7mX8zgoayo4A==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=12.20"
-      }
-    },
-    "node_modules/color-string": {
-      "version": "2.1.2",
-      "resolved": "https://registry.npmjs.org/color-string/-/color-string-2.1.2.tgz",
-      "integrity": "sha512-RxmjYxbWemV9gKu4zPgiZagUxbH3RQpEIO77XoSSX0ivgABDZ+h8Zuash/EMFLTI4N9QgFPOJ6JQpPZKFxa+dA==",
-      "license": "MIT",
-      "dependencies": {
-        "color-name": "^2.0.0"
-      },
-      "engines": {
-        "node": ">=18"
-      }
-    },
-    "node_modules/compressible": {
-      "version": "2.0.18",
-      "resolved": "https://registry.npmjs.org/compressible/-/compressible-2.0.18.tgz",
-      "integrity": "sha512-AF3r7P5dWxL8MxyITRMlORQNaOA2IkAFaTr4k7BUumjPtRpGDTZpl0Pb1XCO6JeDCBdp126Cgs9sMxqSjgYyRg==",
-      "license": "MIT",
-      "dependencies": {
-        "mime-db": ">= 1.43.0 < 2"
-      },
-      "engines": {
-        "node": ">= 0.6"
-      }
-    },
-    "node_modules/compression": {
-      "version": "1.8.1",
-      "resolved": "https://registry.npmjs.org/compression/-/compression-1.8.1.tgz",
-      "integrity": "sha512-9mAqGPHLakhCLeNyxPkK4xVo746zQ/czLH1Ky+vkitMnWfWZps8r0qXuwhwizagCRttsL4lfG4pIOvaWLpAP0w==",
-      "license": "MIT",
-      "dependencies": {
-        "bytes": "3.1.2",
-        "compressible": "~2.0.18",
-        "debug": "2.6.9",
-        "negotiator": "~0.6.4",
-        "on-headers": "~1.1.0",
-        "safe-buffer": "5.2.1",
-        "vary": "~1.1.2"
-      },
-      "engines": {
-        "node": ">= 0.8.0"
-      }
-    },
-    "node_modules/compression/node_modules/debug": {
-      "version": "2.6.9",
-      "resolved": "https://registry.npmjs.org/debug/-/debug-2.6.9.tgz",
-      "integrity": "sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==",
-      "license": "MIT",
-      "dependencies": {
-        "ms": "2.0.0"
-      }
-    },
-    "node_modules/compression/node_modules/ms": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/ms/-/ms-2.0.0.tgz",
-      "integrity": "sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==",
-      "license": "MIT"
-    },
-    "node_modules/compression/node_modules/negotiator": {
-      "version": "0.6.4",
-      "resolved": "https://registry.npmjs.org/negotiator/-/negotiator-0.6.4.tgz",
-      "integrity": "sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 0.6"
-      }
-    },
     "node_modules/concat-map": {
       "version": "0.0.1",
       "resolved": "https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz",
@@ -1199,25 +942,6 @@
         "node": ">= 0.6"
       }
     },
-    "node_modules/cookie-parser": {
-      "version": "1.4.7",
-      "resolved": "https://registry.npmjs.org/cookie-parser/-/cookie-parser-1.4.7.tgz",
-      "integrity": "sha512-nGUvgXnotP3BsjiLX2ypbQnWoGUPIIfHQNZkkC668ntrzGWEZVW70HDEB1qnNGMicPje6EttlIgzo51YSwNQGw==",
-      "license": "MIT",
-      "dependencies": {
-        "cookie": "0.7.2",
-        "cookie-signature": "1.0.6"
-      },
-      "engines": {
-        "node": ">= 0.8.0"
-      }
-    },
-    "node_modules/cookie-parser/node_modules/cookie-signature": {
-      "version": "1.0.6",
-      "resolved": "https://registry.npmjs.org/cookie-signature/-/cookie-signature-1.0.6.tgz",
-      "integrity": "sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==",
-      "license": "MIT"
-    },
     "node_modules/cookie-signature": {
       "version": "1.2.2",
       "resolved": "https://registry.npmjs.org/cookie-signature/-/cookie-signature-1.2.2.tgz",
@@ -1246,37 +970,6 @@
       "integrity": "sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==",
       "dev": true,
       "license": "MIT"
-    },
-    "node_modules/cross-env": {
-      "version": "10.1.0",
-      "resolved": "https://registry.npmjs.org/cross-env/-/cross-env-10.1.0.tgz",
-      "integrity": "sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==",
-      "license": "MIT",
-      "dependencies": {
-        "@epic-web/invariant": "^1.0.0",
-        "cross-spawn": "^7.0.6"
-      },
-      "bin": {
-        "cross-env": "dist/bin/cross-env.js",
-        "cross-env-shell": "dist/bin/cross-env-shell.js"
-      },
-      "engines": {
-        "node": ">=20"
-      }
-    },
-    "node_modules/cross-spawn": {
-      "version": "7.0.6",
-      "resolved": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz",
-      "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
-      "license": "MIT",
-      "dependencies": {
-        "path-key": "^3.1.0",
-        "shebang-command": "^2.0.0",
-        "which": "^2.0.1"
-      },
-      "engines": {
-        "node": ">= 8"
-      }
     },
     "node_modules/debug": {
       "version": "4.4.3",
@@ -1340,26 +1033,10 @@
         "node": ">= 0.4"
       }
     },
-    "node_modules/dynamic-dedupe": {
-      "version": "0.3.0",
-      "resolved": "https://registry.npmjs.org/dynamic-dedupe/-/dynamic-dedupe-0.3.0.tgz",
-      "integrity": "sha512-ssuANeD+z97meYOqd50e04Ze5qp4bPqo8cCkI4TRjZkzAUgIDTrXV1R8QCdINpiI+hw14+rYazvTRdQrz0/rFQ==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "xtend": "^4.0.0"
-      }
-    },
     "node_modules/ee-first": {
       "version": "1.1.1",
       "resolved": "https://registry.npmjs.org/ee-first/-/ee-first-1.1.1.tgz",
       "integrity": "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==",
-      "license": "MIT"
-    },
-    "node_modules/enabled": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/enabled/-/enabled-2.0.0.tgz",
-      "integrity": "sha512-AKrN98kuwOzMIdAizXGI86UFBoo26CL21UM763y1h/GMSJ4/OHU9k2YlsmBpyScFo/wbLzWQJBMCW4+IO3/+OQ==",
       "license": "MIT"
     },
     "node_modules/encodeurl": {
@@ -1402,9 +1079,9 @@
       }
     },
     "node_modules/esbuild": {
-      "version": "0.25.11",
-      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.25.11.tgz",
-      "integrity": "sha512-KohQwyzrKTQmhXDW1PjCv3Tyspn9n5GcY2RTDqeORIdIJY8yKIF7sTSopFmn/wpMPW4rdPXI0UE5LJLuq3bx0Q==",
+      "version": "0.25.12",
+      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz",
+      "integrity": "sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg==",
       "dev": true,
       "hasInstallScript": true,
       "license": "MIT",
@@ -1415,32 +1092,32 @@
         "node": ">=18"
       },
       "optionalDependencies": {
-        "@esbuild/aix-ppc64": "0.25.11",
-        "@esbuild/android-arm": "0.25.11",
-        "@esbuild/android-arm64": "0.25.11",
-        "@esbuild/android-x64": "0.25.11",
-        "@esbuild/darwin-arm64": "0.25.11",
-        "@esbuild/darwin-x64": "0.25.11",
-        "@esbuild/freebsd-arm64": "0.25.11",
-        "@esbuild/freebsd-x64": "0.25.11",
-        "@esbuild/linux-arm": "0.25.11",
-        "@esbuild/linux-arm64": "0.25.11",
-        "@esbuild/linux-ia32": "0.25.11",
-        "@esbuild/linux-loong64": "0.25.11",
-        "@esbuild/linux-mips64el": "0.25.11",
-        "@esbuild/linux-ppc64": "0.25.11",
-        "@esbuild/linux-riscv64": "0.25.11",
-        "@esbuild/linux-s390x": "0.25.11",
-        "@esbuild/linux-x64": "0.25.11",
-        "@esbuild/netbsd-arm64": "0.25.11",
-        "@esbuild/netbsd-x64": "0.25.11",
-        "@esbuild/openbsd-arm64": "0.25.11",
-        "@esbuild/openbsd-x64": "0.25.11",
-        "@esbuild/openharmony-arm64": "0.25.11",
-        "@esbuild/sunos-x64": "0.25.11",
-        "@esbuild/win32-arm64": "0.25.11",
-        "@esbuild/win32-ia32": "0.25.11",
-        "@esbuild/win32-x64": "0.25.11"
+        "@esbuild/aix-ppc64": "0.25.12",
+        "@esbuild/android-arm": "0.25.12",
+        "@esbuild/android-arm64": "0.25.12",
+        "@esbuild/android-x64": "0.25.12",
+        "@esbuild/darwin-arm64": "0.25.12",
+        "@esbuild/darwin-x64": "0.25.12",
+        "@esbuild/freebsd-arm64": "0.25.12",
+        "@esbuild/freebsd-x64": "0.25.12",
+        "@esbuild/linux-arm": "0.25.12",
+        "@esbuild/linux-arm64": "0.25.12",
+        "@esbuild/linux-ia32": "0.25.12",
+        "@esbuild/linux-loong64": "0.25.12",
+        "@esbuild/linux-mips64el": "0.25.12",
+        "@esbuild/linux-ppc64": "0.25.12",
+        "@esbuild/linux-riscv64": "0.25.12",
+        "@esbuild/linux-s390x": "0.25.12",
+        "@esbuild/linux-x64": "0.25.12",
+        "@esbuild/netbsd-arm64": "0.25.12",
+        "@esbuild/netbsd-x64": "0.25.12",
+        "@esbuild/openbsd-arm64": "0.25.12",
+        "@esbuild/openbsd-x64": "0.25.12",
+        "@esbuild/openharmony-arm64": "0.25.12",
+        "@esbuild/sunos-x64": "0.25.12",
+        "@esbuild/win32-arm64": "0.25.12",
+        "@esbuild/win32-ia32": "0.25.12",
+        "@esbuild/win32-x64": "0.25.12"
       }
     },
     "node_modules/escape-html": {
@@ -1463,7 +1140,6 @@
       "resolved": "https://registry.npmjs.org/express/-/express-5.1.0.tgz",
       "integrity": "sha512-DT9ck5YIRU+8GYzzU5kT3eHGA5iL+1Zd0EutOmTE9Dtk+Tvuzd23VBU+ec7HPNSTxXYO55gPV/hq4pSBJDjFpA==",
       "license": "MIT",
-      "peer": true,
       "dependencies": {
         "accepts": "^2.0.0",
         "body-parser": "^2.2.0",
@@ -1501,39 +1177,6 @@
         "url": "https://opencollective.com/express"
       }
     },
-    "node_modules/express-mongo-sanitize": {
-      "version": "2.2.0",
-      "resolved": "https://registry.npmjs.org/express-mongo-sanitize/-/express-mongo-sanitize-2.2.0.tgz",
-      "integrity": "sha512-PZBs5nwhD6ek9ZuP+W2xmpvcrHwXZxD5GdieX2dsjPbAbH4azOkrHbycBud2QRU+YQF1CT+pki/lZGedHgo/dQ==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=10"
-      }
-    },
-    "node_modules/express-rate-limit": {
-      "version": "8.1.0",
-      "resolved": "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-8.1.0.tgz",
-      "integrity": "sha512-4nLnATuKupnmwqiJc27b4dCFmB/T60ExgmtDD7waf4LdrbJ8CPZzZRHYErDYNhoz+ql8fUdYwM/opf90PoPAQA==",
-      "license": "MIT",
-      "dependencies": {
-        "ip-address": "10.0.1"
-      },
-      "engines": {
-        "node": ">= 16"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/express-rate-limit"
-      },
-      "peerDependencies": {
-        "express": ">= 4.11"
-      }
-    },
-    "node_modules/fecha": {
-      "version": "4.2.3",
-      "resolved": "https://registry.npmjs.org/fecha/-/fecha-4.2.3.tgz",
-      "integrity": "sha512-OP2IUU6HeYKJi3i0z4A19kHMQoLVs4Hc+DPqqxI2h/DPZHTm/vjsfC6P0b4jCMy14XizLBqvndQ+UilD7707Jw==",
-      "license": "MIT"
-    },
     "node_modules/fill-range": {
       "version": "7.1.1",
       "resolved": "https://registry.npmjs.org/fill-range/-/fill-range-7.1.1.tgz",
@@ -1564,12 +1207,6 @@
         "node": ">= 0.8"
       }
     },
-    "node_modules/fn.name": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/fn.name/-/fn.name-1.1.0.tgz",
-      "integrity": "sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==",
-      "license": "MIT"
-    },
     "node_modules/forwarded": {
       "version": "0.2.0",
       "resolved": "https://registry.npmjs.org/forwarded/-/forwarded-0.2.0.tgz",
@@ -1587,13 +1224,6 @@
       "engines": {
         "node": ">= 0.8"
       }
-    },
-    "node_modules/fs.realpath": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz",
-      "integrity": "sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==",
-      "dev": true,
-      "license": "ISC"
     },
     "node_modules/fsevents": {
       "version": "2.3.3",
@@ -1669,28 +1299,6 @@
         "url": "https://github.com/privatenumber/get-tsconfig?sponsor=1"
       }
     },
-    "node_modules/glob": {
-      "version": "7.2.3",
-      "resolved": "https://registry.npmjs.org/glob/-/glob-7.2.3.tgz",
-      "integrity": "sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==",
-      "deprecated": "Glob versions prior to v9 are no longer supported",
-      "dev": true,
-      "license": "ISC",
-      "dependencies": {
-        "fs.realpath": "^1.0.0",
-        "inflight": "^1.0.4",
-        "inherits": "2",
-        "minimatch": "^3.1.1",
-        "once": "^1.3.0",
-        "path-is-absolute": "^1.0.0"
-      },
-      "engines": {
-        "node": "*"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/isaacs"
-      }
-    },
     "node_modules/glob-parent": {
       "version": "5.1.2",
       "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz",
@@ -1759,62 +1367,6 @@
         "node": ">=18.0.0"
       }
     },
-    "node_modules/hpp": {
-      "version": "0.2.3",
-      "resolved": "https://registry.npmjs.org/hpp/-/hpp-0.2.3.tgz",
-      "integrity": "sha512-4zDZypjQcxK/8pfFNR7jaON7zEUpXZxz4viyFmqjb3kWNWAHsLEUmWXcdn25c5l76ISvnD6hbOGO97cXUI3Ryw==",
-      "license": "ISC",
-      "dependencies": {
-        "lodash": "^4.17.12",
-        "type-is": "^1.6.12"
-      },
-      "engines": {
-        "node": ">=0.10.0"
-      }
-    },
-    "node_modules/hpp/node_modules/media-typer": {
-      "version": "0.3.0",
-      "resolved": "https://registry.npmjs.org/media-typer/-/media-typer-0.3.0.tgz",
-      "integrity": "sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 0.6"
-      }
-    },
-    "node_modules/hpp/node_modules/mime-db": {
-      "version": "1.52.0",
-      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz",
-      "integrity": "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 0.6"
-      }
-    },
-    "node_modules/hpp/node_modules/mime-types": {
-      "version": "2.1.35",
-      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz",
-      "integrity": "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==",
-      "license": "MIT",
-      "dependencies": {
-        "mime-db": "1.52.0"
-      },
-      "engines": {
-        "node": ">= 0.6"
-      }
-    },
-    "node_modules/hpp/node_modules/type-is": {
-      "version": "1.6.18",
-      "resolved": "https://registry.npmjs.org/type-is/-/type-is-1.6.18.tgz",
-      "integrity": "sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==",
-      "license": "MIT",
-      "dependencies": {
-        "media-typer": "0.3.0",
-        "mime-types": "~2.1.24"
-      },
-      "engines": {
-        "node": ">= 0.6"
-      }
-    },
     "node_modules/http-errors": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.0.tgz",
@@ -1859,32 +1411,11 @@
       "dev": true,
       "license": "ISC"
     },
-    "node_modules/inflight": {
-      "version": "1.0.6",
-      "resolved": "https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz",
-      "integrity": "sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==",
-      "deprecated": "This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.",
-      "dev": true,
-      "license": "ISC",
-      "dependencies": {
-        "once": "^1.3.0",
-        "wrappy": "1"
-      }
-    },
     "node_modules/inherits": {
       "version": "2.0.4",
       "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
       "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
       "license": "ISC"
-    },
-    "node_modules/ip-address": {
-      "version": "10.0.1",
-      "resolved": "https://registry.npmjs.org/ip-address/-/ip-address-10.0.1.tgz",
-      "integrity": "sha512-NWv9YLW4PoW2B7xtzaS3NCot75m6nK7Icdv0o3lfMceJVRfSoQwqD4wEH5rLwoKJwUiZ/rfpiVBhnaF0FK4HoA==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 12"
-      }
     },
     "node_modules/ipaddr.js": {
       "version": "1.9.1",
@@ -1906,22 +1437,6 @@
       },
       "engines": {
         "node": ">=8"
-      }
-    },
-    "node_modules/is-core-module": {
-      "version": "2.16.1",
-      "resolved": "https://registry.npmjs.org/is-core-module/-/is-core-module-2.16.1.tgz",
-      "integrity": "sha512-UfoeMA6fIJ8wTYFEUjelnaGI67v6+N7qXJEvQuIGa99l4xsCruSYOVSQ0uPANn4dAzm8lkYPaKLrrijLq7x23w==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "hasown": "^2.0.2"
-      },
-      "engines": {
-        "node": ">= 0.4"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/ljharb"
       }
     },
     "node_modules/is-extglob": {
@@ -1963,71 +1478,6 @@
       "integrity": "sha512-hvpoI6korhJMnej285dSg6nu1+e6uxs7zG3BYAm5byqDsgJNWwxzM6z6iZiAgQR4TJ30JmBTOwqZUw3WlyH3AQ==",
       "license": "MIT"
     },
-    "node_modules/is-stream": {
-      "version": "2.0.1",
-      "resolved": "https://registry.npmjs.org/is-stream/-/is-stream-2.0.1.tgz",
-      "integrity": "sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=8"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/sindresorhus"
-      }
-    },
-    "node_modules/isexe": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz",
-      "integrity": "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==",
-      "license": "ISC"
-    },
-    "node_modules/jose": {
-      "version": "6.1.0",
-      "resolved": "https://registry.npmjs.org/jose/-/jose-6.1.0.tgz",
-      "integrity": "sha512-TTQJyoEoKcC1lscpVDCSsVgYzUDg/0Bt3WE//WiTPK6uOCQC2KZS4MpugbMWt/zyjkopgZoXhZuCi00gLudfUA==",
-      "license": "MIT",
-      "funding": {
-        "url": "https://github.com/sponsors/panva"
-      }
-    },
-    "node_modules/kareem": {
-      "version": "2.6.3",
-      "resolved": "https://registry.npmjs.org/kareem/-/kareem-2.6.3.tgz",
-      "integrity": "sha512-C3iHfuGUXK2u8/ipq9LfjFfXFxAZMQJJq7vLS45r3D9Y2xQ/m4S8zaR4zMLFWh9AsNPXmcFfUDhTEO8UIC/V6Q==",
-      "license": "Apache-2.0",
-      "engines": {
-        "node": ">=12.0.0"
-      }
-    },
-    "node_modules/kuler": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/kuler/-/kuler-2.0.0.tgz",
-      "integrity": "sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==",
-      "license": "MIT"
-    },
-    "node_modules/lodash": {
-      "version": "4.17.21",
-      "resolved": "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz",
-      "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==",
-      "license": "MIT"
-    },
-    "node_modules/logform": {
-      "version": "2.7.0",
-      "resolved": "https://registry.npmjs.org/logform/-/logform-2.7.0.tgz",
-      "integrity": "sha512-TFYA4jnP7PVbmlBIfhlSe+WKxs9dklXMTEGcBCIvLhE/Tn3H6Gk1norupVW7m5Cnd4bLcr08AytbyV/xj7f/kQ==",
-      "license": "MIT",
-      "dependencies": {
-        "@colors/colors": "1.6.0",
-        "@types/triple-beam": "^1.3.2",
-        "fecha": "^4.2.0",
-        "ms": "^2.1.1",
-        "safe-stable-stringify": "^2.3.1",
-        "triple-beam": "^1.3.0"
-      },
-      "engines": {
-        "node": ">= 12.0.0"
-      }
-    },
     "node_modules/make-error": {
       "version": "1.3.6",
       "resolved": "https://registry.npmjs.org/make-error/-/make-error-1.3.6.tgz",
@@ -2052,12 +1502,6 @@
       "engines": {
         "node": ">= 0.8"
       }
-    },
-    "node_modules/memory-pager": {
-      "version": "1.5.0",
-      "resolved": "https://registry.npmjs.org/memory-pager/-/memory-pager-1.5.0.tgz",
-      "integrity": "sha512-ZS4Bp4r/Zoeq6+NLJpP+0Zzm0pR8whtGPf1XExKLJBAczGMnSi3It14OiNCStjQjM6NU1okjQGSxgEZN8eBYKg==",
-      "license": "MIT"
     },
     "node_modules/merge-descriptors": {
       "version": "2.0.0",
@@ -2105,107 +1549,6 @@
         "node": "*"
       }
     },
-    "node_modules/minimist": {
-      "version": "1.2.8",
-      "resolved": "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz",
-      "integrity": "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==",
-      "dev": true,
-      "license": "MIT",
-      "funding": {
-        "url": "https://github.com/sponsors/ljharb"
-      }
-    },
-    "node_modules/mkdirp": {
-      "version": "1.0.4",
-      "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz",
-      "integrity": "sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==",
-      "dev": true,
-      "license": "MIT",
-      "bin": {
-        "mkdirp": "bin/cmd.js"
-      },
-      "engines": {
-        "node": ">=10"
-      }
-    },
-    "node_modules/mongodb": {
-      "version": "6.20.0",
-      "resolved": "https://registry.npmjs.org/mongodb/-/mongodb-6.20.0.tgz",
-      "integrity": "sha512-Tl6MEIU3K4Rq3TSHd+sZQqRBoGlFsOgNrH5ltAcFBV62Re3Fd+FcaVf8uSEQFOJ51SDowDVttBTONMfoYWrWlQ==",
-      "license": "Apache-2.0",
-      "dependencies": {
-        "@mongodb-js/saslprep": "^1.3.0",
-        "bson": "^6.10.4",
-        "mongodb-connection-string-url": "^3.0.2"
-      },
-      "engines": {
-        "node": ">=16.20.1"
-      },
-      "peerDependencies": {
-        "@aws-sdk/credential-providers": "^3.188.0",
-        "@mongodb-js/zstd": "^1.1.0 || ^2.0.0",
-        "gcp-metadata": "^5.2.0",
-        "kerberos": "^2.0.1",
-        "mongodb-client-encryption": ">=6.0.0 <7",
-        "snappy": "^7.3.2",
-        "socks": "^2.7.1"
-      },
-      "peerDependenciesMeta": {
-        "@aws-sdk/credential-providers": {
-          "optional": true
-        },
-        "@mongodb-js/zstd": {
-          "optional": true
-        },
-        "gcp-metadata": {
-          "optional": true
-        },
-        "kerberos": {
-          "optional": true
-        },
-        "mongodb-client-encryption": {
-          "optional": true
-        },
-        "snappy": {
-          "optional": true
-        },
-        "socks": {
-          "optional": true
-        }
-      }
-    },
-    "node_modules/mongodb-connection-string-url": {
-      "version": "3.0.2",
-      "resolved": "https://registry.npmjs.org/mongodb-connection-string-url/-/mongodb-connection-string-url-3.0.2.tgz",
-      "integrity": "sha512-rMO7CGo/9BFwyZABcKAWL8UJwH/Kc2x0g72uhDWzG48URRax5TCIcJ7Rc3RZqffZzO/Gwff/jyKwCU9TN8gehA==",
-      "license": "Apache-2.0",
-      "dependencies": {
-        "@types/whatwg-url": "^11.0.2",
-        "whatwg-url": "^14.1.0 || ^13.0.0"
-      }
-    },
-    "node_modules/mongoose": {
-      "version": "8.19.1",
-      "resolved": "https://registry.npmjs.org/mongoose/-/mongoose-8.19.1.tgz",
-      "integrity": "sha512-oB7hGQJn4f8aebqE7mhE54EReb5cxVgpCxQCQj0K/cK3q4J3Tg08nFP6sM52nJ4Hlm8jsDnhVYpqIITZUAhckQ==",
-      "license": "MIT",
-      "dependencies": {
-        "bson": "^6.10.4",
-        "kareem": "2.6.3",
-        "mongodb": "~6.20.0",
-        "mpath": "0.9.0",
-        "mquery": "5.0.0",
-        "ms": "2.1.3",
-        "sift": "17.1.3"
-      },
-      "engines": {
-        "node": ">=16.20.1"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/mongoose"
-      }
-    },
     "node_modules/morgan": {
       "version": "1.10.1",
       "resolved": "https://registry.npmjs.org/morgan/-/morgan-1.10.1.tgz",
@@ -2249,27 +1592,6 @@
         "node": ">= 0.8"
       }
     },
-    "node_modules/mpath": {
-      "version": "0.9.0",
-      "resolved": "https://registry.npmjs.org/mpath/-/mpath-0.9.0.tgz",
-      "integrity": "sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=4.0.0"
-      }
-    },
-    "node_modules/mquery": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/mquery/-/mquery-5.0.0.tgz",
-      "integrity": "sha512-iQMncpmEK8R8ncT8HJGsGc9Dsp8xcgYMVSbs5jgnm1lFHTZqMJTUWTDx1LBO8+mK3tPNZWFLBghQEIOULSTHZg==",
-      "license": "MIT",
-      "dependencies": {
-        "debug": "4.x"
-      },
-      "engines": {
-        "node": ">=14.0.0"
-      }
-    },
     "node_modules/ms": {
       "version": "2.1.3",
       "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
@@ -2283,26 +1605,6 @@
       "license": "MIT",
       "engines": {
         "node": ">= 0.6"
-      }
-    },
-    "node_modules/node-addon-api": {
-      "version": "8.5.0",
-      "resolved": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.5.0.tgz",
-      "integrity": "sha512-/bRZty2mXUIFY/xU5HLvveNHlswNJej+RnxBjOMkidWfwZzgTbPG1E3K5TOxRLOR+5hX7bSofy8yf1hZevMS8A==",
-      "license": "MIT",
-      "engines": {
-        "node": "^18 || ^20 || >= 21"
-      }
-    },
-    "node_modules/node-gyp-build": {
-      "version": "4.8.4",
-      "resolved": "https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.4.tgz",
-      "integrity": "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==",
-      "license": "MIT",
-      "bin": {
-        "node-gyp-build": "bin.js",
-        "node-gyp-build-optional": "optional.js",
-        "node-gyp-build-test": "build-test.js"
       }
     },
     "node_modules/nodemon": {
@@ -2395,15 +1697,6 @@
         "wrappy": "1"
       }
     },
-    "node_modules/one-time": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/one-time/-/one-time-1.0.0.tgz",
-      "integrity": "sha512-5DXOiRKwuSEcQ/l0kGCF6Q3jcADFv5tSmRaJck/OqkVFcOzutB134KRSfF0xDrL39MNnqxbHBbUUcjZIhTgb2g==",
-      "license": "MIT",
-      "dependencies": {
-        "fn.name": "1.x.x"
-      }
-    },
     "node_modules/parseurl": {
       "version": "1.3.3",
       "resolved": "https://registry.npmjs.org/parseurl/-/parseurl-1.3.3.tgz",
@@ -2413,32 +1706,6 @@
         "node": ">= 0.8"
       }
     },
-    "node_modules/path-is-absolute": {
-      "version": "1.0.1",
-      "resolved": "https://registry.npmjs.org/path-is-absolute/-/path-is-absolute-1.0.1.tgz",
-      "integrity": "sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg==",
-      "dev": true,
-      "license": "MIT",
-      "engines": {
-        "node": ">=0.10.0"
-      }
-    },
-    "node_modules/path-key": {
-      "version": "3.1.1",
-      "resolved": "https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz",
-      "integrity": "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=8"
-      }
-    },
-    "node_modules/path-parse": {
-      "version": "1.0.7",
-      "resolved": "https://registry.npmjs.org/path-parse/-/path-parse-1.0.7.tgz",
-      "integrity": "sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==",
-      "dev": true,
-      "license": "MIT"
-    },
     "node_modules/path-to-regexp": {
       "version": "8.3.0",
       "resolved": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.3.0.tgz",
@@ -2447,6 +1714,96 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/express"
+      }
+    },
+    "node_modules/pg": {
+      "version": "8.16.3",
+      "resolved": "https://registry.npmjs.org/pg/-/pg-8.16.3.tgz",
+      "integrity": "sha512-enxc1h0jA/aq5oSDMvqyW3q89ra6XIIDZgCX9vkMrnz5DFTw/Ny3Li2lFQ+pt3L6MCgm/5o2o8HW9hiJji+xvw==",
+      "license": "MIT",
+      "peer": true,
+      "dependencies": {
+        "pg-connection-string": "^2.9.1",
+        "pg-pool": "^3.10.1",
+        "pg-protocol": "^1.10.3",
+        "pg-types": "2.2.0",
+        "pgpass": "1.0.5"
+      },
+      "engines": {
+        "node": ">= 16.0.0"
+      },
+      "optionalDependencies": {
+        "pg-cloudflare": "^1.2.7"
+      },
+      "peerDependencies": {
+        "pg-native": ">=3.0.1"
+      },
+      "peerDependenciesMeta": {
+        "pg-native": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/pg-cloudflare": {
+      "version": "1.2.7",
+      "resolved": "https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.2.7.tgz",
+      "integrity": "sha512-YgCtzMH0ptvZJslLM1ffsY4EuGaU0cx4XSdXLRFae8bPP4dS5xL1tNB3k2o/N64cHJpwU7dxKli/nZ2lUa5fLg==",
+      "license": "MIT",
+      "optional": true
+    },
+    "node_modules/pg-connection-string": {
+      "version": "2.9.1",
+      "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.9.1.tgz",
+      "integrity": "sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==",
+      "license": "MIT"
+    },
+    "node_modules/pg-int8": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz",
+      "integrity": "sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==",
+      "license": "ISC",
+      "engines": {
+        "node": ">=4.0.0"
+      }
+    },
+    "node_modules/pg-pool": {
+      "version": "3.10.1",
+      "resolved": "https://registry.npmjs.org/pg-pool/-/pg-pool-3.10.1.tgz",
+      "integrity": "sha512-Tu8jMlcX+9d8+QVzKIvM/uJtp07PKr82IUOYEphaWcoBhIYkoHpLXN3qO59nAI11ripznDsEzEv8nUxBVWajGg==",
+      "license": "MIT",
+      "peerDependencies": {
+        "pg": ">=8.0"
+      }
+    },
+    "node_modules/pg-protocol": {
+      "version": "1.10.3",
+      "resolved": "https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.10.3.tgz",
+      "integrity": "sha512-6DIBgBQaTKDJyxnXaLiLR8wBpQQcGWuAESkRBX/t6OwA8YsqP+iVSiond2EDy6Y/dsGk8rh/jtax3js5NeV7JQ==",
+      "license": "MIT"
+    },
+    "node_modules/pg-types": {
+      "version": "2.2.0",
+      "resolved": "https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz",
+      "integrity": "sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==",
+      "license": "MIT",
+      "dependencies": {
+        "pg-int8": "1.0.1",
+        "postgres-array": "~2.0.0",
+        "postgres-bytea": "~1.0.0",
+        "postgres-date": "~1.0.4",
+        "postgres-interval": "^1.1.0"
+      },
+      "engines": {
+        "node": ">=4"
+      }
+    },
+    "node_modules/pgpass": {
+      "version": "1.0.5",
+      "resolved": "https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz",
+      "integrity": "sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==",
+      "license": "MIT",
+      "dependencies": {
+        "split2": "^4.1.0"
       }
     },
     "node_modules/picomatch": {
@@ -2460,6 +1817,45 @@
       },
       "funding": {
         "url": "https://github.com/sponsors/jonschlinkert"
+      }
+    },
+    "node_modules/postgres-array": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz",
+      "integrity": "sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=4"
+      }
+    },
+    "node_modules/postgres-bytea": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.0.tgz",
+      "integrity": "sha512-xy3pmLuQqRBZBXDULy7KbaitYqLcmxigw14Q5sj8QBVLqEwXfeybIKVWiqAXTlcvdvb0+xkOtDbfQMOf4lST1w==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=0.10.0"
+      }
+    },
+    "node_modules/postgres-date": {
+      "version": "1.0.7",
+      "resolved": "https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz",
+      "integrity": "sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=0.10.0"
+      }
+    },
+    "node_modules/postgres-interval": {
+      "version": "1.2.0",
+      "resolved": "https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz",
+      "integrity": "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==",
+      "license": "MIT",
+      "dependencies": {
+        "xtend": "^4.0.0"
+      },
+      "engines": {
+        "node": ">=0.10.0"
       }
     },
     "node_modules/proxy-addr": {
@@ -2481,15 +1877,6 @@
       "integrity": "sha512-77DZwxQmxKnu3aR542U+X8FypNzbfJ+C5XQDk3uWjWxn6151aIMGthWYRXTqT1E5oJvg+ljaa2OJi+VfvCOQ8w==",
       "dev": true,
       "license": "MIT"
-    },
-    "node_modules/punycode": {
-      "version": "2.3.1",
-      "resolved": "https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz",
-      "integrity": "sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=6"
-      }
     },
     "node_modules/qs": {
       "version": "6.14.0",
@@ -2546,20 +1933,6 @@
         "url": "https://opencollective.com/express"
       }
     },
-    "node_modules/readable-stream": {
-      "version": "3.6.2",
-      "resolved": "https://registry.npmjs.org/readable-stream/-/readable-stream-3.6.2.tgz",
-      "integrity": "sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==",
-      "license": "MIT",
-      "dependencies": {
-        "inherits": "^2.0.3",
-        "string_decoder": "^1.1.1",
-        "util-deprecate": "^1.0.1"
-      },
-      "engines": {
-        "node": ">= 6"
-      }
-    },
     "node_modules/readdirp": {
       "version": "3.6.0",
       "resolved": "https://registry.npmjs.org/readdirp/-/readdirp-3.6.0.tgz",
@@ -2573,27 +1946,6 @@
         "node": ">=8.10.0"
       }
     },
-    "node_modules/resolve": {
-      "version": "1.22.11",
-      "resolved": "https://registry.npmjs.org/resolve/-/resolve-1.22.11.tgz",
-      "integrity": "sha512-RfqAvLnMl313r7c9oclB1HhUEAezcpLjz95wFH4LVuhk9JF/r22qmVP9AMmOU4vMX7Q8pN8jwNg/CSpdFnMjTQ==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "is-core-module": "^2.16.1",
-        "path-parse": "^1.0.7",
-        "supports-preserve-symlinks-flag": "^1.0.0"
-      },
-      "bin": {
-        "resolve": "bin/resolve"
-      },
-      "engines": {
-        "node": ">= 0.4"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/ljharb"
-      }
-    },
     "node_modules/resolve-pkg-maps": {
       "version": "1.0.0",
       "resolved": "https://registry.npmjs.org/resolve-pkg-maps/-/resolve-pkg-maps-1.0.0.tgz",
@@ -2602,20 +1954,6 @@
       "license": "MIT",
       "funding": {
         "url": "https://github.com/privatenumber/resolve-pkg-maps?sponsor=1"
-      }
-    },
-    "node_modules/rimraf": {
-      "version": "2.7.1",
-      "resolved": "https://registry.npmjs.org/rimraf/-/rimraf-2.7.1.tgz",
-      "integrity": "sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==",
-      "deprecated": "Rimraf versions prior to v4 are no longer supported",
-      "dev": true,
-      "license": "ISC",
-      "dependencies": {
-        "glob": "^7.1.3"
-      },
-      "bin": {
-        "rimraf": "bin.js"
       }
     },
     "node_modules/router": {
@@ -2653,15 +1991,6 @@
         }
       ],
       "license": "MIT"
-    },
-    "node_modules/safe-stable-stringify": {
-      "version": "2.5.0",
-      "resolved": "https://registry.npmjs.org/safe-stable-stringify/-/safe-stable-stringify-2.5.0.tgz",
-      "integrity": "sha512-b3rppTKm9T+PsVCBEOUR46GWI7fdOs00VKZ1+9c1EWDaDMvjQc6tUwuFyIprgGgTcWoVHSKrU8H31ZHA2e0RHA==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=10"
-      }
     },
     "node_modules/safer-buffer": {
       "version": "2.1.2",
@@ -2724,27 +2053,6 @@
       "resolved": "https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.2.0.tgz",
       "integrity": "sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==",
       "license": "ISC"
-    },
-    "node_modules/shebang-command": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
-      "integrity": "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==",
-      "license": "MIT",
-      "dependencies": {
-        "shebang-regex": "^3.0.0"
-      },
-      "engines": {
-        "node": ">=8"
-      }
-    },
-    "node_modules/shebang-regex": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz",
-      "integrity": "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=8"
-      }
     },
     "node_modules/side-channel": {
       "version": "1.1.0",
@@ -2818,12 +2126,6 @@
         "url": "https://github.com/sponsors/ljharb"
       }
     },
-    "node_modules/sift": {
-      "version": "17.1.3",
-      "resolved": "https://registry.npmjs.org/sift/-/sift-17.1.3.tgz",
-      "integrity": "sha512-Rtlj66/b0ICeFzYTuNvX/EF1igRbbnGSvEyT79McoZa/DeGhMyC5pWKOEsZKnpkqtSeovd5FL/bjHWC3CIIvCQ==",
-      "license": "MIT"
-    },
     "node_modules/simple-update-notifier": {
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/simple-update-notifier/-/simple-update-notifier-2.0.0.tgz",
@@ -2837,43 +2139,13 @@
         "node": ">=10"
       }
     },
-    "node_modules/source-map": {
-      "version": "0.6.1",
-      "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz",
-      "integrity": "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==",
-      "dev": true,
-      "license": "BSD-3-Clause",
+    "node_modules/split2": {
+      "version": "4.2.0",
+      "resolved": "https://registry.npmjs.org/split2/-/split2-4.2.0.tgz",
+      "integrity": "sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==",
+      "license": "ISC",
       "engines": {
-        "node": ">=0.10.0"
-      }
-    },
-    "node_modules/source-map-support": {
-      "version": "0.5.21",
-      "resolved": "https://registry.npmjs.org/source-map-support/-/source-map-support-0.5.21.tgz",
-      "integrity": "sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "buffer-from": "^1.0.0",
-        "source-map": "^0.6.0"
-      }
-    },
-    "node_modules/sparse-bitfield": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/sparse-bitfield/-/sparse-bitfield-3.0.3.tgz",
-      "integrity": "sha512-kvzhi7vqKTfkh0PZU+2D2PIllw2ymqJKujUcyPMd9Y75Nv4nPbGJZXNhxsgdQab2BmlDct1YnfQCguEvHr7VsQ==",
-      "license": "MIT",
-      "dependencies": {
-        "memory-pager": "^1.0.2"
-      }
-    },
-    "node_modules/stack-trace": {
-      "version": "0.0.10",
-      "resolved": "https://registry.npmjs.org/stack-trace/-/stack-trace-0.0.10.tgz",
-      "integrity": "sha512-KGzahc7puUKkzyMt+IqAep+TVNbKP+k2Lmwhub39m1AsTSkaDutx56aDCo+HLDzf/D26BIHTJWNiTG1KAJiQCg==",
-      "license": "MIT",
-      "engines": {
-        "node": "*"
+        "node": ">= 10.x"
       }
     },
     "node_modules/statuses": {
@@ -2883,35 +2155,6 @@
       "license": "MIT",
       "engines": {
         "node": ">= 0.8"
-      }
-    },
-    "node_modules/string_decoder": {
-      "version": "1.3.0",
-      "resolved": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.3.0.tgz",
-      "integrity": "sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA==",
-      "license": "MIT",
-      "dependencies": {
-        "safe-buffer": "~5.2.0"
-      }
-    },
-    "node_modules/strip-bom": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/strip-bom/-/strip-bom-3.0.0.tgz",
-      "integrity": "sha512-vavAMRXOgBVNF6nyEEmL3DBK19iRpDcoIwW+swQ+CbGiu7lju6t+JklA1MHweoWtadgt4ISVUsXLyDq34ddcwA==",
-      "dev": true,
-      "license": "MIT",
-      "engines": {
-        "node": ">=4"
-      }
-    },
-    "node_modules/strip-json-comments": {
-      "version": "2.0.1",
-      "resolved": "https://registry.npmjs.org/strip-json-comments/-/strip-json-comments-2.0.1.tgz",
-      "integrity": "sha512-4gB8na07fecVVkOI6Rs4e7T6NOTki5EmL7TUduTs6bu3EdnSycntVJ4re8kgZA+wx9IueI2Y11bfbgwtzuE0KQ==",
-      "dev": true,
-      "license": "MIT",
-      "engines": {
-        "node": ">=0.10.0"
       }
     },
     "node_modules/supports-color": {
@@ -2926,25 +2169,6 @@
       "engines": {
         "node": ">=4"
       }
-    },
-    "node_modules/supports-preserve-symlinks-flag": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz",
-      "integrity": "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==",
-      "dev": true,
-      "license": "MIT",
-      "engines": {
-        "node": ">= 0.4"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/ljharb"
-      }
-    },
-    "node_modules/text-hex": {
-      "version": "1.0.0",
-      "resolved": "https://registry.npmjs.org/text-hex/-/text-hex-1.0.0.tgz",
-      "integrity": "sha512-uuVGNWzgJ4yhRaNSiubPY7OjISw4sw4E5Uv0wbjp+OzcbmVU/rsT8ujgcXJhn9ypzsgr5vlzpPqP+MBBKcGvbg==",
-      "license": "MIT"
     },
     "node_modules/to-regex-range": {
       "version": "5.0.1",
@@ -2976,37 +2200,6 @@
       "license": "ISC",
       "bin": {
         "nodetouch": "bin/nodetouch.js"
-      }
-    },
-    "node_modules/tr46": {
-      "version": "5.1.1",
-      "resolved": "https://registry.npmjs.org/tr46/-/tr46-5.1.1.tgz",
-      "integrity": "sha512-hdF5ZgjTqgAntKkklYw0R03MG2x/bSzTtkxmIRw/sTNV8YXsCJ1tfLAX23lhxhHJlEf3CRCOCGGWw3vI3GaSPw==",
-      "license": "MIT",
-      "dependencies": {
-        "punycode": "^2.3.1"
-      },
-      "engines": {
-        "node": ">=18"
-      }
-    },
-    "node_modules/tree-kill": {
-      "version": "1.2.2",
-      "resolved": "https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz",
-      "integrity": "sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==",
-      "dev": true,
-      "license": "MIT",
-      "bin": {
-        "tree-kill": "cli.js"
-      }
-    },
-    "node_modules/triple-beam": {
-      "version": "1.4.1",
-      "resolved": "https://registry.npmjs.org/triple-beam/-/triple-beam-1.4.1.tgz",
-      "integrity": "sha512-aZbgViZrg1QNcG+LULa7nhZpJTZSLm/mXnHXnbAbjmN5aSa0y7V+wvv6+4WaBtpISJzThKy+PIPxc1Nq1EJ9mg==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 14.0.0"
       }
     },
     "node_modules/ts-node": {
@@ -3051,54 +2244,6 @@
         "@swc/wasm": {
           "optional": true
         }
-      }
-    },
-    "node_modules/ts-node-dev": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/ts-node-dev/-/ts-node-dev-2.0.0.tgz",
-      "integrity": "sha512-ywMrhCfH6M75yftYvrvNarLEY+SUXtUvU8/0Z6llrHQVBx12GiFk5sStF8UdfE/yfzk9IAq7O5EEbTQsxlBI8w==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "chokidar": "^3.5.1",
-        "dynamic-dedupe": "^0.3.0",
-        "minimist": "^1.2.6",
-        "mkdirp": "^1.0.4",
-        "resolve": "^1.0.0",
-        "rimraf": "^2.6.1",
-        "source-map-support": "^0.5.12",
-        "tree-kill": "^1.2.2",
-        "ts-node": "^10.4.0",
-        "tsconfig": "^7.0.0"
-      },
-      "bin": {
-        "ts-node-dev": "lib/bin.js",
-        "tsnd": "lib/bin.js"
-      },
-      "engines": {
-        "node": ">=0.8.0"
-      },
-      "peerDependencies": {
-        "node-notifier": "*",
-        "typescript": "*"
-      },
-      "peerDependenciesMeta": {
-        "node-notifier": {
-          "optional": true
-        }
-      }
-    },
-    "node_modules/tsconfig": {
-      "version": "7.0.0",
-      "resolved": "https://registry.npmjs.org/tsconfig/-/tsconfig-7.0.0.tgz",
-      "integrity": "sha512-vZXmzPrL+EmC4T/4rVlT2jNVMWCi/O4DIiSj3UHg1OE5kCKbk4mfrXc6dZksLgRM/TZlKnousKH9bbTazUWRRw==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/strip-bom": "^3.0.0",
-        "@types/strip-json-comments": "0.0.30",
-        "strip-bom": "^3.0.0",
-        "strip-json-comments": "^2.0.0"
       }
     },
     "node_modules/tsx": {
@@ -3158,9 +2303,9 @@
       "license": "MIT"
     },
     "node_modules/undici-types": {
-      "version": "7.14.0",
-      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.14.0.tgz",
-      "integrity": "sha512-QQiYxHuyZ9gQUIrmPo3IA+hUl4KYk8uSA7cHrcKd/l3p1OTpZcM0Tbp9x7FAtXdAYhlasd60ncPpgu6ihG6TOA==",
+      "version": "7.16.0",
+      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.16.0.tgz",
+      "integrity": "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==",
       "dev": true,
       "license": "MIT"
     },
@@ -3173,27 +2318,12 @@
         "node": ">= 0.8"
       }
     },
-    "node_modules/util-deprecate": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
-      "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
-      "license": "MIT"
-    },
     "node_modules/v8-compile-cache-lib": {
       "version": "3.0.1",
       "resolved": "https://registry.npmjs.org/v8-compile-cache-lib/-/v8-compile-cache-lib-3.0.1.tgz",
       "integrity": "sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==",
       "dev": true,
       "license": "MIT"
-    },
-    "node_modules/validator": {
-      "version": "13.15.20",
-      "resolved": "https://registry.npmjs.org/validator/-/validator-13.15.20.tgz",
-      "integrity": "sha512-KxPOq3V2LmfQPP4eqf3Mq/zrT0Dqp2Vmx2Bn285LwVahLc+CsxOM0crBHczm8ijlcjZ0Q5Xd6LW3z3odTPnlrw==",
-      "license": "MIT",
-      "engines": {
-        "node": ">= 0.10"
-      }
     },
     "node_modules/vary": {
       "version": "1.1.2",
@@ -3202,79 +2332,6 @@
       "license": "MIT",
       "engines": {
         "node": ">= 0.8"
-      }
-    },
-    "node_modules/webidl-conversions": {
-      "version": "7.0.0",
-      "resolved": "https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-7.0.0.tgz",
-      "integrity": "sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==",
-      "license": "BSD-2-Clause",
-      "engines": {
-        "node": ">=12"
-      }
-    },
-    "node_modules/whatwg-url": {
-      "version": "14.2.0",
-      "resolved": "https://registry.npmjs.org/whatwg-url/-/whatwg-url-14.2.0.tgz",
-      "integrity": "sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==",
-      "license": "MIT",
-      "dependencies": {
-        "tr46": "^5.1.0",
-        "webidl-conversions": "^7.0.0"
-      },
-      "engines": {
-        "node": ">=18"
-      }
-    },
-    "node_modules/which": {
-      "version": "2.0.2",
-      "resolved": "https://registry.npmjs.org/which/-/which-2.0.2.tgz",
-      "integrity": "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==",
-      "license": "ISC",
-      "dependencies": {
-        "isexe": "^2.0.0"
-      },
-      "bin": {
-        "node-which": "bin/node-which"
-      },
-      "engines": {
-        "node": ">= 8"
-      }
-    },
-    "node_modules/winston": {
-      "version": "3.18.3",
-      "resolved": "https://registry.npmjs.org/winston/-/winston-3.18.3.tgz",
-      "integrity": "sha512-NoBZauFNNWENgsnC9YpgyYwOVrl2m58PpQ8lNHjV3kosGs7KJ7Npk9pCUE+WJlawVSe8mykWDKWFSVfs3QO9ww==",
-      "license": "MIT",
-      "dependencies": {
-        "@colors/colors": "^1.6.0",
-        "@dabh/diagnostics": "^2.0.8",
-        "async": "^3.2.3",
-        "is-stream": "^2.0.0",
-        "logform": "^2.7.0",
-        "one-time": "^1.0.0",
-        "readable-stream": "^3.4.0",
-        "safe-stable-stringify": "^2.3.1",
-        "stack-trace": "0.0.x",
-        "triple-beam": "^1.3.0",
-        "winston-transport": "^4.9.0"
-      },
-      "engines": {
-        "node": ">= 12.0.0"
-      }
-    },
-    "node_modules/winston-transport": {
-      "version": "4.9.0",
-      "resolved": "https://registry.npmjs.org/winston-transport/-/winston-transport-4.9.0.tgz",
-      "integrity": "sha512-8drMJ4rkgaPo1Me4zD/3WLfI/zPdA9o2IipKODunnGDcuqbHwjsbB79ylv04LCGGzU0xQ6vTznOMpQGaLhhm6A==",
-      "license": "MIT",
-      "dependencies": {
-        "logform": "^2.7.0",
-        "readable-stream": "^3.6.2",
-        "triple-beam": "^1.3.0"
-      },
-      "engines": {
-        "node": ">= 12.0.0"
       }
     },
     "node_modules/wrappy": {
@@ -3287,7 +2344,6 @@
       "version": "4.0.2",
       "resolved": "https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz",
       "integrity": "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==",
-      "dev": true,
       "license": "MIT",
       "engines": {
         "node": ">=0.4"
@@ -3313,4 +2369,1247 @@
       }
     }
   }
+}
+
+
+================================================================================
+FILE: ./backend\package.json
+================================================================================
+
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "backend service for Studio S manager",
+  "license": "ISC",
+  "author": "Mansoor",
+  "type": "commonjs",
+  "main": "server.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "lint": "eslint .",
+    "format": "prettier -w .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "http-errors": "^2.0.0",
+    "morgan": "^1.10.1",
+    "pg": "^8.16.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.4",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.9.1",
+    "@types/pg": "^8.15.5",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
+
+
+================================================================================
+FILE: ./backend\tsconfig.json
+================================================================================
+
+{
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "rootDir": "src",
+    "outDir": "dist",
+    "target": "ES2023",
+    "esModuleInterop": true,
+    "strict": true
+  },
+  "include": ["src"]
+}
+
+
+================================================================================
+FILE: ./backend\src\app.ts
+================================================================================
+
+import express, { Application, Request, Response, NextFunction } from "express";
+import morgan from "morgan";
+import helmet from "helmet";
+import cors from "cors";
+import AppError from "./utils/appError.js";
+import globalErrorHandler from "./controllers/errorController.js";
+import { extractUser } from "./middleware/userMiddleware.js";
+import api from "./routes/index.js";
+
+const app: Application = express();
+
+// 1) GLOBAL MIDDLEWARES
+app.use(helmet());
+
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+
+// CORS
+app.use(cors({ origin: [/^http:\/\/localhost:\d+$/], credentials: true }));
+
+// Extract user info from headers (set by API Gateway)
+app.use(extractUser);
+
+// 2) ROUTES
+// Health check
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "healthy", service: "inventory-service" });
+});
+
+app.use("/api/v1", api);
+
+// Handle undefined routes
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
+
+// Global error handler
+app.use(globalErrorHandler);
+
+export default app;
+
+
+================================================================================
+FILE: ./backend\src\server.ts
+================================================================================
+
+import app from "./app";
+import { pool } from "./config/database";
+
+const port = process.env.PORT || 4001;
+
+// Test database connection
+pool.query("SELECT NOW()", (err, res) => {
+  if (err) {
+    console.error("❌ Database connection failed:", err);
+    process.exit(1);
+  }
+  console.log("✅ PostgreSQL connected successfully at:", res.rows[0].now);
+});
+
+const server = app.listen(port, () => {
+  console.log(`🚀 Backend Service running on port ${port}`);
+});
+
+process.on("unhandledRejection", (err: Error) => {
+  console.log("UNHANDLED REJECTION! 💥 Shutting down...");
+  console.log(err.name, err.message);
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+process.on("SIGTERM", async () => {
+  await pool.end();
+  server.close();
+});
+process.on("SIGINT", async () => {
+  await pool.end();
+  server.close();
+});
+
+
+================================================================================
+FILE: ./backend\src\config\database.ts
+================================================================================
+
+import { Pool, PoolConfig, QueryResultRow } from "pg";
+
+const url = process.env.DATABASE_URL; // prefer a single URL
+const config: PoolConfig = url
+  ? {
+      connectionString: url,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    }
+  : {
+      user: process.env.DB_USER || "postgres",
+      host: process.env.DB_HOST || "localhost",
+      database: process.env.DB_NAME || "inventory",
+      password: process.env.DB_PASSWORD || "postgres",
+      port: parseInt(process.env.DB_PORT || "5432"),
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    };
+
+// Supabase often requires SSL in production:
+if (process.env.DB_SSL?.toLowerCase() === "true") {
+  (config as any).ssl = { rejectUnauthorized: false };
+}
+
+export const pool = new Pool(config);
+
+export const query = <T extends QueryResultRow = any>(
+  text: string,
+  params?: any[]
+) => pool.query<T>(text, params);
+
+
+================================================================================
+FILE: ./backend\src\controllers\errorController.ts
+================================================================================
+
+import { Request, Response, NextFunction } from "express";
+import AppError from "../utils/appError.js";
+
+const handleDatabaseError = (err: any): AppError => {
+  if (err.code === "23505") {
+    const value = err.detail.match(/(Key \(.*?\)=\(.*?\))/)[0];
+    const message = `Duplicate field value: ${value}. Please use another value!`;
+    return new AppError(message, 400);
+  }
+
+  if (err.code === "23503") {
+    return new AppError("Invalid reference to related data", 400);
+  }
+
+  if (err.code === "22P02") {
+    return new AppError("Invalid input syntax", 400);
+  }
+
+  return new AppError("Database error occurred", 500);
+};
+
+const sendErrorDev = (err: AppError, res: Response): void => {
+  res.status(err.statusCode).json({
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack,
+  });
+};
+
+const sendErrorProd = (err: AppError, res: Response): void => {
+  if (err.isOperational) {
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+    });
+  } else {
+    console.error("ERROR 💥", err);
+    res.status(500).json({
+      status: "error",
+      message: "Something went very wrong!",
+    });
+  }
+};
+
+export default (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || "error";
+
+  if (process.env.NODE_ENV === "development") {
+    sendErrorDev(err, res);
+  } else if (process.env.NODE_ENV === "production") {
+    let error = { ...err };
+    error.message = err.message;
+
+    if (err.code) error = handleDatabaseError(error);
+
+    sendErrorProd(error, res);
+  }
+};
+
+
+================================================================================
+FILE: ./backend\src\controllers\inventoryController.ts
+================================================================================
+
+import { Response, NextFunction } from "express";
+import { pool } from "../config/database.js";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+import { UserRequest } from "../middleware/userMiddleware.js";
+import { PoolClient } from "pg";
+import { z } from "zod";
+
+/* ==============================
+   GET /inventory-levels
+   ============================== */
+
+export const getInventoryLevels = catchAsync(
+  async (req: UserRequest, res: Response, _next: NextFunction) => {
+    const { location_id, product_id, low_stock, batch_number } = (req.query ??
+      {}) as Record<string, string | undefined>;
+
+    let queryText = `
+    SELECT 
+      il.*,
+      p.name as product_name,
+      p.sku,
+      p.reorder_level,
+      sl.name as location_name,
+      sl.type as location_type,
+      (il.quantity_available - il.quantity_reserved) as quantity_free
+    FROM inventory_levels il
+    JOIN products p ON il.product_id = p.id
+    JOIN stock_locations sl ON il.location_id = sl.id
+    WHERE 1=1
+  `;
+
+    const where: string[] = [];
+    const params: any[] = [];
+    let paramCounter = 1;
+
+    if (location_id) {
+      queryText += ` AND il.location_id = ${paramCounter}`;
+      params.push(location_id);
+      paramCounter++;
+    }
+
+    if (product_id) {
+      queryText += ` AND il.product_id = ${paramCounter}`;
+      params.push(product_id);
+      paramCounter++;
+    }
+
+    if (low_stock === "true") {
+      queryText += ` AND il.quantity_available <= p.reorder_level`;
+    }
+
+    queryText += " ORDER BY p.name, sl.name";
+
+    const result = await pool.query(queryText, params);
+
+    res.status(200).json({
+      status: "success",
+      results: result.rows.length,
+      data: {
+        inventoryLevels: result.rows,
+      },
+    });
+  }
+);
+
+/* ==============================
+   POST /inventory/adjust
+   ============================== */
+
+const AdjustSchema = z.object({
+  product_id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  quantity_change: z
+    .number()
+    .refine((n) => n !== 0, "quantity_change cannot be zero"),
+  reason: z.string().max(500).optional(),
+  batch_number: z.string().max(120).nullable().optional(),
+  // Accept ISO date string; coerce to string and let DB parse (or pre-parse to Date if you prefer)
+  expiry_date: z.string().optional().nullable(),
+});
+
+export const adjustInventory = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const body = AdjustSchema.parse(req.body);
+
+    if (!body.product_id || !body.location_id || !body.quantity_change) {
+      return next(
+        new AppError(
+          "Please provide product_id, location_id, and quantity_change",
+          400
+        )
+      );
+    }
+
+    const client: PoolClient = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const checkResult = await client.query(
+        "SELECT * FROM inventory_levels WHERE product_id = $1 AND location_id = $2 AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))",
+        [body.product_id, body.location_id, body.batch_number]
+      );
+
+      let inventoryResult;
+
+      if (checkResult.rows.length === 0) {
+        if (body.quantity_change < 0) {
+          throw new AppError(
+            "Cannot reduce inventory that does not exist",
+            400
+          );
+        }
+
+        inventoryResult = await client.query(
+          `INSERT INTO inventory_levels (product_id, location_id, quantity_available, batch_number, expiry_date)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+          [
+            body.product_id,
+            body.location_id,
+            body.quantity_change,
+            body.batch_number,
+            body.expiry_date,
+          ]
+        );
+      } else {
+        const currentQty = checkResult.rows[0].quantity_available;
+        const newQty = currentQty + body.quantity_change;
+
+        if (newQty < 0) {
+          throw new AppError(
+            "Insufficient inventory. Cannot reduce below zero.",
+            400
+          );
+        }
+
+        inventoryResult = await client.query(
+          `UPDATE inventory_levels 
+         SET quantity_available = $1, last_updated = CURRENT_TIMESTAMP
+         WHERE id = $2
+         RETURNING *`,
+          [newQty, checkResult.rows[0].id]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO stock_movements (
+        product_id, to_location_id, quantity, movement_type, reason, batch_number, performed_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          body.product_id,
+          body.location_id,
+          Math.abs(body.quantity_change),
+          "adjustment",
+          body.reason,
+          body.batch_number,
+          req.user?.id,
+        ]
+      );
+
+      await client.query("COMMIT");
+
+      res.status(200).json({
+        status: "success",
+        data: {
+          inventoryLevel: inventoryResult.rows[0],
+        },
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+);
+
+export const transferStock = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const {
+      product_id,
+      from_location_id,
+      to_location_id,
+      quantity,
+      reason,
+      batch_number,
+    } = req.body;
+
+    if (!product_id || !from_location_id || !to_location_id || !quantity) {
+      return next(new AppError("Please provide all required fields", 400));
+    }
+
+    if (quantity <= 0) {
+      return next(new AppError("Quantity must be greater than zero", 400));
+    }
+
+    if (from_location_id === to_location_id) {
+      return next(
+        new AppError("Source and destination locations must be different", 400)
+      );
+    }
+
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const sourceResult = await client.query(
+        `SELECT * FROM inventory_levels 
+       WHERE product_id = $1 AND location_id = $2 
+       AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
+        [product_id, from_location_id, batch_number]
+      );
+
+      if (sourceResult.rows.length === 0) {
+        throw new AppError("Product not found in source location", 404);
+      }
+
+      const sourceInventory = sourceResult.rows[0];
+      const availableQty =
+        sourceInventory.quantity_available - sourceInventory.quantity_reserved;
+
+      if (availableQty < quantity) {
+        throw new AppError(
+          `Insufficient available quantity. Available: ${availableQty}`,
+          400
+        );
+      }
+
+      await client.query(
+        `UPDATE inventory_levels 
+       SET quantity_available = quantity_available - $1, last_updated = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+        [quantity, sourceInventory.id]
+      );
+
+      const destResult = await client.query(
+        `SELECT * FROM inventory_levels 
+       WHERE product_id = $1 AND location_id = $2 
+       AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
+        [product_id, to_location_id, batch_number]
+      );
+
+      if (destResult.rows.length === 0) {
+        await client.query(
+          `INSERT INTO inventory_levels (product_id, location_id, quantity_available, batch_number, expiry_date)
+         VALUES ($1, $2, $3, $4, $5)`,
+          [
+            product_id,
+            to_location_id,
+            quantity,
+            batch_number,
+            sourceInventory.expiry_date,
+          ]
+        );
+      } else {
+        await client.query(
+          `UPDATE inventory_levels 
+         SET quantity_available = quantity_available + $1, last_updated = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+          [quantity, destResult.rows[0].id]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO stock_movements (
+        product_id, from_location_id, to_location_id, quantity, 
+        movement_type, reason, batch_number, performed_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          product_id,
+          from_location_id,
+          to_location_id,
+          quantity,
+          "transfer",
+          reason,
+          batch_number,
+          req.user?.id,
+        ]
+      );
+
+      await client.query("COMMIT");
+
+      res.status(200).json({
+        status: "success",
+        message: "Stock transferred successfully",
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+);
+
+
+================================================================================
+FILE: ./backend\src\controllers\productController.ts
+================================================================================
+
+import { Response, NextFunction } from "express";
+import { pool } from "../config/database.js";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+import APIFeatures from "../utils/apiFeatures.js";
+import { UserRequest } from "../middleware/userMiddleware.js";
+import { z } from "zod";
+
+const ProductCreate = z.object({
+  sku: z.string().min(1),
+  name: z.string().min(1),
+  category_id: z.string().uuid().nullable().optional(),
+  supplier_id: z.string().uuid().nullable().optional(),
+  cost_cents: z.coerce.number().int().nonnegative(),
+  price_cents: z.coerce.number().int().nonnegative(),
+  retail: z.boolean().default(false),
+  active: z.boolean().default(true),
+});
+const ProductUpdate = ProductCreate.partial();
+
+const SORT_MAP = {
+  name: "p.name",
+  sku: "p.sku",
+  created_at: "p.created_at",
+  updated_at: "p.updated_at",
+  price_cents: "p.price_cents",
+} as const;
+
+export const getAllProducts = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    let queryText = `
+    SELECT 
+      p.*,
+      c.name as category_name,
+      s.name as supplier_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN suppliers s ON p.supplier_id = s.id
+  `;
+
+    const queryParams: any[] = [];
+
+    const features = new APIFeatures(
+      queryText,
+      queryParams,
+      req.query as any,
+      SORT_MAP
+    )
+      .filter()
+      .search(["p.name", "p.sku", "p.brand"])
+      .buildWhereClause()
+      .sort()
+      .paginate();
+
+    const result = await pool.query(features.queryText, features.queryParams);
+    const countResult = await pool.query("SELECT COUNT(*) FROM products");
+
+    res.status(200).json({
+      status: "success",
+      results: result.rows.length,
+      total: parseInt(countResult.rows[0].count),
+      data: {
+        products: result.rows,
+      },
+    });
+  }
+);
+
+export const getProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const result = await pool.query(
+      `SELECT 
+      p.*,
+      c.name as category_name,
+      s.name as supplier_name,
+      json_agg(
+        json_build_object(
+          'location_id', il.location_id,
+          'location_name', sl.name,
+          'quantity_available', il.quantity_available,
+          'quantity_reserved', il.quantity_reserved
+        )
+      ) FILTER (WHERE il.id IS NOT NULL) as inventory_levels
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN suppliers s ON p.supplier_id = s.id
+    LEFT JOIN inventory_levels il ON p.id = il.product_id
+    LEFT JOIN stock_locations sl ON il.location_id = sl.id
+    WHERE p.id = $1
+    GROUP BY p.id, c.name, s.name`,
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return next(new AppError("No product found with that ID", 404));
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        product: result.rows[0],
+      },
+    });
+  }
+);
+
+export const createProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const parsed = ProductCreate.parse(req.body);
+
+    const result = await pool.query(
+      `INSERT INTO public.products
+      (sku, name, category_id, supplier_id, cost_cents, price_cents, retail, active)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *`,
+      [
+        //   name,
+        //   parsed.sku,
+        //   parsed.category_id,
+        //   parsed.brand,
+        //   parsed.supplier_id,
+        //   parsed.description,
+        //   parsed.unit_of_measure,
+        //   parsed.unit_cost,
+        //   parsed.retail_price,
+        //   parsed.reorder_level,
+        //   parsed.expiry_tracking,
+        parsed.sku,
+        parsed.name,
+        parsed.category_id ?? null,
+        parsed.supplier_id ?? null,
+        parsed.cost_cents,
+        parsed.price_cents,
+        parsed.retail,
+        parsed.active,
+      ]
+    );
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        product: result.rows[0],
+      },
+    });
+  }
+);
+
+export const updateProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const parsed = ProductUpdate.parse(req.body);
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    const assign = (k: string, v: any) => {
+      if (v === undefined) return;
+      fields.push(`${k} = $${idx++}`);
+      values.push(v);
+    };
+
+    assign("sku", parsed.sku);
+    assign("name", parsed.name);
+    assign("category_id", parsed.category_id ?? null);
+    assign("supplier_id", parsed.supplier_id ?? null);
+    assign("cost_cents", parsed.cost_cents);
+    assign("price_cents", parsed.price_cents);
+    assign("retail", parsed.retail);
+    assign("active", parsed.active);
+
+    if (fields.length === 0) {
+      return next(new AppError("No valid fields to update", 400));
+    }
+
+    values.push(req.params.id);
+    const result = await pool.query(
+      `UPDATE products SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ${idx}
+     RETURNING *`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return next(new AppError("No product found with that ID", 404));
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        product: result.rows[0],
+      },
+    });
+  }
+);
+
+export const deleteProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const result = await pool.query(
+      "DELETE FROM products WHERE id = $1 RETURNING id",
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return next(new AppError("No product found with that ID", 404));
+    }
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  }
+);
+
+
+================================================================================
+FILE: ./backend\src\middleware\userMiddleware.ts
+================================================================================
+
+import { Request, Response, NextFunction } from "express";
+
+export interface UserRequest extends Request {
+  user?: { id?: string; role?: string; email?: string };
+}
+
+export const extractUser = (
+  req: UserRequest,
+  _res: Response,
+  next: NextFunction
+) => {
+  const id = req.headers["x-user-id"]
+    ? String(req.headers["x-user-id"])
+    : undefined;
+  const role = req.headers["x-user-role"]
+    ? String(req.headers["x-user-role"])
+    : undefined;
+  const email = req.headers["x-user-email"]
+    ? String(req.headers["x-user-email"])
+    : undefined;
+  req.user = { id, role, email };
+  next();
+};
+
+export const restrictTo = (...roles: string[]) => {
+  return (req: UserRequest, res: Response, next: NextFunction) => {
+    if (!req.user?.role) {
+      return res
+        .status(401)
+        .json({ status: "fail", message: "You are not logged in" });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res
+        .status(403)
+        .json({ status: "fail", message: "You do not have permission" });
+    }
+    next();
+  };
+};
+
+
+================================================================================
+FILE: ./backend\src\routes\categoryRoutes.ts
+================================================================================
+
+import express from "express";
+import { pool } from "../config/database.js";
+import { z } from "zod";
+import { restrictTo } from "../middleware/userMiddleware.js";
+
+const router = express.Router();
+const Create = z.object({
+  name: z.string().min(1),
+  parent_category_id: z.string().uuid().nullable().optional(),
+});
+const Update = Create.partial();
+
+router.get("/", async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM public.categories ORDER BY name ASC`
+  );
+  res.json({ items: rows });
+});
+router.post("/", restrictTo("owner", "manager"), async (req, res) => {
+  const p = Create.parse(req.body);
+  const { rows } = await pool.query(
+    `INSERT INTO public.categories (name, parent_category_id) VALUES ($1,$2) RETURNING *`,
+    [p.name, p.parent_category_id ?? null]
+  );
+  res.status(201).json(rows[0]);
+});
+router.patch("/:id", restrictTo("owner", "manager"), async (req, res) => {
+  const p = Update.parse(req.body);
+  const { rows } = await pool.query(
+    `UPDATE public.categories SET name=COALESCE($1,name), parent_category_id=$2, updated_at=NOW() WHERE id=$3 RETURNING *`,
+    [p.name ?? null, p.parent_category_id ?? null, req.params.id]
+  );
+  res.json(rows[0]);
+});
+router.delete("/:id", restrictTo("owner"), async (req, res) => {
+  await pool.query(`DELETE FROM public.categories WHERE id=$1`, [
+    req.params.id,
+  ]);
+  res.status(204).send();
+});
+
+export default router;
+
+
+================================================================================
+FILE: ./backend\src\routes\index.ts
+================================================================================
+
+// src/routes/index.ts
+import { Router } from "express";
+import products from "./productRoutes.js";
+import inventory from "./inventoryRoutes.js";
+import categories from "./categoryRoutes.js";
+import suppliers from "./supplierRoutes.js";
+import locations from "./locationRoutes.js";
+
+const r = Router();
+r.use("/products", products);
+r.use("/inventory", inventory);
+r.use("/categories", categories);
+r.use("/suppliers", suppliers);
+r.use("/locations", locations);
+export default r;
+
+
+================================================================================
+FILE: ./backend\src\routes\inventoryRoutes.ts
+================================================================================
+
+import express from "express";
+import * as inventoryController from "../controllers/inventoryController.js";
+
+const router = express.Router();
+
+router.get("/levels", inventoryController.getInventoryLevels);
+router.post("/adjust", inventoryController.adjustInventory);
+router.post("/transfer", inventoryController.transferStock);
+
+export default router;
+
+
+================================================================================
+FILE: ./backend\src\routes\locationRoutes.ts
+================================================================================
+
+import express from "express";
+import { pool } from "../config/database.js";
+import { z } from "zod";
+import { restrictTo } from "../middleware/userMiddleware.js";
+
+const router = express.Router();
+const Create = z.object({ code: z.string().min(1), name: z.string().min(1) });
+const Update = Create.partial();
+
+router.get("/", async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM public.locations ORDER BY name ASC`
+  );
+  res.json({ items: rows });
+});
+router.post("/", restrictTo("owner", "manager"), async (req, res) => {
+  const p = Create.parse(req.body);
+  const { rows } = await pool.query(
+    `INSERT INTO public.locations (code, name) VALUES ($1,$2) RETURNING *`,
+    [p.code, p.name]
+  );
+  res.status(201).json(rows[0]);
+});
+router.patch("/:id", restrictTo("owner", "manager"), async (req, res) => {
+  const p = Update.parse(req.body);
+  const { rows } = await pool.query(
+    `UPDATE public.locations SET code=COALESCE($1,code), name=COALESCE($2,name), updated_at=NOW() WHERE id=$3 RETURNING *`,
+    [p.code ?? null, p.name ?? null, req.params.id]
+  );
+  res.json(rows[0]);
+});
+router.delete("/:id", restrictTo("owner"), async (req, res) => {
+  await pool.query(`DELETE FROM public.locations WHERE id=$1`, [req.params.id]);
+  res.status(204).send();
+});
+
+export default router;
+
+
+================================================================================
+FILE: ./backend\src\routes\productRoutes.ts
+================================================================================
+
+import express from "express";
+import * as productController from "../controllers/productController.js";
+import { restrictTo } from "../middleware/userMiddleware.js";
+
+const router = express.Router();
+
+router
+  .route("/")
+  .get(productController.getAllProducts)
+  .post(restrictTo("admin", "manager"), productController.createProduct);
+
+router
+  .route("/:id")
+  .get(productController.getProduct)
+  .patch(restrictTo("admin", "manager"), productController.updateProduct)
+  .delete(restrictTo("admin"), productController.deleteProduct);
+
+export default router;
+
+
+================================================================================
+FILE: ./backend\src\routes\supplierRoutes.ts
+================================================================================
+
+import express from "express";
+import { pool } from "../config/database.js";
+import { z } from "zod";
+import { restrictTo } from "../middleware/userMiddleware.js";
+
+const router = express.Router();
+const Create = z.object({
+  name: z.string().min(1),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+});
+const Update = Create.partial();
+
+router.get("/", async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM public.suppliers ORDER BY name ASC`
+  );
+  res.json({ items: rows });
+});
+router.post("/", restrictTo("owner", "manager"), async (req, res) => {
+  const p = Create.parse(req.body);
+  const { rows } = await pool.query(
+    `INSERT INTO public.suppliers (name, email, phone) VALUES ($1,$2,$3) RETURNING *`,
+    [p.name, p.email || null, p.phone || null]
+  );
+  res.status(201).json(rows[0]);
+});
+router.patch("/:id", restrictTo("owner", "manager"), async (req, res) => {
+  const p = Update.parse(req.body);
+  const { rows } = await pool.query(
+    `UPDATE public.suppliers SET name=COALESCE($1,name), email=$2, phone=$3, updated_at=NOW() WHERE id=$4 RETURNING *`,
+    [p.name ?? null, p.email ?? null, p.phone ?? null, req.params.id]
+  );
+  res.json(rows[0]);
+});
+router.delete("/:id", restrictTo("owner"), async (req, res) => {
+  await pool.query(`DELETE FROM public.suppliers WHERE id=$1`, [req.params.id]);
+  res.status(204).send();
+});
+
+export default router;
+
+
+================================================================================
+FILE: ./backend\src\types\index.ts
+================================================================================
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  category_id?: string;
+  brand?: string;
+  supplier_id?: string;
+  description?: string;
+  unit_of_measure: string;
+  unit_cost: number;
+  retail_price?: number;
+  reorder_level: number;
+  expiry_tracking: boolean;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface InventoryLevel {
+  id: string;
+  product_id: string;
+  location_id: string;
+  quantity_available: number;
+  quantity_reserved: number;
+  batch_number?: string;
+  expiry_date?: Date;
+  last_updated: Date;
+}
+
+export interface StockMovement {
+  id: string;
+  product_id: string;
+  from_location_id?: string;
+  to_location_id?: string;
+  quantity: number;
+  movement_type:
+    | "transfer"
+    | "adjustment"
+    | "sale"
+    | "usage"
+    | "return"
+    | "restock";
+  reference_id?: string;
+  reference_type?: string;
+  reason?: string;
+  performed_by?: string;
+  batch_number?: string;
+  cost_per_unit?: number;
+  timestamp: Date;
+}
+
+
+================================================================================
+FILE: ./backend\src\utils\apiFeatures.ts
+================================================================================
+
+export interface QueryString {
+  page?: string;
+  sort?: string;
+  limit?: string;
+  fields?: string;
+  search?: string;
+  [key: string]: any;
+}
+
+const DEFAULT_LIMIT = 50;
+
+class APIFeatures {
+  queryText: string;
+  queryParams: any[];
+  queryString: QueryString;
+  whereConditions: string[];
+  paramCounter: number;
+  allowedSort: Record<string, string>; // map api→sql column
+
+  constructor(
+    queryText: string,
+    queryParams: any[],
+    queryString: QueryString,
+    allowedSort: Record<string, string>
+  ) {
+    this.queryText = queryText;
+    this.queryParams = queryParams;
+    this.queryString = queryString;
+    this.whereConditions = [];
+    this.paramCounter = queryParams.length + 1;
+    this.allowedSort = allowedSort;
+  }
+
+  filter(): this {
+    const queryObj = { ...this.queryString };
+    const excludedFields = ["page", "sort", "limit", "fields", "search"];
+    excludedFields.forEach((el) => delete queryObj[el]);
+
+    Object.keys(queryObj).forEach((key) => {
+      if (queryObj[key] !== undefined) {
+        this.whereConditions.push(`${key} = $${this.paramCounter}`);
+        this.queryParams.push(queryObj[key]);
+        this.paramCounter++;
+      }
+    });
+
+    return this;
+  }
+
+  search(fields: string[] = []): this {
+    if (this.queryString.search && fields.length > 0) {
+      const searchConditions = fields
+        .map((field) => `${field} ILIKE $${this.paramCounter}`)
+        .join(" OR ");
+
+      this.whereConditions.push(`(${searchConditions})`);
+      this.queryParams.push(`%${this.queryString.search}%`);
+      this.paramCounter++;
+    }
+    return this;
+  }
+
+  buildWhereClause(): this {
+    if (this.whereConditions.length > 0) {
+      this.queryText += " WHERE " + this.whereConditions.join(" AND ");
+    }
+    return this;
+  }
+
+  sort(): this {
+    if (this.queryString.sort) {
+      const sortBy = this.queryString.sort
+        .split(",")
+        .map((field) => {
+          if (field.startsWith("-")) {
+            return `${field.substring(1)} DESC`;
+          }
+          return `${field} ASC`;
+        })
+        .join(", ");
+      this.queryText += ` ORDER BY ${sortBy}`;
+    } else {
+      this.queryText += " ORDER BY created_at DESC";
+    }
+    return this;
+  }
+
+  paginate(): this {
+    const page = parseInt(this.queryString.page || "1");
+    const limit = parseInt(this.queryString.limit || "100");
+    const offset = (page - 1) * limit;
+
+    this.queryText += ` LIMIT $${this.paramCounter} OFFSET $${
+      this.paramCounter + 1
+    }`;
+    this.queryParams.push(limit, offset);
+    this.paramCounter += 2;
+
+    return this;
+  }
+}
+
+export default APIFeatures;
+
+
+================================================================================
+FILE: ./backend\src\utils\appError.ts
+================================================================================
+
+class AppError extends Error {
+  statusCode: number;
+  status: string;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.statusCode = statusCode;
+    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export default AppError;
+
+================================================================================
+FILE: ./backend\src\utils\catchAsync.ts
+================================================================================
+
+import { Request, Response, NextFunction } from 'express';
+
+export default (fn: Function) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+
+================================================================================
+FILE: ./backend\src\utils\validation.ts
+================================================================================
+
+import { z } from 'zod';
+import { Request, Response, NextFunction } from 'express';
+
+
+export function validate(schema: z.ZodTypeAny, path: 'body'|'params'|'query' = 'body') {
+return (req: Request, res: Response, next: NextFunction) => {
+const result = schema.safeParse((req as any)[path]);
+if (!result.success) {
+return res.status(400).json({ success: false, error: result.error.flatten() });
+}
+(req as any)[path] = result.data;
+next();
+};
 }

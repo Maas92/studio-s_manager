@@ -1,17 +1,15 @@
 import mongoose, { Document, Types, Schema, Model } from "mongoose";
 import validator from "validator";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
   phone?: string;
   role: "admin" | "manager" | "therapist" | "receptionist";
   password: string;
-  passwordConfirm?: string;
   passwordChangedAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
@@ -21,154 +19,145 @@ export interface IUser extends Document {
   bio?: string;
   hireDate?: Date;
   createdAt: Date;
+  updatedAt: Date;
   lastLogin?: Date;
-  fullName: string;
-  correctPassword(
-    candidatePassword: string,
-    userPassword: string
-  ): Promise<boolean>;
-  changedPasswordAfter(JWTTimestamp: number): boolean;
-  createPasswordResetToken(): string;
 }
 
 const userSchema = new Schema<IUser>(
   {
     firstName: {
       type: String,
-      required: [true, "Please provide your first name"],
       trim: true,
+      maxlength: [50, "First name cannot exceed 50 characters"],
     },
     lastName: {
       type: String,
-      required: [true, "Please provide your last name"],
       trim: true,
+      maxlength: [50, "Last name cannot exceed 50 characters"],
+    },
+    name: {
+      type: String,
+      trim: true,
+      maxlength: [100, "Name cannot exceed 100 characters"],
     },
     email: {
       type: String,
-      required: [true, "Please provide your email"],
+      required: [true, "Email is required"],
       unique: true,
       lowercase: true,
+      trim: true,
       validate: [validator.isEmail, "Please provide a valid email"],
+      index: true,
     },
     phone: {
       type: String,
       trim: true,
+      validate: {
+        validator: function (v: string) {
+          return !v || /^\+?[1-9]\d{1,14}$/.test(v);
+        },
+        message: "Please provide a valid phone number",
+      },
     },
     role: {
       type: String,
-      enum: ["admin", "manager", "therapist", "receptionist"],
+      enum: {
+        values: ["admin", "manager", "therapist", "receptionist"],
+        message: "Role must be admin, manager, therapist, or receptionist",
+      },
       default: "therapist",
+      index: true,
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
-      minlength: 8,
+      required: [true, "Password is required"],
+      minlength: [8, "Password must be at least 8 characters"],
+      select: false, // Don't return password by default
+    },
+    passwordChangedAt: {
+      type: Date,
       select: false,
     },
-    passwordConfirm: {
+    passwordResetToken: {
       type: String,
-      required: [true, "Please confirm your password"],
-      validate: {
-        validator: function (this: IUser, el: string): boolean {
-          return el === this.password;
-        },
-        message: "Passwords do not match",
-      },
+      select: false,
     },
-    passwordChangedAt: Date,
-    passwordResetToken: String,
-    passwordResetExpires: Date,
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
     active: {
       type: Boolean,
       default: true,
       select: false,
     },
-    profileImage: String,
-    specializations: [String],
-    bio: String,
-    hireDate: Date,
-    createdAt: {
-      type: Date,
-      default: Date.now,
+    profileImage: {
+      type: String,
+      validate: {
+        validator: function (v: string) {
+          return !v || validator.isURL(v);
+        },
+        message: "Please provide a valid URL for profile image",
+      },
     },
-    lastLogin: Date,
+    specializations: {
+      type: [String],
+      default: [],
+    },
+    bio: {
+      type: String,
+      maxlength: [500, "Bio cannot exceed 500 characters"],
+    },
+    hireDate: {
+      type: Date,
+    },
+    lastLogin: {
+      type: Date,
+    },
   },
   {
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    timestamps: true, // Adds createdAt and updatedAt
+    toJSON: {
+      virtuals: true,
+      transform: function (doc, ret: { password?: string; __v?: any }) {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      },
+    },
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret: { password?: string; __v?: any }) {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 
 // Virtual for full name
 userSchema.virtual("fullName").get(function (this: IUser) {
-  return `${this.firstName} ${this.lastName}`;
+  if (this.firstName && this.lastName) {
+    return `${this.firstName} ${this.lastName}`;
+  }
+  return this.name || this.email;
 });
 
 // Indexes
 userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
+userSchema.index({ active: 1 });
+userSchema.index({ createdAt: -1 });
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-
-  this.password = await bcrypt.hash(
-    this.password,
-    parseInt(process.env.BCRYPT_ROUNDS || "12")
-  );
-  this.passwordConfirm = undefined;
-  next();
-});
-
-// Update passwordChangedAt
-userSchema.pre("save", function (next) {
-  if (!this.isModified("password") || this.isNew) return next();
-
-  this.passwordChangedAt = new Date(Date.now() - 1000);
-  next();
-});
-
-// Query middleware - don't return inactive users
+// Query middleware - don't return inactive users by default
 userSchema.pre(/^find/, function (next) {
-  (this as any).find({ active: { $ne: false } });
+  // Only filter if not explicitly querying for inactive users
+  if (!(this as any).getOptions().includeInactive) {
+    (this as any).find({ active: { $ne: false } });
+  }
   next();
 });
-
-// Instance method - check if password is correct
-userSchema.methods.correctPassword = async function (
-  candidatePassword: string,
-  userPassword: string
-): Promise<boolean> {
-  return await bcrypt.compare(candidatePassword, userPassword);
-};
-
-// Instance method - check if password was changed after JWT was issued
-userSchema.methods.changedPasswordAfter = function (
-  JWTTimestamp: number
-): boolean {
-  if (this.passwordChangedAt) {
-    const changedTimestamp = parseInt(
-      (this.passwordChangedAt.getTime() / 1000).toString(),
-      10
-    );
-    return JWTTimestamp < changedTimestamp;
-  }
-  return false;
-};
-
-// Instance method - create password reset token
-userSchema.methods.createPasswordResetToken = function (): string {
-  const resetToken = crypto.randomBytes(32).toString("hex");
-
-  this.passwordResetToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
-
-  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-  return resetToken;
-};
 
 const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
 

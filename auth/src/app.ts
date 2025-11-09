@@ -1,15 +1,5 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import morgan from "morgan";
-
-// Extend Express Request interface
-declare global {
-  namespace Express {
-    interface Request {
-      requestTime?: string;
-    }
-  }
-}
-import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
@@ -17,42 +7,51 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import cors from "cors";
 
-import { initKeys, jwks } from "./utils/jwt.js";
+import { env, isDevelopment } from "./config/env.js";
+import { getPublicJwks } from "./config/jwt.js";
 import authRouter from "./routes/authRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import AppError from "./utils/appError.js";
 import globalErrorHandler from "./controllers/errorController.js";
+import { globalLimiter } from "./middleware/rateLimiter.js";
+import { logger } from "./utils/logger.js";
 
-// Start express app
 const app: Application = express();
 
+// Trust proxy (for rate limiting and IP detection)
 app.enable("trust proxy");
 
-// 1) GLOBAL MIDDLEWARES
+// CORS configuration
+app.use(
+  cors({
+    origin: env.CORS_ORIGIN,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-await initKeys();
-app.get("/.well-known/jwks.json", (_req, res) => res.json(jwks()));
-
-// Implement CORS
-app.use(cors({ origin: true, credentials: true }));
-
-// Set security HTTP headers
-app.use(helmet());
+// Security HTTP headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // Development logging
-if (process.env.NODE_ENV === "development") {
+if (isDevelopment) {
   app.use(morgan("dev"));
+} else {
+  app.use(
+    morgan("combined", {
+      stream: {
+        write: (message) => logger.info(message.trim()),
+      },
+    })
+  );
 }
 
-// Limit requests from same API
-const limiter = rateLimit({
-  max: 100,
-  windowMs: 60 * 60 * 1000,
-  message: "Too many requests from this IP, please try again in an hour!",
-});
-app.use("/api", limiter);
-
-// Body parser, reading data from body into req.body
+// Body parser
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
@@ -63,31 +62,44 @@ app.use(mongoSanitize());
 // Prevent parameter pollution
 app.use(
   hpp({
-    whitelist: [
-      "duration",
-      "ratingsQuantity",
-      "ratingsAverage",
-      "maxGroupSize",
-      "difficulty",
-      "price",
-    ],
+    whitelist: ["role", "specializations"],
   })
 );
 
+// Compression
 app.use(compression());
 
-// 3) ROUTES
-
-// Health
-app.get("/health", (_req, res) => res.json({ ok: true, service: "auth" }));
-
-app.use("/api/v1/auth", limiter, authRouter);
-app.use("/api/v1/users", userRouter);
-
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
-  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+// Request timestamp
+app.use((req: Request, res: Response, next: NextFunction) => {
+  req.requestTime = new Date().toISOString();
+  next();
 });
 
+// JWKS endpoint
+app.get("/.well-known/jwks.json", (req: Request, res: Response) => {
+  res.json(getPublicJwks());
+});
+
+// Health check
+app.get("/health", (req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    service: "auth",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+// API routes
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/users", globalLimiter, userRouter);
+
+// 404 handler
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  next(AppError.notFound(`Cannot find ${req.originalUrl} on this server`));
+});
+
+// Global error handler
 app.use(globalErrorHandler);
 
 export default app;

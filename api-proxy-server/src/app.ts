@@ -4,16 +4,17 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import {
-  createProxyMiddleware,
-  Options,
-  RequestHandler,
-} from "http-proxy-middleware";
+import { createProxyMiddleware, Options } from "http-proxy-middleware";
 import jwksRsa from "jwks-rsa";
 import { expressjwt, Request as JWTRequest } from "express-jwt";
-import crypto from "crypto";
+import { corsOptions } from "./config/cors.js";
 import AppError from "./utils/appError.js";
-import globalErrorHandler from "./controllers/errorController.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { logger } from "./utils/logger.js";
+import { setupRoutes } from "./routes/index.js";
+import { requestId } from "./middleware/requestId.js";
+import { requestLogger } from "./middleware/requestLogger.js";
+import { env } from "./config/env.js";
 
 const app: Application = express();
 
@@ -21,7 +22,12 @@ const app: Application = express();
 app.set("trust proxy", 1);
 
 // 1) GLOBAL MIDDLEWARES
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
@@ -36,27 +42,22 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 app.use("/auth", limiter);
 
+// CORS
+app.use(cors(corsOptions));
+
 // Body parser
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true,
-  })
-);
-
 // Request ID for correlation
-app.use((req, _res, next) => {
-  (req as any).requestId =
-    req.headers["x-request-id"] ||
-    crypto.randomUUID?.() ||
-    Math.random().toString(36).slice(2);
-  next();
-});
+app.use(requestId);
+if (env.NODE_ENV !== "test") {
+  app.use(requestLogger);
+}
+
+// Setup routes
+setupRoutes(app);
 
 // ---------- JWT (RS256 via JWKS) ----------
 const ISSUER = process.env.JWT_ISSUER ?? "studio-s-auth";
@@ -78,82 +79,12 @@ const checkJwt = expressjwt({
   }),
 });
 
-// ---------- Proxy Factory ----------
-function makeProxy(target: string, pathRewrite?: Record<string, string>) {
-  const options: Options = {
-    target,
-    changeOrigin: true,
-    xfwd: true,
-    proxyTimeout: 25_000,
-    timeout: 25_000,
-    pathRewrite,
-    on: {
-      proxyReq: (proxyReq, req: any, _res) => {
-        // add correlation id
-        proxyReq.setHeader("X-Request-ID", req.requestId);
-
-        // propagate user claims if present (after checkJwt)
-        if (req.auth) {
-          const { sub, email, role } = req.auth as any;
-          if (sub) proxyReq.setHeader("X-User-Id", String(sub));
-          if (email) proxyReq.setHeader("X-User-Email", String(email));
-          if (role) proxyReq.setHeader("X-User-Role", String(role));
-        }
-      },
-      error: (err, _req, res) => {
-        const response = res as Response;
-        console.error("Proxy Error:", err?.message || err);
-        response.status(503).json({
-          status: "error",
-          message: "Upstream service is unavailable",
-        });
-      },
-    },
-  };
-  return createProxyMiddleware(options);
-}
-
-// ---------- Routes ----------
-
-// Health for the gateway itself
-app.get("/health", (_req, res) => res.json({ ok: true, service: "gateway" }));
-
-// Public auth routes (no JWT here). They are handled by the Auth service.
-app.use("/auth", makeProxy(AUTH_URL, { "^/auth": "/auth" }));
-
-// EVERYTHING under /api requires a valid RS256 access token
-app.use("/api", checkJwt);
-
-// Users (lives in auth service; protected)
-app.use(
-  "/api/v1/users",
-  makeProxy(AUTH_URL, { "^/api/v1/users": "/api/v1/users" })
-);
-
-// Inventory / products / categories / suppliers / locations — protected
-app.use(
-  "/api/v1/products",
-  makeProxy(BACKEND_URL, { "^/api/v1/products": "/api/v1/products" })
-);
-app.use(
-  "/api/v1/categories",
-  makeProxy(BACKEND_URL, { "^/api/v1/categories": "/api/v1/categories" })
-);
-app.use(
-  "/api/v1/suppliers",
-  makeProxy(BACKEND_URL, { "^/api/v1/suppliers": "/api/v1/suppliers" })
-);
-app.use(
-  "/api/v1/locations",
-  makeProxy(BACKEND_URL, { "^/api/v1/locations": "/api/v1/locations" })
-);
-
-// 404 for undefined routes
-app.all("*", (req: Request, _res: Response, next: NextFunction) => {
-  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+// 404 handler for undefined routes
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
 
 // Global error handler
-app.use(globalErrorHandler);
+app.use(errorHandler);
 
 export default app;
