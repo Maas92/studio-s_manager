@@ -1,7 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from "express";
+import bodyParser from "body-parser";
 import morgan from "morgan";
 import helmet from "helmet";
-import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import cookieParser from "cookie-parser";
 import compression from "compression";
@@ -15,6 +15,7 @@ import AppError from "./utils/appError.js";
 import globalErrorHandler from "./controllers/errorController.js";
 import { globalLimiter } from "./middleware/rateLimiter.js";
 import { logger } from "./utils/logger.js";
+import { mongoSanitize } from "./middleware/sanitize.js";
 
 const app: Application = express();
 
@@ -52,12 +53,18 @@ if (isDevelopment) {
 }
 
 // Body parser
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(bodyParser.json({ limit: "10kb" }));
+
+// Cookie parser
 app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
-app.use(mongoSanitize());
+app.use(
+  mongoSanitize({
+    onSanitize: "error", // or "remove" to silently remove
+    logAttempts: true,
+  })
+);
 
 // Prevent parameter pollution
 app.use(
@@ -91,11 +98,11 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 // API routes
-app.use("/api/v1/auth", authRouter);
+app.use("/", authRouter);
 app.use("/api/v1/users", globalLimiter, userRouter);
 
 // 404 handler
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   next(AppError.notFound(`Cannot find ${req.originalUrl} on this server`));
 });
 

@@ -56,9 +56,15 @@ export class AuthService {
     refreshToken: string;
   }> {
     // Find user with password field
-    const user = await User.findOne({ email: credentials.email }).select(
-      "+password"
-    );
+    const user = await User.findOne({ email: credentials.email })
+      .select("+password +active")
+      .exec();
+
+    // DEBUG: Log everything
+    console.log("=== LOGIN DEBUG ===");
+    console.log("Email:", credentials.email);
+    console.log("User found:", !!user);
+    console.log("===================");
 
     if (!user) {
       throw AppError.unauthorized("Invalid email or password");
@@ -69,6 +75,10 @@ export class AuthService {
       user.password,
       credentials.password
     );
+
+    console.log("=== PASSWORD VERIFICATION ===");
+    console.log("Is valid:", isValidPassword);
+    console.log("=============================");
 
     if (!isValidPassword) {
       logger.warn(`Failed login attempt for user: ${credentials.email}`);
@@ -109,7 +119,7 @@ export class AuthService {
     }
 
     // Get user
-    const user = await User.findById(validation.userId);
+    const user = await User.findById(validation.userId).select("+active");
     if (!user) {
       throw AppError.unauthorized("User no longer exists");
     }

@@ -9,7 +9,9 @@ router.use(
   "/users",
   createProxy({
     target: env.AUTH_SERVICE_URL,
+    // Won't match because route is already stripped Router already consumed /api/v1
     pathRewrite: { "^/api/v1/users": "/api/v1/users" },
+    // Path should stay the same - pathRewrite: {} - /api/v1/products → /api/v1/products
   })
 );
 

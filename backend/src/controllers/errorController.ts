@@ -1,48 +1,100 @@
 import { Request, Response, NextFunction } from "express";
-import AppError from "../utils/appError.js";
+import AppError from "../utils/appError";
+import { logger } from "../utils/logger";
+import { env } from "../config/env";
 
+/**
+ * Handle database-specific errors
+ */
 const handleDatabaseError = (err: any): AppError => {
+  // Unique constraint violation
   if (err.code === "23505") {
-    const value = err.detail.match(/(Key \(.*?\)=\(.*?\))/)[0];
-    const message = `Duplicate field value: ${value}. Please use another value!`;
+    const match = err.detail?.match(/Key \((.*?)\)=\((.*?)\)/);
+    const field = match ? match[1] : "field";
+    const value = match ? match[2] : "value";
+    const message = `Duplicate ${field}: ${value}. Please use another value.`;
+    return new AppError(message, 409);
+  }
+
+  // Foreign key constraint violation
+  if (err.code === "23503") {
+    const message =
+      "Invalid reference to related data. The referenced record does not exist.";
     return new AppError(message, 400);
   }
 
-  if (err.code === "23503") {
-    return new AppError("Invalid reference to related data", 400);
-  }
-
+  // Invalid input syntax
   if (err.code === "22P02") {
-    return new AppError("Invalid input syntax", 400);
+    return new AppError("Invalid input data type provided", 400);
   }
 
-  return new AppError("Database error occurred", 500);
+  // Not null constraint violation
+  if (err.code === "23502") {
+    const column = err.column || "field";
+    return new AppError(`Missing required field: ${column}`, 400);
+  }
+
+  // Check constraint violation
+  if (err.code === "23514") {
+    return new AppError("Data validation failed", 400);
+  }
+
+  return new AppError("Database operation failed", 500);
 };
 
-const sendErrorDev = (err: AppError, res: Response): void => {
+/**
+ * Send detailed error in development
+ */
+const sendErrorDev = (err: AppError, req: Request, res: Response): void => {
+  logger.error("ERROR 💥", {
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+  });
+
   res.status(err.statusCode).json({
     status: err.status,
     error: err,
     message: err.message,
     stack: err.stack,
+    requestId: req.id,
   });
 };
 
-const sendErrorProd = (err: AppError, res: Response): void => {
+/**
+ * Send limited error in production
+ */
+const sendErrorProd = (err: AppError, req: Request, res: Response): void => {
+  // Operational, trusted error: send message to client
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
+      requestId: req.id,
     });
   } else {
-    console.error("ERROR 💥", err);
+    // Programming or other unknown error: don't leak error details
+    logger.error("ERROR 💥", {
+      error: err,
+      url: req.originalUrl,
+      method: req.method,
+      requestId: req.id,
+    });
+
     res.status(500).json({
       status: "error",
-      message: "Something went very wrong!",
+      message: "Something went wrong. Please try again later.",
+      requestId: req.id,
     });
   }
 };
 
+/**
+ * Global error handling middleware
+ */
 export default (
   err: any,
   req: Request,
@@ -52,14 +104,36 @@ export default (
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
 
-  if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, res);
-  } else if (process.env.NODE_ENV === "production") {
+  if (env.NODE_ENV === "development") {
+    sendErrorDev(err, req, res);
+  } else {
     let error = { ...err };
     error.message = err.message;
+    error.name = err.name;
+    error.stack = err.stack;
 
-    if (err.code) error = handleDatabaseError(error);
+    // Handle specific error types
+    if (err.code) {
+      error = handleDatabaseError(error);
+    }
 
-    sendErrorProd(error, res);
+    // Handle JWT errors (if you add authentication later)
+    if (error.name === "JsonWebTokenError") {
+      error = new AppError("Invalid token. Please log in again.", 401);
+    }
+
+    if (error.name === "TokenExpiredError") {
+      error = new AppError("Your token has expired. Please log in again.", 401);
+    }
+
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const message = Object.values(error.errors || {})
+        .map((e: any) => e.message)
+        .join(". ");
+      error = new AppError(message, 400);
+    }
+
+    sendErrorProd(error, req, res);
   }
 };

@@ -1,4 +1,8 @@
-import { createProxyMiddleware, Options } from "http-proxy-middleware";
+import {
+  createProxyMiddleware,
+  Options,
+  fixRequestBody,
+} from "http-proxy-middleware";
 import { Request, Response } from "express";
 import { logger } from "../utils/logger.js";
 
@@ -18,8 +22,11 @@ export const createProxy = (config: ProxyConfig) => {
     proxyTimeout: timeout,
     timeout,
     pathRewrite,
+
     on: {
-      proxyReq: (proxyReq, req: any) => {
+      // proxyReq: fixRequestBody, // Built-in function from http-proxy-middleware
+
+      proxyReq: (proxyReq, req: any, res) => {
         // Add correlation ID
         if (req.requestId) {
           proxyReq.setHeader("X-Request-ID", req.requestId);
@@ -36,8 +43,16 @@ export const createProxy = (config: ProxyConfig) => {
           if (lastName) proxyReq.setHeader("X-User-LastName", String(lastName));
         }
 
+        //  Restream parsed body for POST/PUT/PATCH
+        if (req.body && Object.keys(req.body).length > 0) {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader("Content-Type", "application/json");
+          proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+          proxyReq.write(bodyData);
+        }
+
         // Remove sensitive headers
-        proxyReq.removeHeader("cookie");
+        // proxyReq.removeHeader("cookie");
 
         logger.debug("Proxying request", {
           target,

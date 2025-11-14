@@ -2,6 +2,7 @@ class AppError extends Error {
   statusCode: number;
   status: string;
   isOperational: boolean;
+  static notFound: any;
 
   constructor(message: string, statusCode: number) {
     super(message);
