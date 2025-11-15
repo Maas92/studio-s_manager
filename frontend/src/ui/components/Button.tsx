@@ -1,8 +1,12 @@
+import React from "react";
 import styled, { css } from "styled-components";
 
+export type ButtonVariation = "primary" | "secondary" | "danger";
+export type ButtonSize = "small" | "medium" | "large";
+
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variation?: "primary" | "secondary" | "danger";
-  size?: "small" | "medium" | "large";
+  variation?: ButtonVariation;
+  size?: ButtonSize;
 };
 
 const variations = {
@@ -15,17 +19,20 @@ const variations = {
     }
   `,
   secondary: css`
-    background: ${({ theme }) => theme.color.grey0};
-    color: ${({ theme }) => theme.color.grey800};
-    border: 1px solid ${({ theme }) => theme.color.grey300};
+    background: ${({ theme }) => theme.color.grey100};
+    color: ${({ theme }) => theme.color.text};
+    border: 1px solid ${({ theme }) => theme.color.border};
     &:hover {
-      background: ${({ theme }) => theme.color.grey100};
+      background: ${({ theme }) => theme.color.grey200};
     }
   `,
   danger: css`
     background: ${({ theme }) => theme.color.red600};
     color: white;
     border: 1px solid ${({ theme }) => theme.color.red600};
+    &:hover {
+      background: ${({ theme }) => theme.color.red500};
+    }
   `,
 };
 
@@ -58,10 +65,11 @@ const Btn = styled.button<Props>`
   ${(p) => sizes[p.size || "medium"]}
 `;
 
-export default function Button({
-  variation = "primary",
-  size = "medium",
-  ...rest
-}: Props) {
-  return <Btn variation={variation} size={size} {...rest} />;
-}
+const Button = React.forwardRef<HTMLButtonElement, Props>(function Button(
+  { variation = "primary", size = "medium", ...rest },
+  ref
+) {
+  return <Btn ref={ref} variation={variation} size={size} {...rest} />;
+});
+
+export default Button;

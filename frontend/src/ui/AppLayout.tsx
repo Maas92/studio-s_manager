@@ -9,6 +9,8 @@ const Shell = styled.div`
   grid-template-rows: 64px 1fr;
   grid-template-areas: "sidebar topbar" "sidebar main";
   height: 100dvh;
+  background: ${({ theme }) => theme.color.bg};
+  color: ${({ theme }) => theme.color.text};
 `;
 const Main = styled.main`
   grid-area: main;

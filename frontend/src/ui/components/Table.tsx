@@ -3,10 +3,10 @@ import styled from "styled-components";
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  background: ${({ theme }) => theme.color.grey0};
+  background: ${({ theme }) => theme.color.grey100};
   border: 1px solid ${({ theme }) => theme.color.grey200};
   border-radius: 12px;
-  overflow: hidden;
+  overflow: auto;
   thead {
     background: ${({ theme }) => theme.color.grey100};
   }

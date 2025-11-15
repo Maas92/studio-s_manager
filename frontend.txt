@@ -1,0 +1,2295 @@
+================================================================================
+FILE: ./frontend/src\App.css
+================================================================================
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
+================================================================================
+FILE: ./frontend/src\App.tsx
+================================================================================
+
+import { RouterProvider } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { Toaster } from "react-hot-toast";
+import { ThemeProvider } from "styled-components";
+import GlobalStyles from "./styles/GlobalStyles";
+// import "./App.css";
+import { AuthProvider } from "./modules/auth/AuthContext.js";
+import { router } from "./routes/router.js";
+import { theme } from "./ui/Theme.js";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+    },
+  },
+});
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ReactQueryDevtools initialIsOpen={false} />
+      <ThemeProvider theme={theme}>
+        <GlobalStyles />
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+
+        <Toaster
+          position="top-center"
+          gutter={12}
+          containerStyle={{ margin: "8px" }}
+          toastOptions={{
+            success: {
+              duration: 3000,
+            },
+            error: {
+              duration: 5000,
+            },
+            style: {
+              fontSize: "16px",
+              maxWidth: "500px",
+              padding: "16px 24px",
+              backgroundColor: "var(--color-grey-0)",
+              color: "var(--color-grey-700)",
+            },
+          }}
+        />
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
+
+
+================================================================================
+FILE: ./frontend/src\index.css
+================================================================================
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+
+================================================================================
+FILE: ./frontend/src\main.tsx
+================================================================================
+
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { ErrorBoundary } from "react-error-boundary";
+import ErrorFallback from "./ui/ErrorFallback.tsx";
+// import "./index.css";
+import App from "./App.tsx";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onReset={() => window.location.replace("/")}
+    >
+      <App />
+    </ErrorBoundary>
+  </StrictMode>
+);
+
+
+================================================================================
+FILE: ./frontend/src\modules\appointments\api.ts
+================================================================================
+
+import { api } from "../../services/api";
+import { z } from "zod";
+import { toArray } from "../../services/normalise";
+
+export const AppointmentSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  clientName: z.string().optional(),
+  treatmentId: z.string(),
+  treatmentName: z.string().optional(),
+  datetimeISO: z.string(),
+  status: z.string().optional(),
+});
+export type Appointment = z.infer<typeof AppointmentSchema>;
+
+export async function listAppointments() {
+  const { data } = await api.get("/appointments");
+  return toArray<Appointment>(data);
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\appointments\Appointments.tsx
+================================================================================
+
+import { useQuery } from "@tanstack/react-query";
+import styled from "styled-components";
+import { listAppointments, type Appointment } from "./api";
+
+const Card = styled.div`
+  background: #121212;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 16px;
+`;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  th,
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #222;
+  }
+`;
+
+export default function Appointments() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: listAppointments,
+  });
+  const rows: Appointment[] = Array.isArray(data) ? data : [];
+
+  return (
+    <Card>
+      <h2>Appointments</h2>
+      {isLoading ? (
+        <p>Loading…</p>
+      ) : isError ? (
+        <p>Error loading appointments.</p>
+      ) : rows.length === 0 ? (
+        <p>No appointments scheduled.</p>
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <th>Date/Time</th>
+              <th>Client</th>
+              <th>Treatment</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((a) => (
+              <tr key={a.id}>
+                <td>{new Date(a.datetimeISO).toLocaleString()}</td>
+                <td>{a.clientName ?? a.clientId}</td>
+                <td>{a.treatmentName ?? a.treatmentId}</td>
+                <td>{a.status ?? "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Card>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\auth\AuthCallback.tsx
+================================================================================
+
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../services/api";
+
+export default function AuthCallback() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        if (code)
+          await api.post("/auth/callback", {
+            code,
+            redirectUri: window.location.origin + "/auth/callback",
+          });
+        await api.get("/auth/me");
+        navigate("/", { replace: true });
+      } catch (e) {
+        navigate("/login", { replace: true });
+      }
+    })();
+  }, [navigate]);
+
+  return null;
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\auth\AuthContext.tsx
+================================================================================
+
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { api } from "../../services/api";
+
+export type User = { id: string; name: string; email: string; roles: string[] };
+
+type AuthState = {
+  user: User | null;
+  loading: boolean;
+  signIn: () => void;
+  signOut: () => Promise<void>;
+  hasRole: (role: string) => boolean;
+};
+
+const AuthCtx = createContext<AuthState | null>(null);
+
+const LOGIN_URL = import.meta.env.VITE_AUTH_LOGIN_URL as string;
+const LOGOUT_URL = import.meta.env.VITE_AUTH_LOGOUT_URL as string;
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get<User>("/auth/me");
+        setUser(data);
+      } catch (_) {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const signIn = () => {
+    const url = new URL(LOGIN_URL);
+    url.searchParams.set(
+      "redirect_uri",
+      window.location.origin + "/auth/callback"
+    );
+    window.location.href = url.toString();
+  };
+
+  const signOut = async () => {
+    await api.post("/auth/logout");
+    window.location.href = LOGOUT_URL || "/";
+  };
+
+  const hasRole = (role: string) => !!user?.roles?.includes(role);
+
+  const value = useMemo(
+    () => ({ user, loading, signIn, signOut, hasRole }),
+    [user, loading]
+  );
+
+  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAuth = () => {
+  const ctx = useContext(AuthCtx);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+};
+
+
+================================================================================
+FILE: ./frontend/src\modules\auth\Protected.tsx
+================================================================================
+
+import React, { useEffect } from "react";
+import { useAuth } from "./AuthContext";
+
+export function Protected({ children }: { children: React.ReactNode }) {
+  const { user, loading, signIn } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) signIn();
+  }, [loading, user, signIn]);
+
+  if (loading || !user) return null;
+  return <>{children}</>;
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\auth\SignInRedirect.tsx
+================================================================================
+
+import { useEffect } from "react";
+import { useAuth } from "./AuthContext";
+
+export default function SignInRedirect() {
+  const { signIn } = useAuth();
+  useEffect(() => {
+    signIn();
+  }, [signIn]);
+  return null;
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\clients\api.ts
+================================================================================
+
+import { api } from "../../services/api";
+import { z } from "zod";
+import { toArray } from "../../services/normalise";
+
+export const ClientSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  phone: z.string().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+});
+export type Client = z.infer<typeof ClientSchema>;
+
+export async function listClients() {
+  const { data } = await api.get("/clients");
+  return toArray<Client>(data);
+}
+
+export async function createClient(payload: Omit<Client, "id">) {
+  const { data } = await api.post("/clients", payload);
+  return data as Client;
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\clients\Clients.tsx
+================================================================================
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import styled from "styled-components";
+import { listClients, createClient, type Client } from "./api";
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+`;
+const Card = styled.div`
+  background: #121212;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 16px;
+`;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  th,
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #222;
+  }
+`;
+
+export default function Clients() {
+  const qc = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["clients"],
+    queryFn: listClients,
+  });
+  const rows: Client[] = Array.isArray(data) ? data : [];
+
+  const { register, handleSubmit, reset } = useForm<Omit<Client, "id">>({
+    defaultValues: { name: "", phone: "", email: "" },
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: createClient,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      reset();
+    },
+  });
+
+  return (
+    <Grid>
+      <Card>
+        <h2>Clients</h2>
+        {isLoading ? (
+          <p>Loading…</p>
+        ) : isError ? (
+          <p>Error loading clients.</p>
+        ) : rows.length === 0 ? (
+          <p>No clients found.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.name}</td>
+                  <td>{c.phone ?? "-"}</td>
+                  <td>{c.email ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      <Card>
+        <h3>Add client</h3>
+        <form onSubmit={handleSubmit((v) => mutate(v))}>
+          <div style={{ display: "grid", gap: 8 }}>
+            <label>
+              Name
+              <input {...register("name", { required: true })} />
+            </label>
+            <label>
+              Phone
+              <input {...register("phone")} />
+            </label>
+            <label>
+              Email
+              <input type="email" {...register("email")} />
+            </label>
+            <button disabled={isPending} type="submit">
+              {isPending ? "Saving…" : "Create"}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </Grid>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\dashboard\api.ts
+================================================================================
+
+import { api } from "../../services/api";
+
+export type DashboardSummary = {
+  productCount: number;
+  stockItems: number;
+  treatmentCount: number;
+  clientCount: number;
+  appointmentCount: number;
+};
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  try {
+    const { data } = await api.get("/dashboard/summary");
+    const s = data ?? {};
+    return {
+      productCount: Number(s.productCount ?? 0),
+      stockItems: Number(s.stockItems ?? 0),
+      treatmentCount: Number(s.treatmentCount ?? 0),
+      clientCount: Number(s.clientCount ?? 0),
+      appointmentCount: Number(s.appointmentCount ?? 0),
+    };
+  } catch {
+    return {
+      productCount: 0,
+      stockItems: 0,
+      treatmentCount: 0,
+      clientCount: 0,
+      appointmentCount: 0,
+    };
+  }
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\dashboard\Dashboard.tsx
+================================================================================
+
+import { useQuery } from "@tanstack/react-query";
+import styled from "styled-components";
+import { getDashboardSummary, type DashboardSummary } from "./api";
+
+const Grid = styled.div`
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+`;
+const Card = styled.div`
+  background: #121212;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+`;
+const Big = styled.div`
+  font-size: 28px;
+  font-weight: 700;
+`;
+
+export default function Dashboard() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: getDashboardSummary,
+  });
+  const s: DashboardSummary = data ?? {
+    productCount: 0,
+    stockItems: 0,
+    treatmentCount: 0,
+    clientCount: 0,
+    appointmentCount: 0,
+  };
+
+  if (isLoading) return <p>Loading…</p>;
+  if (isError) return <p>Unable to load summary.</p>;
+
+  return (
+    <Grid>
+      <Card>
+        <div>Products</div>
+        <Big>{s.productCount}</Big>
+      </Card>
+      <Card>
+        <div>Stock Items</div>
+        <Big>{s.stockItems}</Big>
+      </Card>
+      <Card>
+        <div>Treatments</div>
+        <Big>{s.treatmentCount}</Big>
+      </Card>
+      <Card>
+        <div>Clients</div>
+        <Big>{s.clientCount}</Big>
+      </Card>
+      <Card>
+        <div>Appointments</div>
+        <Big>{s.appointmentCount}</Big>
+      </Card>
+    </Grid>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\login\Login.tsx
+================================================================================
+
+import { useState } from "react";
+import { api } from "../lib/api";
+import { Button, Card, Input, Label } from "../components/ui-primitives";
+import { useNavigate } from "react-router-dom";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nav = useNavigate();
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await api.login(email, password);
+      nav("/");
+    } catch (err: any) {
+      setError(err.message ?? "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div className="min-h-screen grid place-items-center bg-[var(--paper)]">
+      <Card className="w-full max-w-md">
+        <h1 className="text-2xl font-semibold mb-4">Welcome to Studio S</h1>
+        <form onSubmit={submit} className="grid gap-3">
+          <div>
+            <Label>Email</Label>
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label>Password</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <Button disabled={loading}>
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\products\api.ts
+================================================================================
+
+import { api } from "../../services/api";
+import { z } from "zod";
+import { toArray } from "../../services/normalise";
+
+export const ProductSchema = z.object({
+  id: z.string(),
+  sku: z.string(),
+  name: z.string(),
+  price: z.number(),
+  retail: z.boolean().optional().default(true),
+});
+export type Product = z.infer<typeof ProductSchema>;
+
+export async function listProducts() {
+  const { data } = await api.get("/products");
+  return toArray<Product>(data);
+}
+
+export async function createProduct(payload: Omit<Product, "id">) {
+  const { data } = await api.post<Product>("/products", payload);
+  return data;
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\products\Products.tsx
+================================================================================
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Form, FormRow } from "../../ui/components/Form";
+import Input from "../../ui/components/Input";
+import Button from "../../ui/components/Button";
+import { createProduct, listProducts, type Product } from "./api";
+import { Table } from "lucide-react";
+import { useForm } from "react-hook-form";
+import Row from "../../ui/components/Row";
+import H from "../../ui/components/Heading";
+
+export default function Products() {
+  const qc = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["products"],
+    queryFn: listProducts,
+  });
+  const rows: Product[] = Array.isArray(data) ? data : [];
+
+  const { register, handleSubmit, reset } = useForm<Omit<Product, "id">>({
+    defaultValues: { name: "", sku: "", price: 0, retail: true },
+  });
+
+  const { mutate, isPending } = useMutation<
+    Product,
+    unknown,
+    Omit<Product, "id">
+  >({
+    mutationFn: createProduct,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      reset();
+    },
+  });
+
+  return (
+    <Row>
+      <div>
+        <H>Products</H>
+        {isLoading ? (
+          <p>Loading…</p>
+        ) : isError ? (
+          <p>Error loading products.</p>
+        ) : rows.length === 0 ? (
+          <p>No products found.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Retail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.sku}</td>
+                  <td>{p.name}</td>
+                  <td>
+                    {Number.isFinite(p.price) ? `$${p.price.toFixed(2)}` : "-"}
+                  </td>
+                  <td>{p.retail ? "Yes" : "No"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </div>
+
+      <div>
+        <H as="h3">Add product</H>
+        <Form onSubmit={handleSubmit((v) => mutate({ ...v, price: v.price }))}>
+          <FormRow>
+            <label htmlFor="sku">SKU</label>
+            <Input id="sku" {...register("sku", { required: true })} />
+          </FormRow>
+          <FormRow>
+            <label htmlFor="name">Name</label>
+            <Input id="name" {...register("name", { required: true })} />
+          </FormRow>
+          <FormRow>
+            <label htmlFor="price">Price</label>
+            <Input
+              id="price"
+              type="number"
+              step="0.01"
+              {...register("price", { valueAsNumber: true, min: 0 })}
+            />
+          </FormRow>
+          <div>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Saving…" : "Create"}
+            </Button>
+          </div>
+        </Form>
+      </div>
+    </Row>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\stock\api.ts
+================================================================================
+
+import { api } from "../../services/api";
+import { toArray } from "../../services/normalise";
+
+type StockRow = {
+  id: string;
+  productId: string;
+  location: string;
+  qty: number;
+};
+
+export async function listStock() {
+  const { data } = await api.get("/stock");
+  return toArray<StockRow>(data);
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\stock\Stock.tsx
+================================================================================
+
+import { useQuery } from "@tanstack/react-query";
+import styled from "styled-components";
+import { listStock } from "./api";
+
+const Card = styled.div`
+  background: #121212;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 16px;
+`;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  th,
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #222;
+  }
+`;
+
+export default function Stock() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["stock"],
+    queryFn: listStock,
+  });
+  return (
+    <Card>
+      <h2>Stock</h2>
+      {isLoading ? (
+        <p>Loading…</p>
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Product</th>
+              <th>Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.map((r) => (
+              <tr key={r.id}>
+                <td>{r.location}</td>
+                <td>{r.productId}</td>
+                <td>{r.qty}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Card>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\treatments\api.ts
+================================================================================
+
+import { api } from "../../services/api";
+import { z } from "zod";
+import { toArray } from "../../services/normalise";
+
+export const TreatmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  durationMinutes: z.number().optional().default(60),
+  price: z.number().optional().default(0),
+});
+export type Treatment = z.infer<typeof TreatmentSchema>;
+
+export async function listTreatments() {
+  const { data } = await api.get("/treatments");
+  return toArray<Treatment>(data);
+}
+
+export async function createTreatment(payload: Omit<Treatment, "id">) {
+  const { data } = await api.post("/treatments", payload);
+  return data as Treatment;
+}
+
+
+================================================================================
+FILE: ./frontend/src\modules\treatments\Treatments.tsx
+================================================================================
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import styled from "styled-components";
+import { listTreatments, createTreatment, type Treatment } from "./api";
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+`;
+const Card = styled.div`
+  background: #121212;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 16px;
+`;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  th,
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #222;
+  }
+`;
+
+export default function Treatments() {
+  const qc = useQueryClient();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["treatments"],
+    queryFn: listTreatments,
+  });
+  const rows: Treatment[] = Array.isArray(data) ? data : [];
+
+  const { register, handleSubmit, reset } = useForm<Omit<Treatment, "id">>({
+    defaultValues: { name: "", durationMinutes: 60, price: 0 },
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: createTreatment,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["treatments"] });
+      reset();
+    },
+  });
+
+  return (
+    <Grid>
+      <Card>
+        <h2>Treatments</h2>
+        {isLoading ? (
+          <p>Loading…</p>
+        ) : isError ? (
+          <p>Error loading treatments.</p>
+        ) : rows.length === 0 ? (
+          <p>No treatments found.</p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Duration</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.name}</td>
+                  <td>{t.durationMinutes} min</td>
+                  <td>
+                    {Number.isFinite(t.price) ? `$${t.price.toFixed(2)}` : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      <Card>
+        <h3>Add treatment</h3>
+        <form onSubmit={handleSubmit((v) => mutate({ ...v, price: v.price }))}>
+          <div style={{ display: "grid", gap: 8 }}>
+            <label>
+              Name
+              <input {...register("name", { required: true })} />
+            </label>
+            <label>
+              Duration (min)
+              <input
+                type="number"
+                {...register("durationMinutes", {
+                  valueAsNumber: true,
+                  min: 1,
+                })}
+              />
+            </label>
+            <label>
+              Price
+              <input
+                type="number"
+                step="0.01"
+                {...register("price", { valueAsNumber: true, min: 0 })}
+              />
+            </label>
+            <button disabled={isPending} type="submit">
+              {isPending ? "Saving…" : "Create"}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </Grid>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\routes\router.tsx
+================================================================================
+
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import AppLayout from "../ui/AppLayout.js";
+import Dashboard from "../modules/dashboard/Dashboard";
+import Products from "../modules/products/Products";
+import Stock from "../modules/stock/Stock";
+import Treatments from "../modules/treatments/Treatments";
+import Clients from "../modules/clients/Clients";
+import Appointments from "../modules/appointments/Appointments";
+import { Protected } from "../modules/auth/Protected.js";
+import AuthCallback from "../modules/auth/AuthCallback";
+import SignInRedirect from "../modules/auth/SignInRedirect";
+import NotFound from "../ui/NotFound.js";
+
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: (
+      <Protected>
+        <AppLayout />
+      </Protected>
+    ),
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: "products", element: <Products /> },
+      { path: "stock", element: <Stock /> },
+      { path: "treatments", element: <Treatments /> },
+      { path: "clients", element: <Clients /> },
+      { path: "appointments", element: <Appointments /> },
+      // 👇 catch-all for unknown routes inside the app shell
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+  { path: "/auth/callback", element: <AuthCallback /> },
+  { path: "/login", element: <SignInRedirect /> },
+  { path: "*", element: <Navigate to="/" replace /> },
+  // 👇 top-level fallback (unknown public routes)
+  { path: "*", element: <NotFound /> },
+]);
+
+
+================================================================================
+FILE: ./frontend/src\services\api.ts
+================================================================================
+
+import axios, { type AxiosRequestConfig } from 'axios';
+
+type RetryableConfig = AxiosRequestConfig & { __isRetryRequest?: boolean };
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true
+});
+
+let refreshing = false;
+let sharedRefreshPromise: Promise<unknown> | null = null;
+let queue: Array<(err?: unknown) => void> = [];
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = (error.config || {}) as RetryableConfig;
+    const is401 = error.response?.status === 401;
+    const isRefreshCall = (original.url || '').includes('/auth/refresh');
+
+    if (is401 && !isRefreshCall && !original.__isRetryRequest) {
+      if (!refreshing) {
+        refreshing = true;
+        sharedRefreshPromise = api.post('/auth/refresh').finally(() => {
+          refreshing = false;
+        });
+      }
+      try {
+        await sharedRefreshPromise;
+      } catch (e) {
+        const fns = queue.slice();
+        queue = [];
+        fns.forEach((fn) => fn(e));
+        return Promise.reject(error);
+      }
+      return new Promise((resolve, reject) => {
+        queue.push((err) => {
+          if (err) return reject(err);
+          try {
+            original.__isRetryRequest = true;
+            resolve(api(original));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    }
+    return Promise.reject(error);
+  }
+);
+
+export { api };
+
+================================================================================
+FILE: ./frontend/src\services\apiAuth.ts
+================================================================================
+
+import type { AuthResponse, LoginCredentials, User } from "../types";
+
+const API_URL = "http://localhost:4000/api/v1";
+
+export async function login({
+  email,
+  password,
+}: LoginCredentials): Promise<User> {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Login failed");
+  }
+
+  const data: AuthResponse = await res.json();
+
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("user", JSON.stringify(data.data.user));
+
+  return data.data.user;
+}
+
+export async function logout(): Promise<void> {
+  const token = localStorage.getItem("token");
+
+  await fetch(`${API_URL}/auth/logout`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
+  });
+
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+}
+
+export function getCurrentUser(): User | null {
+  const user = localStorage.getItem("user");
+  return user ? JSON.parse(user) : null;
+}
+
+
+================================================================================
+FILE: ./frontend/src\services\normalise.ts
+================================================================================
+
+export function toArray<T>(input: unknown): T[] {
+  if (Array.isArray(input)) return input as T[];
+  return [];
+}
+
+
+================================================================================
+FILE: ./frontend/src\styles\GlobalStyles.ts
+================================================================================
+
+import { createGlobalStyle } from "styled-components";
+
+const GlobalStyles = createGlobalStyle`
+:root {
+  &, &.light-mode {
+  /* Grey */
+  --color-grey-0: #fff;
+  --color-grey-50: #f9fafb;
+  --color-grey-100: #f3f4f6;
+  --color-grey-200: #e5e7eb;
+  --color-grey-300: #d1d5db;
+  --color-grey-400: #9ca3af;
+  --color-grey-500: #6b7280;
+  --color-grey-600: #4b5563;
+  --color-grey-700: #374151;
+  --color-grey-800: #1f2937;
+  --color-grey-900: #111827;
+
+  --color-blue-100: #e0f2fe;
+  --color-blue-700: #0369a1;
+  --color-green-100: #dcfce7;
+  --color-green-700: #15803d;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-700: #a16207;
+  --color-silver-100: #e5e7eb;
+  --color-silver-700: #374151;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-700: #4338ca;
+
+  --color-red-100: #fee2e2;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+
+  --backdrop-color: rgba(255, 255, 255, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0px 0.6rem 2.4rem rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 2.4rem 3.2rem rgba(0, 0, 0, 0.12);
+  
+
+    --image-grayscale: 0;
+  --image-opacity: 100%;
+  }
+  
+  &.dark-mode {
+    --color-grey-0: #18212f;
+--color-grey-50: #111827;
+--color-grey-100: #1f2937;
+--color-grey-200: #374151;
+--color-grey-300: #4b5563;
+--color-grey-400: #6b7280;
+--color-grey-500: #9ca3af;
+--color-grey-600: #d1d5db;
+--color-grey-700: #e5e7eb;
+--color-grey-800: #f3f4f6;
+--color-grey-900: #f9fafb;
+
+--color-blue-100: #075985;
+--color-blue-700: #e0f2fe;
+--color-green-100: #166534;
+--color-green-700: #dcfce7;
+--color-yellow-100: #854d0e;
+--color-yellow-700: #fef9c3;
+--color-silver-100: #374151;
+--color-silver-700: #f3f4f6;
+--color-indigo-100: #3730a3;
+--color-indigo-700: #e0e7ff;
+
+--color-red-100: #fee2e2;
+--color-red-700: #b91c1c;
+--color-red-800: #991b1b;
+
+--backdrop-color: rgba(0, 0, 0, 0.3);
+
+--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+--shadow-md: 0px 0.6rem 2.4rem rgba(0, 0, 0, 0.3);
+--shadow-lg: 0 2.4rem 3.2rem rgba(0, 0, 0, 0.4);
+
+--image-grayscale: 10%;
+--image-opacity: 90%;
+  }
+  
+  /* Indigo */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  
+  --border-radius-tiny: 3px;
+  --border-radius-sm: 5px;
+  --border-radius-md: 7px;
+  --border-radius-lg: 9px;
+
+
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+
+  /* Creating animations for dark mode */
+  transition: background-color 0.3s, border 0.3s;
+}
+
+html {
+  font-size: 62.5%;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  color: var(--color-grey-700);
+
+  transition: color 0.3s, background-color 0.3s;
+  min-height: 100vh;
+  line-height: 1.5;
+  font-size: 1.6rem;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+*:disabled {
+  cursor: not-allowed;
+}
+
+select:disabled,
+input:disabled {
+  background-color: var(--color-grey-200);
+  color: var(--color-grey-500);
+}
+
+input:focus,
+button:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: -1px;
+}
+
+/* Parent selector, finally 😃 */
+button:has(svg) {
+  line-height: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul {
+  list-style: none;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+img {
+  max-width: 100%;
+
+  /* For dark mode */
+  filter: grayscale(var(--image-grayscale)) opacity(var(--image-opacity));
+}
+
+`;
+
+export default GlobalStyles;
+
+/*
+FOR DARK MODE
+
+--color-grey-0: #18212f;
+--color-grey-50: #111827;
+--color-grey-100: #1f2937;
+--color-grey-200: #374151;
+--color-grey-300: #4b5563;
+--color-grey-400: #6b7280;
+--color-grey-500: #9ca3af;
+--color-grey-600: #d1d5db;
+--color-grey-700: #e5e7eb;
+--color-grey-800: #f3f4f6;
+--color-grey-900: #f9fafb;
+
+--color-blue-100: #075985;
+--color-blue-700: #e0f2fe;
+--color-green-100: #166534;
+--color-green-700: #dcfce7;
+--color-yellow-100: #854d0e;
+--color-yellow-700: #fef9c3;
+--color-silver-100: #374151;
+--color-silver-700: #f3f4f6;
+--color-indigo-100: #3730a3;
+--color-indigo-700: #e0e7ff;
+
+--color-red-100: #fee2e2;
+--color-red-700: #b91c1c;
+--color-red-800: #991b1b;
+
+--backdrop-color: rgba(0, 0, 0, 0.3);
+
+--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+--shadow-md: 0px 0.6rem 2.4rem rgba(0, 0, 0, 0.3);
+--shadow-lg: 0 2.4rem 3.2rem rgba(0, 0, 0, 0.4);
+
+--image-grayscale: 10%;
+--image-opacity: 90%;
+*/
+
+
+================================================================================
+FILE: ./frontend/src\types\index.ts
+================================================================================
+
+export interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: "admin" | "manager" | "therapist" | "receptionist";
+  phone?: string;
+  profileImage?: string;
+  specializations?: string[];
+  bio?: string;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  category_id?: string;
+  category_name?: string;
+  brand?: string;
+  supplier_id?: string;
+  supplier_name?: string;
+  description?: string;
+  unit_of_measure: string;
+  unit_cost: number;
+  retail_price?: number;
+  reorder_level: number;
+  expiry_tracking: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryLevel {
+  id: string;
+  product_id: string;
+  product_name: string;
+  sku: string;
+  location_id: string;
+  location_name: string;
+  location_type: "storage" | "retail" | "treatment_room";
+  quantity_available: number;
+  quantity_reserved: number;
+  quantity_free: number;
+  reorder_level: number;
+  batch_number?: string;
+  expiry_date?: string;
+  last_updated: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  parent_category_id?: string;
+  parent_category_name?: string;
+  type: "retail" | "treatment_only" | "both";
+  product_count?: number;
+  created_at: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  payment_terms?: string;
+  lead_time_days: number;
+  is_active: boolean;
+  product_count?: number;
+  created_at: string;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  type: "storage" | "retail" | "treatment_room";
+  description?: string;
+  is_active: boolean;
+  product_count?: number;
+  total_items?: number;
+  created_at: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  sku: string;
+  category_id?: string;
+  brand?: string;
+  supplier_id?: string;
+  description?: string;
+  unit_of_measure: string;
+  unit_cost: number;
+  retail_price?: number;
+  reorder_level: number;
+  expiry_tracking: boolean;
+}
+
+export interface UpdateProductData extends Partial<CreateProductData> {}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  status: string;
+  token: string;
+  data: {
+    user: User;
+  };
+}
+
+export interface ApiResponse<T> {
+  status: string;
+  data: T;
+  results?: number;
+  total?: number;
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\AppLayout.tsx
+================================================================================
+
+import { Outlet } from "react-router-dom";
+import styled from "styled-components";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
+
+const Shell = styled.div`
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 64px 1fr;
+  grid-template-areas: "sidebar topbar" "sidebar main";
+  height: 100dvh;
+`;
+const Main = styled.main`
+  grid-area: main;
+  padding: 24px;
+  border-left: 1px solid ${(p) => p.theme.color.border};
+`;
+
+export default function AppLayout() {
+  return (
+    <Shell>
+      <Sidebar />
+      <Topbar />
+      <Main>
+        <Outlet />
+      </Main>
+    </Shell>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\ErrorFallback.tsx
+================================================================================
+
+import styled from "styled-components";
+import Heading from "./components/Heading";
+import GlobalStyles from "../styles/GlobalStyles";
+import Button from "./components/Button";
+
+const StyledErrorFallback = styled.main`
+  height: 100vh;
+  background-color: var(--color-grey-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4.8rem;
+`;
+
+const Box = styled.div`
+  /* Box */
+  background-color: var(--color-grey-0);
+  border: 1px solid var(--color-grey-100);
+  border-radius: var(--border-radius-md);
+
+  padding: 4.8rem;
+  flex: 0 1 96rem;
+  text-align: center;
+
+  & h1 {
+    margin-bottom: 1.6rem;
+  }
+
+  & p {
+    font-family: "Sono";
+    margin-bottom: 3.2rem;
+    color: var(--color-grey-500);
+  }
+`;
+type ErrorFallbackProps = {
+  error: Error;
+  resetErrorBoundary: () => void;
+};
+
+function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
+  return (
+    <>
+      <GlobalStyles />
+      <StyledErrorFallback>
+        <Box>
+          <Heading as="h1">Something went wrong 🧐</Heading>
+          <p>{error.message}</p>
+          <Button size="large" onClick={resetErrorBoundary}>
+            Try again
+          </Button>
+        </Box>
+      </StyledErrorFallback>
+    </>
+  );
+}
+
+export default ErrorFallback;
+
+
+================================================================================
+FILE: ./frontend/src\ui\Header.tsx
+================================================================================
+
+import React, { useState } from "react";
+import {
+  Search,
+  Plus,
+  Package,
+  AlertTriangle,
+  ArrowRight,
+  Edit2,
+  Trash2,
+  Filter,
+} from "lucide-react";
+
+function Header() {
+  const [activeTab, setActiveTab] = useState("products");
+  const [products, setProducts] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterLowStock, setFilterLowStock] = useState(false);
+
+  const openModal = (type: React.SetStateAction<string>, product = null) => {
+    setModalType(type);
+    setSelectedProduct(product);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedProduct(null);
+  };
+
+  return (
+    <header className="bg-white shadow">
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Package className="w-8 h-8 text-purple-600" />
+            <h1 className="text-2xl font-bold text-gray-900">
+              Stock Management
+            </h1>
+          </div>
+          <button
+            onClick={() => openModal("create")}
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default Header;
+
+
+================================================================================
+FILE: ./frontend/src\ui\NotFound.tsx
+================================================================================
+
+import { Link, useNavigate } from "react-router-dom";
+import styled from "styled-components";
+import Heading from "./components/Heading";
+import Button from "./components/Button";
+
+const Wrap = styled.div`
+  min-height: calc(100dvh - 64px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+`;
+
+const Card = styled.div`
+  background: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.lg};
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  padding: 28px;
+  width: min(720px, 100%);
+  text-align: center;
+`;
+
+const Sub = styled.p`
+  margin: 8px 0 16px;
+  color: ${({ theme }) => theme.color.mutedText};
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+`;
+
+export default function NotFound() {
+  const navigate = useNavigate();
+  return (
+    <Wrap>
+      <Card>
+        <Heading level="h1">Page not found</Heading>
+        <Sub>The page you’re looking for doesn’t exist or has moved.</Sub>
+        <Actions>
+          <Button onClick={() => navigate(-1)} variation="secondary">
+            Go back
+          </Button>
+          <Link to="/">
+            <Button>Go to dashboard</Button>
+          </Link>
+        </Actions>
+      </Card>
+    </Wrap>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\Sidebar.tsx
+================================================================================
+
+import { NavLink } from "react-router-dom";
+import styled from "styled-components";
+
+const Aside = styled.aside`
+  grid-area: sidebar;
+  padding: 24px;
+  border-right: 1px solid ${(p) => p.theme.color.border};
+  background: #111;
+`;
+const Brand = styled.div`
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 24px;
+  color: ${(p) => p.theme.color.brand600};
+`;
+const Nav = styled.nav`
+  display: grid;
+  gap: 8px;
+  a {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  a.active {
+    background: ${(p) => p.theme.color.panel};
+  }
+`;
+
+export default function Sidebar() {
+  return (
+    <Aside>
+      <Brand>Studio S • Manager</Brand>
+      <Nav>
+        <NavLink to="/">Dashboard</NavLink>
+        <NavLink to="/products">Products</NavLink>
+        <NavLink to="/stock">Stock</NavLink>
+        <NavLink to="/treatments">Treatments</NavLink>
+        <NavLink to="/clients">Clients</NavLink>
+        <NavLink to="/appointments">Appointments</NavLink>
+      </Nav>
+    </Aside>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\Theme.ts
+================================================================================
+
+// src/ui/theme.ts
+import { createGlobalStyle } from "styled-components";
+import "styled-components";
+
+declare module "styled-components" {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  export interface DefaultTheme extends Palette {}
+}
+
+type Palette = {
+  color: {
+    grey0: string;
+    grey50: string;
+    grey100: string;
+    grey200: string;
+    grey300: string;
+    grey400: string;
+    grey500: string;
+    grey600: string;
+    grey700: string;
+    grey800: string;
+    grey900: string;
+    brand50: string;
+    brand100: string;
+    brand200: string;
+    brand300: string;
+    brand400: string;
+    brand500: string;
+    brand600: string;
+    brand700: string;
+    brand800: string;
+    brand900: string;
+    red500: string;
+    red600: string;
+    green500: string;
+    blue500: string;
+    bg: string;
+    panel: string;
+    text: string;
+    border: string;
+    mutedText: string;
+    focus: string;
+  };
+  shadowSm: string;
+  shadowMd: string;
+  shadowLg: string;
+  radii: { sm: string; md: string; lg: string; round: string };
+};
+
+export const lightTheme: Palette = {
+  color: {
+    // Greys (light)
+    grey0: "#ffffff",
+    grey50: "#f9fafb",
+    grey100: "#f3f4f6",
+    grey200: "#e5e7eb",
+    grey300: "#d1d5db",
+    grey400: "#9ca3af",
+    grey500: "#6b7280",
+    grey600: "#4b5563",
+    grey700: "#374151",
+    grey800: "#1f2937",
+    grey900: "#111827",
+    // Studio S brand (gold)
+    brand50: "#faf5eb",
+    brand100: "#f1e5ca",
+    brand200: "#e7d3a4",
+    brand300: "#d9b874",
+    brand400: "#cb9f4f",
+    brand500: "#C2A56F",
+    brand600: "#b69256",
+    brand700: "#a67e3e",
+    brand800: "#8f6a2f",
+    brand900: "#745422",
+    // Semantics
+    red500: "#ef4444",
+    red600: "#dc2626",
+    green500: "#22c55e",
+    blue500: "#3b82f6",
+    // Surfaces
+    bg: "#f9fafb",
+    panel: "#ffffff",
+    text: "#111827",
+    border: "#e5e7eb",
+    mutedText: "#6b7280",
+    focus: "#f1e5ca",
+  },
+  shadowSm: "0 1px 2px rgba(0,0,0,0.05)",
+  shadowMd: "0 4px 6px rgba(0,0,0,0.08)",
+  shadowLg: "0 10px 15px rgba(0,0,0,0.1)",
+  radii: { sm: "8px", md: "12px", lg: "16px", round: "9999px" },
+};
+
+export const darkTheme: Palette = {
+  color: {
+    // Greys (dark tuned)
+    grey0: "#0b0b0c",
+    grey50: "#111214",
+    grey100: "#141518",
+    grey200: "#1a1c20",
+    grey300: "#23262b",
+    grey400: "#3a3f46",
+    grey500: "#565d66",
+    grey600: "#79808a",
+    grey700: "#a0a6af",
+    grey800: "#c7cbd1",
+    grey900: "#eef0f2",
+    // Brand (gold) adapted for dark—keep same hexes but contrast with dark surfaces
+    brand50: "#2b2518",
+    brand100: "#3a301d",
+    brand200: "#5a4a29",
+    brand300: "#7a6436",
+    brand400: "#9a7e42",
+    brand500: "#C2A56F",
+    brand600: "#d1b780",
+    brand700: "#dec695",
+    brand800: "#ead7b1",
+    brand900: "#f4ead2",
+    // Semantics
+    red500: "#ef4444",
+    red600: "#dc2626",
+    green500: "#34d399",
+    blue500: "#60a5fa",
+    // Surfaces
+    bg: "#0f1113",
+    panel: "#15181c",
+    text: "#eef0f2",
+    border: "#23262b",
+    mutedText: "#a0a6af",
+    focus: "#3a301d",
+  },
+  shadowSm: "0 1px 2px rgba(0,0,0,0.35)",
+  shadowMd: "0 4px 10px rgba(0,0,0,0.45)",
+  shadowLg: "0 18px 30px rgba(0,0,0,0.55)",
+  radii: { sm: "8px", md: "12px", lg: "16px", round: "9999px" },
+};
+
+// Default export keeps backward compatibility (light first)
+export const theme = lightTheme;
+
+export const GlobalStyle = createGlobalStyle`
+  :root { color-scheme: light dark; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body, #root { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif;
+    background: ${({ theme }) => theme.color.bg};
+    color: ${({ theme }) => theme.color.text};
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; text-decoration: none; }
+  button, input, select, textarea { font: inherit; }
+  ::selection { background: ${({ theme }) => theme.color.brand100}; color: ${({
+  theme,
+}) => theme.color.text}; }
+`;
+
+
+================================================================================
+FILE: ./frontend/src\ui\Topbar.tsx
+================================================================================
+
+import styled from "styled-components";
+import { useAuth } from "../modules/auth/AuthContext";
+
+const Bar = styled.header`
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  border-bottom: 1px solid ${(p) => p.theme.color.border};
+`;
+const Button = styled.button`
+  background: transparent;
+  border: 1px solid ${(p) => p.theme.color.border};
+  color: inherit;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+`;
+
+export default function Topbar() {
+  const { user, signOut } = useAuth();
+  return (
+    <Bar>
+      <div style={{ marginRight: "auto", opacity: 0.8 }}>
+        Welcome {user?.name}
+      </div>
+      <Button onClick={signOut}>Sign out</Button>
+    </Bar>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\components\Button.tsx
+================================================================================
+
+import styled, { css } from "styled-components";
+
+type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variation?: "primary" | "secondary" | "danger";
+  size?: "small" | "medium" | "large";
+};
+
+const variations = {
+  primary: css`
+    background: ${({ theme }) => theme.color.brand600};
+    color: white;
+    border: 1px solid ${({ theme }) => theme.color.brand600};
+    &:hover {
+      background: ${({ theme }) => theme.color.brand700};
+    }
+  `,
+  secondary: css`
+    background: ${({ theme }) => theme.color.grey0};
+    color: ${({ theme }) => theme.color.grey800};
+    border: 1px solid ${({ theme }) => theme.color.grey300};
+    &:hover {
+      background: ${({ theme }) => theme.color.grey100};
+    }
+  `,
+  danger: css`
+    background: ${({ theme }) => theme.color.red600};
+    color: white;
+    border: 1px solid ${({ theme }) => theme.color.red600};
+  `,
+};
+
+const sizes = {
+  small: css`
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  `,
+  medium: css`
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+  `,
+  large: css`
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 16px;
+  `,
+};
+
+const Btn = styled.button<Props>`
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  ${(p) => variations[p.variation || "primary"]}
+  ${(p) => sizes[p.size || "medium"]}
+`;
+
+export default function Button({
+  variation = "primary",
+  size = "medium",
+  ...rest
+}: Props) {
+  return <Btn variation={variation} size={size} {...rest} />;
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\components\Form.tsx
+================================================================================
+
+import styled from "styled-components";
+
+export const Form = styled.form`
+  display: grid;
+  gap: 12px;
+  align-content: start;
+`;
+
+export const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+  align-items: center;
+  label {
+    color: ${({ theme }) => theme.color.grey700};
+    font-weight: 600;
+  }
+`;
+
+
+================================================================================
+FILE: ./frontend/src\ui\components\Heading.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const sizes = { h1: "28px", h2: "22px", h3: "18px" } as const;
+type Level = keyof typeof sizes;
+
+type Props = React.HTMLAttributes<HTMLHeadingElement> & {
+  level?: Level;
+  as?: Level; // allow <H as="h3" /> usage
+};
+
+const StyledHeading = styled.h2<{ $level: Level }>`
+  font-size: ${({ $level }) => sizes[$level]};
+  font-weight: 800;
+  color: ${({ theme }) => theme.color.grey900};
+  margin-bottom: 12px;
+`;
+
+export default function Heading({ level, as, children, ...rest }: Props) {
+  const resolved: Level = (level ?? as ?? "h2") as Level;
+  return (
+    <StyledHeading as={as ?? resolved} $level={resolved} {...rest}>
+      {children}
+    </StyledHeading>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src\ui\components\Input.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const Input = styled.input`
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid ${({ theme }) => theme.color.grey300};
+  background: ${({ theme }) => theme.color.grey0};
+  color: ${({ theme }) => theme.color.grey900};
+  &:focus {
+    outline: 3px solid ${({ theme }) => theme.color.brand100};
+  }
+`;
+export default Input;
+
+
+================================================================================
+FILE: ./frontend/src\ui\components\Row.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const Row = styled.div`
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 380px;
+`;
+export default Row;
+
+
+================================================================================
+FILE: ./frontend/src\ui\components\Table.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  background: ${({ theme }) => theme.color.grey0};
+  border: 1px solid ${({ theme }) => theme.color.grey200};
+  border-radius: 12px;
+  overflow: hidden;
+  thead {
+    background: ${({ theme }) => theme.color.grey100};
+  }
+  th,
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid ${({ theme }) => theme.color.grey200};
+    text-align: left;
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+`;
+export default Table;
