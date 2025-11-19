@@ -33,7 +33,12 @@ type Palette = {
     red500: string;
     red600: string;
     green500: string;
+    blue100: string;
     blue500: string;
+    green100: string;
+    green700: string;
+    yellow100: string;
+    yellow700: string;
     bg: string;
     panel: string;
     text: string;
@@ -76,7 +81,12 @@ export const lightTheme: Palette = {
     red500: "#ef4444",
     red600: "#dc2626",
     green500: "#22c55e",
+    blue100: "#dbeafe",
     blue500: "#3b82f6",
+    green100: "#dcfce7",
+    green700: "#15803d",
+    yellow100: "#fef9c3",
+    yellow700: "#a16207",
     // Surfaces
     bg: "#f9fafb",
     panel: "#ffffff",
@@ -120,7 +130,12 @@ export const darkTheme: Palette = {
     red500: "#ef4444",
     red600: "#dc2626",
     green500: "#34d399",
+    blue100: "#dbeafe",
     blue500: "#60a5fa",
+    green100: "#166534", // adapted dark variants if needed
+    green700: "#dcfce7",
+    yellow100: "#854d0e",
+    yellow700: "#fef9c3",
     // Surfaces
     bg: "#0f1113",
     panel: "#15181c",

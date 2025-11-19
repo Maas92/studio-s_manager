@@ -1,25 +1,33 @@
-// Not used right now because I don't understand how to implement
-// styled-components theming is currently being used
-
+import React from "react";
 import styled, { useTheme } from "styled-components";
 
-const Card = ({ children, className = "", style = {} }) => {
-  const { theme } = useTheme();
-  return (
-    <div
-      className={className}
-      style={{
-        background: theme.color.panel,
-        border: `1px solid ${theme.color.border}`,
-        borderRadius: theme.radii.lg,
-        padding: "20px",
-        boxShadow: theme.shadowMd,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
+type Props = React.HTMLAttributes<HTMLDivElement> & {
+  children: React.ReactNode;
 };
+
+const Wrapper = styled.div`
+  border-radius: ${({ theme }) => theme.radii.lg};
+  padding: 20px;
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const Card = React.forwardRef<HTMLDivElement, Props>(function Card(
+  { children, className, style, ...rest },
+  ref
+) {
+  // ensure theme usage so styled-components' theming type-checks correctly
+  const theme = useTheme();
+  void theme;
+
+  return (
+    <Wrapper ref={ref} className={className} style={style} {...rest}>
+      {children}
+    </Wrapper>
+  );
+});
+
+Card.displayName = "Card";
 
 export default Card;

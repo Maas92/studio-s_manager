@@ -4,8 +4,10 @@ import ActionButton from "./components/ActionButton";
 import {
   Calendar,
   Package,
+  Paintbrush,
   ShoppingCart,
   TrendingUp,
+  User,
   Users,
 } from "lucide-react";
 
@@ -27,8 +29,14 @@ const DEFAULT_TABS: Tab[] = [
   },
   { id: "pos", to: "/POS", label: "POS", icon: ShoppingCart },
   { id: "stock", to: "/stock", label: "Stock", icon: Package },
-  { id: "staff", to: "/staff", label: "Staff", icon: Users },
+  { id: "staff", to: "/staff", label: "Staff", icon: User },
   { id: "clients", to: "/clients", label: "Clients", icon: Users },
+  {
+    id: "treatments",
+    to: "/treatments",
+    label: "Treatments",
+    icon: Paintbrush,
+  },
 ];
 
 const Aside = styled.aside`

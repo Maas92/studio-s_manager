@@ -8,7 +8,8 @@ const Shell = styled.div`
   grid-template-columns: 260px 1fr;
   grid-template-rows: 64px 1fr;
   grid-template-areas: "sidebar topbar" "sidebar main";
-  height: 100dvh;
+  height: auto;
+  /* width: auto; */
   background: ${({ theme }) => theme.color.bg};
   color: ${({ theme }) => theme.color.text};
 `;

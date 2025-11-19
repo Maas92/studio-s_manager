@@ -52,7 +52,7 @@ const sizes = {
     border-radius: 16px;
     font-size: 16px;
   `,
-};
+} as const;
 
 const Btn = styled.button<Props>`
   cursor: pointer;
@@ -61,8 +61,8 @@ const Btn = styled.button<Props>`
   align-items: center;
   gap: 8px;
   box-shadow: ${({ theme }) => theme.shadowSm};
-  ${(p) => variations[p.variation || "primary"]}
-  ${(p) => sizes[p.size || "medium"]}
+  ${(p) => variations[p.variation ?? "primary"]}
+  ${(p) => sizes[p.size ?? "medium"]}
 `;
 
 const Button = React.forwardRef<HTMLButtonElement, Props>(function Button(
@@ -71,5 +71,7 @@ const Button = React.forwardRef<HTMLButtonElement, Props>(function Button(
 ) {
   return <Btn ref={ref} variation={variation} size={size} {...rest} />;
 });
+
+Button.displayName = "Button";
 
 export default Button;
