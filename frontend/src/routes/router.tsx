@@ -10,6 +10,7 @@ import AuthCallback from "../modules/auth/AuthCallback";
 import SignInRedirect from "../modules/auth/SignInRedirect";
 import NotFound from "../ui/NotFound.js";
 import Staff from "../modules/staff/Staff.js";
+import POS from "../modules/POS/POS";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "stock", element: <Stock /> },
+      { path: "pos", element: <POS /> },
       { path: "treatments", element: <Treatments /> },
       { path: "clients", element: <Clients /> },
       { path: "staff", element: <Staff /> },

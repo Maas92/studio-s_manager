@@ -1,4 +1,3 @@
-// pages/stock/Stock.tsx
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import toast from "react-hot-toast";

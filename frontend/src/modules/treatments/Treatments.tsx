@@ -9,7 +9,6 @@ import {
   type CreateTreatmentInput,
 } from "./api";
 import { listClients, listStaff } from "../appointments/api";
-import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import Spinner from "../../ui/components/Spinner";
 import TreatmentDetailModal from "./TreatmentDetailModal";
@@ -315,7 +314,7 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
           t.tags?.some((tag) => tag.toLowerCase().includes(query))
       );
     }
-
+    console.log(treatments);
     return filtered.sort(
       (a, b) => (b.popularityScore || 0) - (a.popularityScore || 0)
     );

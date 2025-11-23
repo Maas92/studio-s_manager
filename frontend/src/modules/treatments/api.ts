@@ -1,6 +1,7 @@
 import { api } from "../../services/api";
 import { z } from "zod";
 import { toArray } from "../../services/normalise";
+import { mockTreatments } from "./mockTreatments";
 
 // Schemas
 export const TreatmentSchema = z.object({
@@ -41,8 +42,15 @@ export const CreateTreatmentSchema = z.object({
 export type Treatment = z.infer<typeof TreatmentSchema>;
 export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 
+const USE_MOCK_DATA = true;
+
 // API Functions
 export async function listTreatments(): Promise<Treatment[]> {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return mockTreatments;
+  }
+
   try {
     const { data } = await api.get("/treatments");
     const treatments = toArray<Treatment>(data);

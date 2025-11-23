@@ -265,7 +265,7 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export default function Staff({ isAdmin = false }: StaffProps) {
+export default function Staff({ isAdmin = true }: StaffProps) {
   const queryClient = useQueryClient();
   const [selectedMember, setSelectedMember] = useState<StaffMember | null>(
     null
