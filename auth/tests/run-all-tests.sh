@@ -29,15 +29,15 @@ npm run test:integration
 
 # Run auth tests
 echo -e "\n${YELLOW}🔐 Running Authentication Tests...${NC}"
-./tests/auth-tests.sh
+./auth-tests.sh
 
 # Run security tests
 echo -e "\n${YELLOW}🛡️  Running Security Tests...${NC}"
-./tests/security-tests.sh
+./security-tests.sh
 
 # Run performance tests
 echo -e "\n${YELLOW}⚡ Running Performance Tests...${NC}"
-node tests/performance/benchmark.js
+node ./performance/benchmark.js
 
 # Generate coverage report
 echo -e "\n${YELLOW}📊 Generating Coverage Report...${NC}"
