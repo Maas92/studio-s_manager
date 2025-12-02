@@ -5,6 +5,7 @@ import {
   listTreatments,
   updateTreatment,
   deleteTreatment,
+  createTreatment,
   type Treatment,
   type CreateTreatmentInput,
 } from "./api";
@@ -17,6 +18,9 @@ import AppointmentModal, {
 } from "../appointments/AppointmentsModal";
 import { Search, Clock, DollarSign, TrendingUp, Sparkles } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
+import CreateTreatmentModal from "./CreateTreatmentModal";
+import { Plus } from "lucide-react"; // if not already imported
+import Button from "../../ui/components/Button";
 
 interface TreatmentsProps {
   isAdmin?: boolean;
@@ -214,6 +218,7 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
     null
   );
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormValues>(
     INITIAL_APPOINTMENT_FORM
@@ -283,6 +288,25 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
     onError: (error) => {
       toast.error(
         error instanceof Error ? error.message : "Failed to delete treatment",
+        { duration: 5000, position: "top-right" }
+      );
+    },
+  });
+
+  // Create Mutation
+  const createMutation = useMutation({
+    mutationFn: (values: CreateTreatmentInput) => createTreatment(values),
+    onSuccess: (newTreatment) => {
+      queryClient.invalidateQueries({ queryKey: ["treatments"] });
+      setShowCreateModal(false);
+      toast.success("Treatment created", {
+        duration: 3000,
+        position: "top-right",
+      });
+    },
+    onError: (err) => {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create treatment",
         { duration: 5000, position: "top-right" }
       );
     },
@@ -380,6 +404,14 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
       <StickyHeader>
         <HeaderRow>
           <PageTitle>Treatments</PageTitle>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            variation="primary"
+            size="medium"
+          >
+            <Plus size={18} />
+            New Treatment
+          </Button>
         </HeaderRow>
 
         <SearchBar>
@@ -478,6 +510,15 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
         updating={updateMutation.isPending}
         deleting={deleteMutation.isPending}
         isAdmin={isAdmin}
+      />
+
+      <CreateTreatmentModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={(values: CreateTreatmentInput) =>
+          createMutation.mutate(values)
+        }
+        creating={createMutation.isPending}
       />
 
       <AppointmentModal

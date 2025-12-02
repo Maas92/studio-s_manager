@@ -15,6 +15,10 @@ const envSchema = z.object({
   JWT_AUDIENCE: z.string().default("studio-s-clients"),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
+  JWKS_URL: z
+    .string()
+    .url()
+    .default("http://localhost:5002/.well-known/jwks.json"),
 });
 
 export type Env = z.infer<typeof envSchema>;

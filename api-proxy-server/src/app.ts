@@ -11,6 +11,7 @@ import { requestId } from "./middleware/requestId.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { env } from "./config/env.js";
 import { queryParser } from "./middleware/queryParser.js";
+import bodyParser from "body-parser";
 
 const app: Application = express();
 
@@ -39,12 +40,12 @@ app.use(cors(corsOptions));
 // app.options("*", cors(corsOptions));
 
 // Body parser
-app.use(
-  express.json({
-    limit: "10kb",
-    strict: true,
-  })
-);
+app.use((req, res, next) => {
+  if (req.path.startsWith("/auth")) {
+    return next(); // leave body as stream for proxy
+  }
+  return bodyParser.json({ limit: "10kb" })(req, res, next);
+});
 
 app.use(
   express.urlencoded({

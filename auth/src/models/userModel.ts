@@ -8,7 +8,7 @@ export interface IUser extends Document {
   name?: string;
   email: string;
   phone?: string;
-  role: "admin" | "manager" | "therapist" | "receptionist";
+  role: "owner" | "admin" | "manager" | "therapist" | "receptionist";
   password: string;
   passwordChangedAt?: Date;
   passwordResetToken?: string;
@@ -62,7 +62,7 @@ const userSchema = new Schema<IUser>(
     role: {
       type: String,
       enum: {
-        values: ["admin", "manager", "therapist", "receptionist"],
+        values: ["owner", "admin", "manager", "therapist", "receptionist"],
         message: "Role must be admin, manager, therapist, or receptionist",
       },
       default: "therapist",

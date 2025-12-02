@@ -1,25 +1,32 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useState, useCallback, useMemo } from "react";
-import styled from "styled-components";
-import { Check } from "lucide-react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import POSStepWrapper from "./POSStepWrapper";
 import ClientSelection from "./ClientSelection";
 import ItemSelection from "./ItemSelection";
 import StaffAssignment from "./StaffAssignment";
 import Payment from "./Payment";
 import CreateClientModal from "./CreateClientModal";
+import ReceiptAndNextAppointment from "./ReceiptAndNextAppointment";
 import {
   createTransaction,
   createClient,
+  createAppointment as createAppointmentAPI,
   completeAppointment,
   updateStockAfterSale,
+  saveDraft,
+  loadDraft,
+  clearDraft,
   type CartItem,
   type CreateTransactionInput,
   type CreateClientInput,
+  type CreateAppointmentInput,
+  type Discount,
+  type Tips,
+  type PaymentBreakdown,
+  type CartValidation,
+  type Transaction,
 } from "./api";
-
-// For development - replace with real API calls
 import {
   mockClients,
   mockAppointments,
@@ -32,50 +39,6 @@ interface PointOfSaleProps {
   isAdmin?: boolean;
 }
 
-const SuccessScreen = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-`;
-
-const SuccessIcon = styled.div`
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.color.green500};
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 2rem;
-  animation: scaleIn 0.3s ease-out;
-
-  @keyframes scaleIn {
-    from {
-      transform: scale(0);
-    }
-    to {
-      transform: scale(1);
-    }
-  }
-`;
-
-const SuccessTitle = styled.h2`
-  font-size: 2rem;
-  font-weight: 800;
-  color: ${({ theme }) => theme.color.text};
-  margin: 0 0 0.5rem 0;
-`;
-
-const SuccessMessage = styled.p`
-  font-size: 1.125rem;
-  color: ${({ theme }) => theme.color.mutedText};
-  margin: 0 0 2rem 0;
-`;
-
 export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
   const queryClient = useQueryClient();
 
@@ -87,22 +50,69 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
   const [clientType, setClientType] = useState<"booked" | "walk-in">("booked");
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedClientData, setSelectedClientData] = useState<any>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] =
+    useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [discount, setDiscount] = useState({
-    type: "percentage" as "percentage" | "fixed",
+  const [discount, setDiscount] = useState<Discount>({
+    type: "percentage",
     value: 0,
   });
+  const [tips, setTips] = useState<Tips>({});
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
+
+  // Product stock tracking
+  const [productStock, setProductStock] = useState<Record<string, number>>({});
 
   // Modal state
   const [showCreateClient, setShowCreateClient] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [completedTransaction, setCompletedTransaction] =
+    useState<Transaction | null>(null);
 
-  // Using mock data - replace with real queries
+  // Using mock data
   const clients = mockClients;
-  const appointments = mockAppointments;
+  const appointments = mockAppointments || [];
   const products = mockProducts;
   const treatments = mockTreatments;
   const staff = mockStaff;
+
+  // Initialize product stock
+  useEffect(() => {
+    const stockMap: Record<string, number> = {};
+    products.forEach((product) => {
+      stockMap[product.id] = product.stock || 0;
+    });
+    setProductStock(stockMap);
+  }, [products]);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (cart.length === 0 || currentStep === 1 || completedTransaction) return;
+
+    const timer = setTimeout(() => {
+      const draft = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        clientId: selectedClient,
+        clientData: selectedClientData,
+        cart,
+        discount,
+        tips,
+        currentStep,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      };
+      saveDraft(draft);
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, [
+    cart,
+    selectedClient,
+    selectedClientData,
+    discount,
+    tips,
+    currentStep,
+    completedTransaction,
+  ]);
 
   // Mutations
   const createClientMutation = useMutation({
@@ -112,6 +122,7 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
       setSelectedClientData(newClient);
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast.success("Client created successfully!");
+      markStepCompleted(1);
       goToStep(2);
     },
     onError: (error) => {
@@ -123,7 +134,7 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
 
   const createTransactionMutation = useMutation({
     mutationFn: createTransaction,
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       // Mark appointments as completed
       const appointmentItems = cart.filter(
         (item) => item.type === "appointment"
@@ -141,22 +152,44 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
 
-      setShowSuccess(true);
+      clearDraft();
+      setCompletedTransaction(data);
+      markStepCompleted(needsStaffAssignment ? 4 : 3);
 
-      setTimeout(() => {
-        resetPOS();
-      }, 3000);
+      toast.success("Transaction completed successfully!", {
+        duration: 4000,
+        icon: "✅",
+      });
     },
     onError: (error) => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to complete transaction"
+          : "Failed to complete transaction",
+        { duration: 5000 }
       );
     },
   });
 
-  // Calculate if treatments need staff (for step visibility)
+  const createAppointmentMutation = useMutation({
+    mutationFn: createAppointmentAPI,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success(`Appointment booked for ${data.clientName || "client"}!`, {
+        duration: 4000,
+        position: "top-right",
+      });
+      resetPOS();
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to book appointment",
+        { duration: 5000 }
+      );
+    },
+  });
+
+  // Calculate if treatments need staff
   const needsStaffAssignment = useMemo(
     () =>
       cart.some(
@@ -165,8 +198,28 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
     [cart]
   );
 
-  // Define steps based on needs
+  // Define steps
   const steps = useMemo(() => {
+    if (completedTransaction) {
+      return [
+        { number: 1, label: "Select Client", completed: true },
+        { number: 2, label: "Add Items", completed: true },
+        ...(needsStaffAssignment
+          ? [{ number: 3, label: "Assign Staff", completed: true }]
+          : []),
+        {
+          number: needsStaffAssignment ? 4 : 3,
+          label: "Payment",
+          completed: true,
+        },
+        {
+          number: needsStaffAssignment ? 5 : 4,
+          label: "Complete",
+          completed: true,
+        },
+      ];
+    }
+
     const baseSteps = [
       {
         number: 1,
@@ -196,11 +249,12 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
     }
 
     return baseSteps;
-  }, [completedSteps, needsStaffAssignment]);
+  }, [completedSteps, needsStaffAssignment, completedTransaction]);
 
   // Navigation
   const goToStep = useCallback((step: number) => {
     setCurrentStep(step);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   const markStepCompleted = useCallback((step: number) => {
@@ -214,24 +268,57 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
     setClientType("booked");
     setSelectedClient("");
     setSelectedClientData(null);
+    setSelectedAppointmentId("");
     setCart([]);
     setDiscount({ type: "percentage", value: 0 });
-    setShowSuccess(false);
+    setTips({});
+    setLoyaltyPointsToRedeem(0);
+    setCompletedTransaction(null);
+    clearDraft();
   }, []);
 
   // Step 1: Client Selection
   const handleSelectClient = useCallback(
-    (clientId: string, type: "booked" | "walk-in") => {
+    (
+      clientId: string,
+      type: "booked" | "walk-in",
+      appointmentId?: string,
+      verified?: boolean
+    ) => {
       setClientType(type);
       if (clientId) {
         setSelectedClient(clientId);
         const client = clients.find((c) => c.id === clientId);
         setSelectedClientData(client || null);
       }
+      if (appointmentId) {
+        setSelectedAppointmentId(appointmentId);
+
+        const apt = appointments.find((a) => a.id === appointmentId);
+        if (apt) {
+          setCart([
+            {
+              id: apt.id,
+              type: "appointment",
+              name: apt.treatmentName,
+              price: apt.price,
+              originalPrice: apt.price,
+              quantity: 1,
+              appointmentId: apt.id,
+              clientName: apt.clientName,
+              staffId: apt.staffId,
+              staffName: apt.staffName,
+              duration: apt.duration,
+              isAppointmentCheckin: true,
+              locked: true,
+            },
+          ]);
+        }
+      }
       markStepCompleted(1);
       goToStep(2);
     },
-    [clients, markStepCompleted, goToStep]
+    [clients, appointments, markStepCompleted, goToStep]
   );
 
   const handleCreateClient = useCallback(
@@ -243,21 +330,24 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
   );
 
   // Step 2: Item Selection
-  const addToCart = useCallback((item: Omit<CartItem, "quantity">) => {
-    setCart((prev) => {
-      const existing = prev.find(
-        (i) => i.id === item.id && i.type === item.type
-      );
-      if (existing && item.type === "product") {
-        return prev.map((i) =>
-          i.id === item.id && i.type === item.type
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
-        );
+  const addToCart = useCallback(
+    (item: Omit<CartItem, "quantity">, validation: CartValidation) => {
+      if (!validation.canAdd) {
+        toast.error(validation.reason || "Cannot add item to cart");
+        return;
       }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  }, []);
+
+      if (validation.warnings) {
+        validation.warnings.forEach((warning) => {
+          toast(warning, { icon: "⚠️", duration: 3000 });
+        });
+      }
+
+      setCart((prev) => [...prev, { ...item, quantity: 1 }]);
+      toast.success(`${item.name} added to cart`);
+    },
+    []
+  );
 
   const updateQuantity = useCallback(
     (id: string, type: string, delta: number) => {
@@ -265,6 +355,10 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
         prev.map((item) => {
           if (item.id === id && item.type === type) {
             const newQuantity = Math.max(1, item.quantity + delta);
+            if (item.maxQuantity && newQuantity > item.maxQuantity) {
+              toast.error("Maximum quantity reached");
+              return item;
+            }
             return { ...item, quantity: newQuantity };
           }
           return item;
@@ -278,16 +372,32 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
     setCart((prev) =>
       prev.filter((item) => !(item.id === id && item.type === type))
     );
+    toast.success("Item removed from cart");
   }, []);
 
-  const handleStep2Next = useCallback(() => {
+  const updateNotes = useCallback((id: string, type: string, notes: string) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.id === id && item.type === type) {
+          return { ...item, notes };
+        }
+        return item;
+      })
+    );
+  }, []);
+
+  const handleItemSelectionNext = useCallback(() => {
+    if (cart.length === 0) {
+      toast.error("Please add at least one item to cart");
+      return;
+    }
     markStepCompleted(2);
     if (needsStaffAssignment) {
       goToStep(3);
     } else {
-      goToStep(3); // Go to payment (which is step 3 when no staff needed)
+      goToStep(3);
     }
-  }, [markStepCompleted, goToStep, needsStaffAssignment]);
+  }, [cart.length, markStepCompleted, goToStep, needsStaffAssignment]);
 
   // Step 3: Staff Assignment
   const assignStaff = useCallback(
@@ -300,43 +410,72 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
           return item;
         })
       );
+      toast.success(`${staffName} assigned`);
     },
     []
   );
 
-  const handleStep3Next = useCallback(() => {
+  const handleStaffAssignmentNext = useCallback(() => {
+    const allAssigned = cart
+      .filter(
+        (item) => item.type === "treatment" || item.type === "appointment"
+      )
+      .every((item) => item.staffId);
+
+    if (!allAssigned) {
+      toast.error("Please assign staff to all treatments");
+      return;
+    }
+
     markStepCompleted(3);
     goToStep(4);
-  }, [markStepCompleted, goToStep]);
+  }, [cart, markStepCompleted, goToStep]);
 
   // Step 4: Payment
   const handlePaymentComplete = useCallback(
-    (paymentMethod: "cash" | "card" | "split", cashReceived?: number) => {
+    (payments: PaymentBreakdown[]) => {
       const transactionInput: CreateTransactionInput = {
         clientId: selectedClient || undefined,
         items: cart,
         discount,
-        paymentMethod,
-        cashReceived,
+        payments,
+        tips,
+        loyaltyPointsRedeemed: loyaltyPointsToRedeem,
       };
 
       createTransactionMutation.mutate(transactionInput);
     },
-    [selectedClient, cart, discount, createTransactionMutation]
+    [
+      selectedClient,
+      cart,
+      discount,
+      tips,
+      loyaltyPointsToRedeem,
+      createTransactionMutation,
+    ]
   );
 
-  if (showSuccess) {
+  // Step 5: Book Next Appointment
+  const handleBookAppointment = useCallback(
+    (appointmentData: CreateAppointmentInput) => {
+      createAppointmentMutation.mutate(appointmentData);
+    },
+    [createAppointmentMutation]
+  );
+
+  // Render completed transaction
+  if (completedTransaction) {
     return (
       <POSStepWrapper currentStep={steps.length} steps={steps}>
-        <SuccessScreen>
-          <SuccessIcon>
-            <Check size={60} />
-          </SuccessIcon>
-          <SuccessTitle>Payment Successful!</SuccessTitle>
-          <SuccessMessage>
-            Transaction completed successfully. Starting new sale...
-          </SuccessMessage>
-        </SuccessScreen>
+        <ReceiptAndNextAppointment
+          transaction={completedTransaction}
+          client={selectedClientData}
+          treatments={treatments}
+          staff={staff}
+          onBookAppointment={handleBookAppointment}
+          onNewSale={resetPOS}
+          bookingAppointment={createAppointmentMutation.isPending}
+        />
       </POSStepWrapper>
     );
   }
@@ -348,6 +487,7 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
         {currentStep === 1 && (
           <ClientSelection
             clients={clients}
+            appointments={appointments}
             onSelectClient={handleSelectClient}
             onCreateNew={() => setShowCreateClient(true)}
           />
@@ -362,10 +502,12 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
             treatments={treatments}
             products={products}
             cart={cart}
+            productStock={productStock}
             onAddToCart={addToCart}
             onUpdateQuantity={updateQuantity}
             onRemoveFromCart={removeFromCart}
-            onNext={handleStep2Next}
+            onUpdateNotes={updateNotes}
+            onNext={handleItemSelectionNext}
             onBack={() => goToStep(1)}
           />
         )}
@@ -376,21 +518,27 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
             cart={cart}
             staff={staff}
             onAssignStaff={assignStaff}
-            onNext={handleStep3Next}
+            onNext={handleStaffAssignmentNext}
             onBack={() => goToStep(2)}
           />
         )}
 
-        {/* Step 3 or 4: Payment (depends on whether staff assignment was needed) */}
+        {/* Step 3 or 4: Payment */}
         {((currentStep === 3 && !needsStaffAssignment) ||
           (currentStep === 4 && needsStaffAssignment)) && (
           <Payment
             cart={cart}
             clientName={selectedClientData?.name}
+            clientLoyaltyPoints={selectedClientData?.loyaltyPoints || 0}
             discount={discount}
-            onUpdateDiscount={(type, value) => setDiscount({ type, value })}
+            tips={tips}
+            loyaltyPointsToRedeem={loyaltyPointsToRedeem}
+            onUpdateDiscount={setDiscount}
+            onUpdateTips={setTips}
+            onUpdateLoyaltyRedemption={setLoyaltyPointsToRedeem}
             onComplete={handlePaymentComplete}
             onBack={() => goToStep(needsStaffAssignment ? 3 : 2)}
+            onEditCart={() => goToStep(2)}
             processing={createTransactionMutation.isPending}
           />
         )}

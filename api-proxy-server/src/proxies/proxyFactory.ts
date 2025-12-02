@@ -1,10 +1,7 @@
-import {
-  createProxyMiddleware,
-  Options,
-  fixRequestBody,
-} from "http-proxy-middleware";
+import { createProxyMiddleware, Options } from "http-proxy-middleware";
 import { Request, Response } from "express";
 import { logger } from "../utils/logger.js";
+import { env } from "../config/env.js";
 
 export interface ProxyConfig {
   target: string;
@@ -23,72 +20,108 @@ export const createProxy = (config: ProxyConfig) => {
     timeout,
     pathRewrite,
 
-    on: {
-      // proxyReq: fixRequestBody, // Built-in function from http-proxy-middleware
+    onProxyReq: (proxyReq, req: any, res: Response) => {
+      // Forward client's cookie header to backend so backend sees jwt cookie
+      if (req.headers.cookie) {
+        proxyReq.setHeader("cookie", req.headers.cookie);
+      }
 
-      proxyReq: (proxyReq, req: any, res) => {
-        // Add correlation ID
-        if (req.requestId) {
-          proxyReq.setHeader("X-Request-ID", req.requestId);
+      // If gateway already has authorization header, forward it
+      const incomingAuth = req.get && req.get("authorization");
+      if (incomingAuth && incomingAuth.startsWith("Bearer ")) {
+        proxyReq.setHeader("authorization", incomingAuth);
+      } else {
+        // Try to extract jwt cookie and forward as Authorization header
+        const cookieHeader = req.headers.cookie || "";
+        const jwtMatch = cookieHeader.match(/(?:^|;\s*)jwt=([^;]+)/);
+        if (jwtMatch && jwtMatch[1]) {
+          proxyReq.setHeader("authorization", `Bearer ${jwtMatch[1]}`);
         }
+      }
 
-        // Add user context from JWT
-        if (req.auth) {
-          const { sub, email, role, firstName, lastName } = req.auth;
-          if (sub) proxyReq.setHeader("X-User-Id", String(sub));
-          if (email) proxyReq.setHeader("X-User-Email", String(email));
-          if (role) proxyReq.setHeader("X-User-Role", String(role));
-          if (firstName)
-            proxyReq.setHeader("X-User-FirstName", String(firstName));
-          if (lastName) proxyReq.setHeader("X-User-LastName", String(lastName));
+      // Forward any user context headers the gateway attached
+      if (req.user) {
+        if (req.user.id) proxyReq.setHeader("x-user-id", String(req.user.id));
+        if (req.user.email)
+          proxyReq.setHeader("x-user-email", String(req.user.email));
+        if (req.user.role)
+          proxyReq.setHeader("x-user-role", String(req.user.role));
+      }
+
+      // Restream parsed JSON body, if present
+      if (req.body && Object.keys(req.body).length > 0) {
+        const bodyData = JSON.stringify(req.body);
+        proxyReq.setHeader("Content-Type", "application/json");
+        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+        proxyReq.write(bodyData);
+        proxyReq.end();
+      }
+
+      logger.debug("Proxying request", {
+        target,
+        path: req.path,
+        method: req.method,
+        requestId: req.requestId,
+      });
+    },
+
+    onProxyRes: (proxyRes, req: any, res: Response) => {
+      // Handle Set-Cookie carefully — preserve multiple cookies
+      const setCookie = proxyRes.headers["set-cookie"];
+      if (setCookie) {
+        // Optionally remove Secure when running plain http in development.
+        // In production (env.NODE_ENV === 'production') keep Secure flag.
+        const rewritten = setCookie.map((c: string) =>
+          env.NODE_ENV === "development" ? c.replace(/; ?secure/gi, "") : c
+        );
+        res.setHeader("set-cookie", rewritten);
+      }
+
+      // Forward other safe headers (avoid hop-by-hop headers)
+      const hopByHop = new Set([
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailers",
+        "transfer-encoding",
+        "upgrade",
+      ]);
+
+      Object.keys(proxyRes.headers).forEach((key) => {
+        const lower = key.toLowerCase();
+        if (lower === "set-cookie") return;
+        if (hopByHop.has(lower)) return;
+        const value = proxyRes.headers[key];
+        if (value !== undefined) {
+          res.setHeader(key, value);
         }
+      });
 
-        //  Restream parsed body for POST/PUT/PATCH
-        if (req.body && Object.keys(req.body).length > 0) {
-          const bodyData = JSON.stringify(req.body);
-          proxyReq.setHeader("Content-Type", "application/json");
-          proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-          proxyReq.write(bodyData);
-        }
+      logger.debug("Proxy response received", {
+        target,
+        statusCode: proxyRes.statusCode,
+        requestId: req.requestId,
+      });
+    },
 
-        // Remove sensitive headers
-        // proxyReq.removeHeader("cookie");
+    onError: (err, req: any, res: Response) => {
+      logger.error("Proxy error", {
+        target,
+        error: err?.message,
+        requestId: req.requestId,
+        path: req.path,
+      });
 
-        logger.debug("Proxying request", {
-          target,
-          path: req.path,
-          method: req.method,
+      if (!res.headersSent) {
+        res.status(503).json({
+          status: "error",
+          message: "Upstream service unavailable",
+          service: target,
           requestId: req.requestId,
         });
-      },
-
-      proxyRes: (proxyRes, req: any) => {
-        logger.debug("Proxy response received", {
-          target,
-          statusCode: proxyRes.statusCode,
-          requestId: req.requestId,
-        });
-      },
-
-      error: (err, req: any, res) => {
-        const response = res as Response;
-
-        logger.error("Proxy error", {
-          target,
-          error: err.message,
-          requestId: req.requestId,
-          path: req.path,
-        });
-
-        if (!response.headersSent) {
-          response.status(503).json({
-            status: "error",
-            message: "Upstream service unavailable",
-            service: target,
-            requestId: req.requestId,
-          });
-        }
-      },
+      }
     },
   };
 

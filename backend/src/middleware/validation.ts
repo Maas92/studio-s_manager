@@ -1,63 +1,68 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodObject, ZodError } from "zod";
-import { logger } from "../utils/logger";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
 
 /**
- * Middleware factory for validating request data using Zod schemas
- * @param schema - Zod schema for validation
- * @returns Express middleware function
+ * Express middleware factory. Pass a Zod object like:
+ * const schema = z.object({ body: z.object({ name: z.string() }) });
+ * router.post("/", validate(schema), controller);
  */
-export const validate = (schema: ZodObject) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+export const validate = (schema: ZodObject<any>) => {
+  return async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      // Validate request body, query, and params
       await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params,
       });
-
-      next();
+      return next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.issues.map((err) => ({
-          field: err.path.join("."),
-          message: err.message,
-          code: err.code,
+        const errors = error.issues.map((iss) => ({
+          field: iss.path.join("."),
+          message: iss.message,
+          code: iss.code,
         }));
 
-        logger.warn(`Validation failed for ${req.method} ${req.path}:`, errors);
-
-        return res.status(400).json({
-          status: "fail",
-          message: "Validation failed",
+        logger.warn(`Validation failed for ${req.method} ${req.path}`, {
           errors,
+          requestId: (req as any).id,
         });
+        return next(
+          AppError.badRequest(
+            "Validation failed: " + errors.map((e) => e.message).join(", ")
+          )
+        );
       }
-
-      // Pass other errors to global error handler
-      next(error);
+      return next(error);
     }
   };
 };
 
-/**
- * Middleware for validating UUID parameters
- */
-export const validateUUID = (paramName: string = "id") => {
-  return (req: Request, res: Response, next: NextFunction) => {
+/** Validate a UUID route param named `paramName` (default 'id') */
+export const validateUUID = (paramName = "id") => {
+  return (req: Request, _res: Response, next: NextFunction) => {
     const uuid = req.params[paramName];
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     if (!uuid || !uuidRegex.test(uuid)) {
-      logger.warn(`Invalid UUID provided: ${uuid}`);
-      return res.status(400).json({
-        status: "fail",
-        message: `Invalid ${paramName}. Must be a valid UUID.`,
+      logger.warn(`Invalid UUID for param ${paramName}: ${uuid}`, {
+        requestId: (req as any).id,
       });
+      return next(
+        AppError.badRequest(`Invalid ${paramName}. Must be a valid UUID.`)
+      );
     }
-
     next();
   };
 };
+
+/* Optional helpers exported for other modules (tests/services) */
+export const formatZodError = (err: ZodError) =>
+  err.issues.map((iss) => ({
+    field: iss.path.join("."),
+    message: iss.message,
+    code: iss.code,
+  }));

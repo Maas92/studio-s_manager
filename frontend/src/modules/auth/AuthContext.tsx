@@ -7,31 +7,35 @@ import React, {
 } from "react";
 import { api } from "../../services/api";
 
-export type User = { id: string; name: string; email: string; roles: string[] };
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
 
 type AuthState = {
   user: User | null;
   loading: boolean;
-  signIn: () => void;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (role: string) => boolean;
 };
 
 const AuthCtx = createContext<AuthState | null>(null);
 
-const LOGIN_URL = import.meta.env.VITE_AUTH_LOGIN_URL as string;
-const LOGOUT_URL = import.meta.env.VITE_AUTH_LOGOUT_URL as string;
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
+  // Check if user is already authenticated on mount
   useEffect(() => {
     (async () => {
       try {
+        // Try to get current user
         const { data } = await api.get<User>("/auth/me");
         setUser(data);
-      } catch (_) {
+      } catch (error) {
+        console.error("Not authenticated:", error);
         setUser(null);
       } finally {
         setLoading(false);
@@ -39,22 +43,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const signIn = () => {
-    const url = new URL(LOGIN_URL);
-    url.searchParams.set(
-      "redirect_uri",
-      window.location.origin + "/auth/callback"
-    );
-    window.location.href = url.toString();
+  const signIn = async (email: string, password: string) => {
+    try {
+      // Call login endpoint
+      const { data } = await api.post("/auth/login", {
+        email,
+        password,
+      });
+      // The API should set httpOnly cookies automatically
+      // Now fetch the user data
+      const { data: userData } = await api.get<User>("/auth/me");
+      setUser(userData);
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      throw new Error(
+        error.response?.data?.message || "Login failed. Please try again."
+      );
+    }
   };
 
   const signOut = async () => {
-    await api.post("/auth/logout");
-    window.location.href = LOGOUT_URL || "/";
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      // Optionally redirect to login page
+      window.location.href = "/login";
+    }
   };
 
-  const hasRole = (role: string) => !!user?.roles?.includes(role);
-
+  const hasRole = (role: string) => user?.role === role;
   const value = useMemo(
     () => ({ user, loading, signIn, signOut, hasRole }),
     [user, loading]
@@ -63,7 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthCtx);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");

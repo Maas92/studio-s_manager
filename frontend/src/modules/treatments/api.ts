@@ -42,7 +42,7 @@ export const CreateTreatmentSchema = z.object({
 export type Treatment = z.infer<typeof TreatmentSchema>;
 export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
 
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // API Functions
 export async function listTreatments(): Promise<Treatment[]> {

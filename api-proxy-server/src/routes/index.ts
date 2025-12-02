@@ -13,5 +13,5 @@ export const setupRoutes = (app: Application) => {
   app.use("/auth", authRoutes);
 
   // Protected API routes (JWT required)
-  app.use("/api/v1", apiLimiter, checkJwt, apiRoutes);
+  app.use("/", apiLimiter, checkJwt, apiRoutes);
 };

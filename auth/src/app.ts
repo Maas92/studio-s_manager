@@ -20,7 +20,7 @@ import { mongoSanitize } from "./middleware/sanitize.js";
 const app: Application = express();
 
 // Trust proxy (for rate limiting and IP detection)
-app.enable("trust proxy");
+app.set("trust proxy", env.TRUST_PROXY);
 
 // CORS configuration
 app.use(

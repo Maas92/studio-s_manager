@@ -7,7 +7,7 @@ import Clients from "../modules/clients/Clients";
 import Appointments from "../modules/appointments/Appointments";
 import { Protected } from "../modules/auth/Protected.js";
 import AuthCallback from "../modules/auth/AuthCallback";
-import SignInRedirect from "../modules/auth/SignInRedirect";
+import Login from "../modules/login/Login";
 import NotFound from "../ui/NotFound.js";
 import Staff from "../modules/staff/Staff.js";
 import POS from "../modules/POS/POS";
@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: "/auth/callback", element: <AuthCallback /> },
-  { path: "/login", element: <SignInRedirect /> },
+  { path: "/login", element: <Login /> },
   { path: "*", element: <Navigate to="/" replace /> },
   // 👇 top-level fallback (unknown public routes)
   { path: "*", element: <NotFound /> },

@@ -6,6 +6,8 @@ import AppError from "./utils/appError.js";
 import globalErrorHandler from "./controllers/errorController.js";
 import { extractUser } from "./middleware/userMiddleware.js";
 import api from "./routes/index.js";
+import { requestId } from "./middleware/requestId.js";
+import verifyGateway from "./middleware/verifyGateway.js";
 
 const app: Application = express();
 
@@ -21,6 +23,11 @@ app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // CORS
 app.use(cors({ origin: [/^http:\/\/localhost:\d+$/], credentials: true }));
+
+app.use(requestId);
+
+// Apply gateway check as broadly as possible (protect service)
+app.use(verifyGateway);
 
 // Extract user info from headers (set by API Gateway)
 app.use(extractUser);

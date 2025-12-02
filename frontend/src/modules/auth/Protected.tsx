@@ -1,13 +1,19 @@
 import React, { useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import Spinner from "../../ui/components/Spinner";
+import { Navigate } from "react-router-dom";
 
 export function Protected({ children }: { children: React.ReactNode }) {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    if (!loading && !user) signIn();
-  }, [loading, user, signIn]);
+  if (loading) {
+    return <Spinner />;
+  }
 
-  if (loading || !user) return null;
+  if (!user) {
+    // Redirect to login if not authenticated
+    return <Navigate to="/login" replace />;
+  }
+
   return <>{children}</>;
 }

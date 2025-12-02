@@ -1,32 +1,40 @@
 import { useState } from "react";
-import { api } from "../lib/api";
-import { Button, Card, Input, Label } from "../components/ui-primitives";
+import { useAuth } from "../auth/AuthContext";
+import Button from "../../ui/components/Button";
+import Card from "../../ui/components/Card";
+import Input from "../../ui/components/Input";
+import Label from "../../ui/components/Button";
+
 import { useNavigate } from "react-router-dom";
 
-export default function LoginPage() {
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const nav = useNavigate();
-  const submit = async (e: React.FormEvent) => {
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setError("");
     setLoading(true);
+
     try {
-      await api.login(email, password);
-      nav("/");
+      await signIn(email, password);
+      navigate("/"); // Redirect to dashboard on success
     } catch (err: any) {
-      setError(err.message ?? "Login failed");
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen grid place-items-center bg-[var(--paper)]">
       <Card className="w-full max-w-md">
         <h1 className="text-2xl font-semibold mb-4">Welcome to Studio S</h1>
-        <form onSubmit={submit} className="grid gap-3">
+        <form onSubmit={handleSubmit} className="grid gap-3">
           <div>
             <Label>Email</Label>
             <Input

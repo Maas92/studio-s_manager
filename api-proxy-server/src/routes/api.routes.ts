@@ -16,14 +16,20 @@ router.use(
 );
 
 // Inventory service routes
-const inventoryRoutes = ["products", "categories", "suppliers", "locations"]; // Will need to add all backend routes here
+const inventoryRoutes = [
+  "products",
+  "categories",
+  "suppliers",
+  "locations",
+  "treatments",
+]; // Will need to add all backend routes here
 
 inventoryRoutes.forEach((route) => {
   router.use(
     `/${route}`,
     createProxy({
       target: env.INVENTORY_SERVICE_URL,
-      pathRewrite: { [`^/api/v1/${route}`]: `/api/v1/${route}` },
+      pathRewrite: { [`^/${route}`]: `/api/v1/${route}` },
     })
   );
 });

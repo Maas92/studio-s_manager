@@ -45,7 +45,6 @@ router.patch(
 
 // Protected routes
 router.use(protect);
-
 router.get("/me", authController.me);
 
 router.patch(

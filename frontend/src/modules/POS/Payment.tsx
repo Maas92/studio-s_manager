@@ -476,7 +476,9 @@ export default function Payment({
     );
     const tax = afterDiscounts * 0.15;
 
-    const tipsTotal = Object.values(tips).reduce((sum, tip) => sum + tip, 0);
+    const tipsTotal = tips
+      ? Object.values(tips).reduce((sum, tip) => sum + tip, 0)
+      : 0;
 
     const total = afterDiscounts + tax + tipsTotal;
     const loyaltyEarned = calculateLoyaltyPoints(total);
