@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "lint": "eslint .",
     "format": "prettier -w .",
     "test": "vitest run"

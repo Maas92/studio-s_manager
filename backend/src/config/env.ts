@@ -9,7 +9,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  PORT: z.coerce.number().default(4001),
+  PORT: z.coerce.number().default(5002),
 
   // Gateway Secret for verifying requests
   GATEWAY_SECRET: z.string(),

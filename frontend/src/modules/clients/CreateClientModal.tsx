@@ -1,4 +1,3 @@
-// pages/clients/CreateClientModal.tsx
 import React, { useState, useCallback } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";

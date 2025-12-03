@@ -13,6 +13,9 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
   JWT_ISSUER: z.string().default("studio-s-auth"),
   JWT_AUDIENCE: z.string().default("studio-s-clients"),
+  GATEWAY_SECRET: z
+    .string()
+    .min(32, "GATEWAY_SECRET must be at least 32 characters"),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   JWKS_URL: z

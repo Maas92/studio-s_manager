@@ -7,10 +7,11 @@ export interface ProxyConfig {
   target: string;
   pathRewrite?: Record<string, string>;
   timeout?: number;
+  isBackendService?: boolean; // Flag to add GATEWAY_SECRET
 }
 
 export const createProxy = (config: ProxyConfig) => {
-  const { target, pathRewrite, timeout = 30000 } = config;
+  const { target, pathRewrite, timeout = 30000, isBackendService = false } = config;
 
   const options: Options = {
     target,
@@ -21,6 +22,11 @@ export const createProxy = (config: ProxyConfig) => {
     pathRewrite,
 
     onProxyReq: (proxyReq, req: any, res: Response) => {
+      // CRITICAL: Add GATEWAY_SECRET for backend service verification
+      if (isBackendService && env.GATEWAY_SECRET) {
+        proxyReq.setHeader("x-gateway-key", env.GATEWAY_SECRET);
+      }
+
       // Forward client's cookie header to backend so backend sees jwt cookie
       if (req.headers.cookie) {
         proxyReq.setHeader("cookie", req.headers.cookie);
@@ -62,11 +68,12 @@ export const createProxy = (config: ProxyConfig) => {
         path: req.path,
         method: req.method,
         requestId: req.requestId,
+        hasGatewaySecret: isBackendService,
       });
     },
 
     onProxyRes: (proxyRes, req: any, res: Response) => {
-      // Handle Set-Cookie carefully — preserve multiple cookies
+      // Handle Set-Cookie carefully – preserve multiple cookies
       const setCookie = proxyRes.headers["set-cookie"];
       if (setCookie) {
         // Optionally remove Secure when running plain http in development.

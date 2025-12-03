@@ -1,4 +1,4 @@
-import { api } from "../../services/api";
+import api from "../../services/api";
 import { z } from "zod";
 import { toArray } from "../../services/normalise";
 import { mockClients } from "./mockClients";

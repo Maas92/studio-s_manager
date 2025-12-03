@@ -9,20 +9,22 @@ router.use(
   "/users",
   createProxy({
     target: env.AUTH_SERVICE_URL,
-    // Won't match because route is already stripped Router already consumed /api/v1
     pathRewrite: { "^/api/v1/users": "/api/v1/users" },
-    // Path should stay the same - pathRewrite: {} - /api/v1/products → /api/v1/products
+    isBackendService: false, // Auth service doesn't need GATEWAY_SECRET
   })
 );
 
-// Inventory service routes
+// Inventory service routes - ALL need GATEWAY_SECRET
 const inventoryRoutes = [
   "products",
   "categories",
   "suppliers",
   "locations",
   "treatments",
-]; // Will need to add all backend routes here
+  "inventory",
+  "sales",
+  "clients",
+];
 
 inventoryRoutes.forEach((route) => {
   router.use(
@@ -30,6 +32,7 @@ inventoryRoutes.forEach((route) => {
     createProxy({
       target: env.INVENTORY_SERVICE_URL,
       pathRewrite: { [`^/${route}`]: `/api/v1/${route}` },
+      isBackendService: true, // Backend service requires GATEWAY_SECRET
     })
   );
 });

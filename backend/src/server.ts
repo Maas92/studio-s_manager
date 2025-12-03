@@ -5,12 +5,12 @@ import { testConnection, closePool } from "./config/database";
 import { logger } from "./utils/logger.js";
 
 const port = env.PORT;
-let server: http.Server;
+// let server: http.Server;
 
 /**
  * Start the Express server
  */
-const startServer = async () => {
+const server = app.listen(port, async () => {
   try {
     // Test database connection before starting server
     const dbConnected = await testConnection();
@@ -21,17 +21,16 @@ const startServer = async () => {
     }
 
     // Start HTTP server
-    server = app.listen(port, () => {
-      logger.info(`🚀 Backend Service running on port ${port}`);
-      logger.info(`📝 Environment: ${env.NODE_ENV}`);
-      logger.info(`🔗 API: http://localhost:${port}/api/v1`);
-      logger.info(`❤️  Health: http://localhost:${port}/health`);
-    });
+
+    logger.info(`🚀 Backend Service running on port ${port}`);
+    logger.info(`📝 Environment: ${env.NODE_ENV}`);
+    logger.info(`🔗 API: http://localhost:${port}/api/v1`);
+    logger.info(`❤️ Health: http://localhost:${port}/health`);
   } catch (error) {
     logger.error("Failed to start server:", error);
     process.exit(1);
   }
-};
+});
 
 /**
  * Graceful shutdown handler
@@ -83,6 +82,3 @@ process.on("uncaughtException", (err: Error) => {
   logger.error("Stack:", err.stack);
   process.exit(1);
 });
-
-// Start the server
-startServer();

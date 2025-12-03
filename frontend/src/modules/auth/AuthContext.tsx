@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { api } from "../../services/api";
+import { createContext, useContext } from "react";
 
 export type User = {
   id: string;
@@ -14,7 +7,7 @@ export type User = {
   role: string;
 };
 
-type AuthState = {
+export type AuthState = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
@@ -22,69 +15,12 @@ type AuthState = {
   hasRole: (role: string) => boolean;
 };
 
-const AuthCtx = createContext<AuthState | null>(null);
+// Create context (initially null)
+export const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  // Check if user is already authenticated on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        // Try to get current user
-        const { data } = await api.get<User>("/auth/me");
-        setUser(data);
-      } catch (error) {
-        console.error("Not authenticated:", error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      // Call login endpoint
-      const { data } = await api.post("/auth/login", {
-        email,
-        password,
-      });
-      // The API should set httpOnly cookies automatically
-      // Now fetch the user data
-      const { data: userData } = await api.get<User>("/auth/me");
-      setUser(userData);
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      throw new Error(
-        error.response?.data?.message || "Login failed. Please try again."
-      );
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setUser(null);
-      // Optionally redirect to login page
-      window.location.href = "/login";
-    }
-  };
-
-  const hasRole = (role: string) => user?.role === role;
-  const value = useMemo(
-    () => ({ user, loading, signIn, signOut, hasRole }),
-    [user, loading]
-  );
-
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
-}
-
-export const useAuth = () => {
-  const ctx = useContext(AuthCtx);
+// Custom hook for consuming the context
+export const useAuth = (): AuthState => {
+  const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 };
