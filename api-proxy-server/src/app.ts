@@ -18,6 +18,23 @@ const app: Application = express();
 // Trust proxy
 app.set("trust proxy", 1);
 
+// Cookie parser
+app.use(cookieParser());
+
+// middleware: if Authorization header missing, try jwt cookie
+app.use((req, _res, next) => {
+  const authHeader = req.get("authorization") || req.headers.authorization;
+  if (!authHeader) {
+    // cookie-parser populates req.cookies
+    const jwtFromCookie = (req as any).cookies?.jwt;
+    if (jwtFromCookie) {
+      // populate header so downstream auth middleware can use it
+      req.headers.authorization = `Bearer ${jwtFromCookie}`;
+    }
+  }
+  next();
+});
+
 // Disable x-powered-by header
 app.disable("x-powered-by");
 
@@ -39,13 +56,16 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly
 // app.options("*", cors(corsOptions));
 
-// Body parser
-app.use((req, res, next) => {
-  if (req.path.startsWith("/auth")) {
-    return next(); // leave body as stream for proxy
-  }
-  return bodyParser.json({ limit: "10kb" })(req, res, next);
-});
+// Conditional body parser - parse JSON for backend routes that need it
+// Skip parsing for auth routes (they're proxied directly)
+// app.use((req, res, next) => {
+//   // Don't parse body for direct proxy routes (auth service)
+//   if (req.path.startsWith("/auth") || req.path.startsWith("/users")) {
+//     return next();
+//   }
+//   // Parse body for backend service routes
+//   return express.json({ limit: "10kb" })(req, res, next);
+// });
 
 app.use(
   express.urlencoded({
@@ -54,9 +74,6 @@ app.use(
     parameterLimit: 1000,
   })
 );
-
-// Cookie parser
-app.use(cookieParser());
 
 // Request ID for correlation
 app.use(requestId);

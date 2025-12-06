@@ -1,4 +1,4 @@
-import { createProxyMiddleware, Options } from "http-proxy-middleware";
+import proxy from "express-http-proxy";
 import { Request, Response } from "express";
 import { logger } from "../utils/logger.js";
 import { env } from "../config/env.js";
@@ -7,118 +7,91 @@ export interface ProxyConfig {
   target: string;
   pathRewrite?: Record<string, string>;
   timeout?: number;
-  isBackendService?: boolean; // Flag to add GATEWAY_SECRET
+  isBackendService?: boolean;
 }
 
 export const createProxy = (config: ProxyConfig) => {
-  const { target, pathRewrite, timeout = 30000, isBackendService = false } = config;
-
-  const options: Options = {
+  const {
     target,
-    changeOrigin: true,
-    xfwd: true,
-    proxyTimeout: timeout,
-    timeout,
     pathRewrite,
+    timeout = 30000,
+    isBackendService = false,
+  } = config;
 
-    onProxyReq: (proxyReq, req: any, res: Response) => {
-      // CRITICAL: Add GATEWAY_SECRET for backend service verification
+  return proxy(target, {
+    timeout,
+
+    proxyReqPathResolver: (req) => {
+      let newPath = req.url;
+      if (pathRewrite) {
+        for (const [pattern, replacement] of Object.entries(pathRewrite)) {
+          const regex = new RegExp(pattern);
+          newPath = newPath.replace(regex, replacement);
+        }
+      }
+      return newPath;
+    },
+
+    parseReqBody: true,
+
+    proxyReqOptDecorator: (proxyReqOpts, srcReq: Request) => {
+      // Inject gateway secret for backend services
       if (isBackendService && env.GATEWAY_SECRET) {
-        proxyReq.setHeader("x-gateway-key", env.GATEWAY_SECRET);
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        proxyReqOpts.headers["x-gateway-key"] = env.GATEWAY_SECRET;
       }
 
-      // Forward client's cookie header to backend so backend sees jwt cookie
-      if (req.headers.cookie) {
-        proxyReq.setHeader("cookie", req.headers.cookie);
+      // Forward cookies
+      if (srcReq.headers.cookie) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        proxyReqOpts.headers["cookie"] = srcReq.headers.cookie;
       }
 
-      // If gateway already has authorization header, forward it
-      const incomingAuth = req.get && req.get("authorization");
-      if (incomingAuth && incomingAuth.startsWith("Bearer ")) {
-        proxyReq.setHeader("authorization", incomingAuth);
-      } else {
-        // Try to extract jwt cookie and forward as Authorization header
-        const cookieHeader = req.headers.cookie || "";
-        const jwtMatch = cookieHeader.match(/(?:^|;\s*)jwt=([^;]+)/);
+      // Forward or create Authorization header from JWT cookie
+      if (srcReq.headers.authorization) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        proxyReqOpts.headers["authorization"] = srcReq.headers.authorization;
+      } else if (srcReq.headers.cookie) {
+        const jwtMatch = srcReq.headers.cookie.match(/(?:^|;\s*)jwt=([^;]+)/);
         if (jwtMatch && jwtMatch[1]) {
-          proxyReq.setHeader("authorization", `Bearer ${jwtMatch[1]}`);
+          proxyReqOpts.headers = proxyReqOpts.headers || {};
+          proxyReqOpts.headers["authorization"] = `Bearer ${jwtMatch[1]}`;
         }
       }
 
-      // Forward any user context headers the gateway attached
-      if (req.user) {
-        if (req.user.id) proxyReq.setHeader("x-user-id", String(req.user.id));
-        if (req.user.email)
-          proxyReq.setHeader("x-user-email", String(req.user.email));
-        if (req.user.role)
-          proxyReq.setHeader("x-user-role", String(req.user.role));
-      }
-
-      // Restream parsed JSON body, if present
-      if (req.body && Object.keys(req.body).length > 0) {
-        const bodyData = JSON.stringify(req.body);
-        proxyReq.setHeader("Content-Type", "application/json");
-        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-        proxyReq.write(bodyData);
-        proxyReq.end();
-      }
-
-      logger.debug("Proxying request", {
-        target,
-        path: req.path,
-        method: req.method,
-        requestId: req.requestId,
-        hasGatewaySecret: isBackendService,
-      });
-    },
-
-    onProxyRes: (proxyRes, req: any, res: Response) => {
-      // Handle Set-Cookie carefully – preserve multiple cookies
-      const setCookie = proxyRes.headers["set-cookie"];
-      if (setCookie) {
-        // Optionally remove Secure when running plain http in development.
-        // In production (env.NODE_ENV === 'production') keep Secure flag.
-        const rewritten = setCookie.map((c: string) =>
-          env.NODE_ENV === "development" ? c.replace(/; ?secure/gi, "") : c
-        );
-        res.setHeader("set-cookie", rewritten);
-      }
-
-      // Forward other safe headers (avoid hop-by-hop headers)
-      const hopByHop = new Set([
-        "connection",
-        "keep-alive",
-        "proxy-authenticate",
-        "proxy-authorization",
-        "te",
-        "trailers",
-        "transfer-encoding",
-        "upgrade",
-      ]);
-
-      Object.keys(proxyRes.headers).forEach((key) => {
-        const lower = key.toLowerCase();
-        if (lower === "set-cookie") return;
-        if (hopByHop.has(lower)) return;
-        const value = proxyRes.headers[key];
-        if (value !== undefined) {
-          res.setHeader(key, value);
+      // Forward user context headers (this is the key part!)
+      if (srcReq.user) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        if (srcReq.user.id) {
+          proxyReqOpts.headers["x-user-id"] = String(srcReq.user.id);
         }
-      });
+        if (srcReq.user.email) {
+          proxyReqOpts.headers["x-user-email"] = String(srcReq.user.email);
+        }
+        if (srcReq.user.role) {
+          proxyReqOpts.headers["x-user-role"] = String(srcReq.user.role);
+        }
 
-      logger.debug("Proxy response received", {
-        target,
-        statusCode: proxyRes.statusCode,
-        requestId: req.requestId,
-      });
+        console.log("✅ Forwarding user headers:", {
+          "x-user-id": srcReq.user.id,
+          "x-user-email": srcReq.user.email,
+          "x-user-role": srcReq.user.role,
+        });
+      } else {
+        console.log("⚠️ No user found in request - headers not forwarded");
+      }
+
+      return proxyReqOpts;
     },
 
-    onError: (err, req: any, res: Response) => {
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      return proxyResData;
+    },
+
+    proxyErrorHandler: (err, res: Response, next) => {
       logger.error("Proxy error", {
         target,
-        error: err?.message,
-        requestId: req.requestId,
-        path: req.path,
+        error: err?.message || String(err),
       });
 
       if (!res.headersSent) {
@@ -126,11 +99,9 @@ export const createProxy = (config: ProxyConfig) => {
           status: "error",
           message: "Upstream service unavailable",
           service: target,
-          requestId: req.requestId,
+          error: err?.message,
         });
       }
     },
-  };
-
-  return createProxyMiddleware(options);
+  });
 };

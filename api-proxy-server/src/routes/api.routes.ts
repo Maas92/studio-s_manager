@@ -31,9 +31,12 @@ inventoryRoutes.forEach((route) => {
     `/${route}`,
     createProxy({
       target: env.INVENTORY_SERVICE_URL,
-      pathRewrite: { [`^/${route}`]: `/api/v1/${route}` },
+      pathRewrite: { [`^/`]: `/${route}` },
       isBackendService: true, // Backend service requires GATEWAY_SECRET
     })
+  );
+  console.log(
+    `Proxy setup for /${route} to ${env.INVENTORY_SERVICE_URL}/${route}`
   );
 });
 

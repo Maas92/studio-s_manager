@@ -1,110 +1,147 @@
+// src/services/treatmentsApi.ts
 import api from "../../services/api";
-import { z } from "zod";
+import { unwrapResponse, unwrapAndValidate } from "../../utils/unwrapResponse"; // adjust path if needed
 import { toArray } from "../../services/normalise";
 import { mockTreatments } from "./mockTreatments";
-
-// Schemas
-export const TreatmentSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  durationMinutes: z.number(),
-  price: z.number(),
-  category: z.string().optional(),
-  benefits: z.array(z.string()).optional(),
-  contraindications: z.array(z.string()).optional(),
-  preparationInstructions: z.string().optional(),
-  aftercareInstructions: z.string().optional(),
-  availableFor: z.array(z.string()).optional(), // Staff IDs who can perform this treatment
-  imageUrl: z.string().optional(),
-  isActive: z.boolean().default(true),
-  popularityScore: z.number().optional(), // Based on bookings
-  tags: z.array(z.string()).optional(),
-});
-
-export const CreateTreatmentSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  durationMinutes: z.number().min(1, "Duration must be at least 1 minute"),
-  price: z.number().min(0, "Price must be positive"),
-  category: z.string().optional(),
-  benefits: z.array(z.string()).optional(),
-  contraindications: z.array(z.string()).optional(),
-  preparationInstructions: z.string().optional(),
-  aftercareInstructions: z.string().optional(),
-  availableFor: z.array(z.string()).optional(),
-  imageUrl: z.string().optional(),
-  isActive: z.boolean().default(true),
-  tags: z.array(z.string()).optional(),
-});
-
-// Types
-export type Treatment = z.infer<typeof TreatmentSchema>;
-export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
+import { z } from "zod";
+import {
+  TreatmentSchema,
+  CreateTreatmentSchema,
+  type Treatment,
+  type CreateTreatmentInput,
+} from "./TreatmentSchema"; // adjust path to your existing schema file
 
 const USE_MOCK_DATA = false;
 
-// API Functions
+/**
+ * listTreatments: returns a flat, validated Treatment[].
+ */
 export async function listTreatments(): Promise<Treatment[]> {
   if (USE_MOCK_DATA) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((r) => setTimeout(r, 400));
     return mockTreatments;
   }
 
   try {
-    const { data } = await api.get("/treatments");
-    const treatments = toArray<Treatment>(data);
-    return treatments.map((treatment) => TreatmentSchema.parse(treatment));
+    const raw = await api.get("/treatments");
+
+    // Using overload: since we pass TreatmentSchema.array(), TS knows this returns Treatment[]
+    try {
+      const validatedArr = unwrapAndValidate(raw, TreatmentSchema.array());
+      // validatedArr is typed as Treatment[]
+      return validatedArr;
+    } catch (zErr) {
+      // Fallback parsing in case of envelope differences
+      console.warn(
+        "[listTreatments] array validation failed, falling back:",
+        zErr
+      );
+      const unwrapped = unwrapResponse<Treatment>(raw);
+      const arr = Array.isArray(unwrapped)
+        ? unwrapped
+        : toArray<Treatment>(unwrapped);
+      return arr.map((t) => TreatmentSchema.parse(t));
+    }
   } catch (error) {
-    console.error("Failed to fetch treatments:", error);
+    console.error("[listTreatments] Failed to fetch treatments:", error);
     throw new Error("Unable to load treatments. Please try again.");
   }
 }
 
+/**
+ * getTreatment: returns a single validated Treatment.
+ */
 export async function getTreatment(id: string): Promise<Treatment> {
   try {
-    const { data } = await api.get(`/treatments/${id}`);
-    return TreatmentSchema.parse(data);
+    const raw = await api.get(`/treatments/${id}`);
+
+    // Because we pass a single-item schema, unwrapAndValidate returns a Treatment
+    try {
+      const validated = unwrapAndValidate(raw, TreatmentSchema);
+      // validated typed as Treatment
+      return validated;
+    } catch (zErr) {
+      console.warn(
+        "[getTreatment] single validation failed, falling back:",
+        zErr
+      );
+      const unwrapped = unwrapResponse<Treatment>(raw);
+      const item = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
+      return TreatmentSchema.parse(item);
+    }
   } catch (error) {
-    console.error("Failed to fetch treatment:", error);
+    console.error(`[getTreatment ${id}] Failed to fetch treatment:`, error);
     throw new Error("Unable to load treatment details. Please try again.");
   }
 }
 
+/**
+ * createTreatment: validates input, POSTs, and returns the created Treatment
+ */
 export async function createTreatment(
   input: CreateTreatmentInput
 ): Promise<Treatment> {
   try {
     const validatedInput = CreateTreatmentSchema.parse(input);
-    const { data } = await api.post("/treatments", validatedInput);
-    return TreatmentSchema.parse(data);
+    const raw = await api.post("/treatments", validatedInput);
+
+    try {
+      const validated = unwrapAndValidate(raw, TreatmentSchema);
+      return validated;
+    } catch (zErr) {
+      console.warn(
+        "[createTreatment] response validation failed, falling back:",
+        zErr
+      );
+      const unwrapped = unwrapResponse<Treatment>(raw);
+      const item = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
+      return TreatmentSchema.parse(item);
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new Error(`Validation error: ${error.issues[0]?.message}`);
     }
-    console.error("Failed to create treatment:", error);
+    console.error("[createTreatment] Failed to create treatment:", error);
     throw new Error("Unable to create treatment. Please try again.");
   }
 }
 
+/**
+ * updateTreatment: PATCH and return updated Treatment
+ */
 export async function updateTreatment(
   id: string,
   updates: Partial<CreateTreatmentInput>
 ): Promise<Treatment> {
   try {
-    const { data } = await api.patch(`/treatments/${id}`, updates);
-    return TreatmentSchema.parse(data);
+    const raw = await api.patch(`/treatments/${id}`, updates);
+
+    try {
+      const validated = unwrapAndValidate(raw, TreatmentSchema);
+      return validated;
+    } catch (zErr) {
+      console.warn(
+        "[updateTreatment] response validation failed, falling back:",
+        zErr
+      );
+      const unwrapped = unwrapResponse<Treatment>(raw);
+      const item = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
+      return TreatmentSchema.parse(item);
+    }
   } catch (error) {
-    console.error("Failed to update treatment:", error);
+    console.error(`[updateTreatment ${id}] Failed to update:`, error);
     throw new Error("Unable to update treatment. Please try again.");
   }
 }
 
+/**
+ * deleteTreatment
+ */
 export async function deleteTreatment(id: string): Promise<void> {
   try {
     await api.delete(`/treatments/${id}`);
   } catch (error) {
-    console.error("Failed to delete treatment:", error);
+    console.error(`[deleteTreatment ${id}] Failed to delete:`, error);
     throw new Error("Unable to delete treatment. Please try again.");
   }
 }

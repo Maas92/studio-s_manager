@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import { AuthCtx, type AuthState, type User } from "./AuthContext";
+import { AuthContext, type AuthState, type User } from "./AuthContext";
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,5 +49,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     [user, loading]
   );
 
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -38,10 +38,10 @@ app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "healthy", service: "inventory-service" });
 });
 
-app.use("/api/v1", api);
+app.use("", api);
 
 // Handle undefined routes
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
+app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 

@@ -5,7 +5,7 @@ import { Toaster } from "react-hot-toast";
 // import { ThemeProvider } from "styled-components";
 import GlobalStyles from "./styles/GlobalStyles";
 // import "./App.css";
-import { AuthProvider } from "./modules/auth/AuthContext.js";
+import { AuthProvider } from "./modules/auth/AuthProvider.js";
 import { router } from "./routes/router.js";
 // import { theme } from "./ui/Theme.js";
 import { ThemeProvider } from "./contexts/ThemeContext.js";

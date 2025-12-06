@@ -1,0 +1,722 @@
+================================================================================
+FILE: frontend/src/ui\Header.tsx
+================================================================================
+
+import React, { useState } from "react";
+import {
+  Search,
+  Plus,
+  Package,
+  AlertTriangle,
+  ArrowRight,
+  Edit2,
+  Trash2,
+  Filter,
+} from "lucide-react";
+
+function Header() {
+  const [activeTab, setActiveTab] = useState("products");
+  const [products, setProducts] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterLowStock, setFilterLowStock] = useState(false);
+
+  const openModal = (type: React.SetStateAction<string>, product = null) => {
+    setModalType(type);
+    setSelectedProduct(product);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedProduct(null);
+  };
+
+  return (
+    <header className="bg-white shadow">
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Package className="w-8 h-8 text-purple-600" />
+            <h1 className="text-2xl font-bold text-gray-900">
+              Stock Management
+            </h1>
+          </div>
+          <button
+            onClick={() => openModal("create")}
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default Header;
+
+
+
+================================================================================
+FILE: frontend/src/ui\Topbar.tsx
+================================================================================
+
+import styled from "styled-components";
+import Button from "./components/Button";
+import { useAuth } from "../modules/auth/AuthContext";
+import ThemeSwitch from "./components/ThemeSwitch.js";
+
+const Bar = styled.header`
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+  border-bottom: 1px solid ${(p) => p.theme.color.border};
+  background: ${(p) => p.theme.color.panel};
+`;
+const Toggle = styled.button`
+  background: transparent;
+  border: 1px solid ${(p) => p.theme.color.border};
+  color: ${(p) => p.theme.color.text};
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-right: 12px;
+  font-size: 14px;
+`;
+
+export default function Topbar() {
+  const { user, signOut } = useAuth();
+  return (
+    <Bar>
+      <div style={{ marginRight: "auto", opacity: 0.8 }}>
+        Welcome {user?.name}
+      </div>
+      <ThemeSwitch />
+      <Button onClick={signOut}>Sign out</Button>
+    </Bar>
+  );
+}
+
+
+================================================================================
+FILE: frontend/src/ui\components\ActionButton.tsx
+================================================================================
+
+// components/ui/ActionButton.tsx
+import React from "react";
+import Button, { type ButtonVariation, type ButtonSize } from "./Button";
+
+export type ActionButtonProps =
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    variation?: ButtonVariation;
+    size?: ButtonSize;
+    icon?: React.ComponentType<{ size?: number }>;
+    children?: React.ReactNode;
+  };
+
+const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
+  function ActionButton(
+    {
+      icon: Icon,
+      variation = "secondary",
+      size = "medium",
+      children,
+      ...btnProps
+    },
+    ref
+  ) {
+    return (
+      <Button ref={ref} variation={variation} size={size} {...btnProps}>
+        {Icon ? <Icon size={18} /> : null}
+        <span>{children}</span>
+      </Button>
+    );
+  }
+);
+
+export default ActionButton;
+
+
+================================================================================
+FILE: frontend/src/ui\components\Badge.tsx
+================================================================================
+
+import styled from "styled-components";
+
+export type BadgeVariant =
+  | "default"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"
+  | "active"
+  | "inactive"
+  | "on_leave"
+  | "retail"
+  | "treatment"
+  | "storage"
+  | "confirmed"
+  | "pending"
+  | "cancelled"
+  | "completed";
+
+interface BadgeProps {
+  $variant?: BadgeVariant;
+}
+
+const variantStyles: Record<BadgeVariant, { bg: string; color: string }> = {
+  default: { bg: "#f3f4f6", color: "#374151" },
+  success: { bg: "#dcfce7", color: "#15803d" },
+  warning: { bg: "#fef3c7", color: "#a16207" },
+  danger: { bg: "#fee2e2", color: "#b91c1c" },
+  info: { bg: "#dbeafe", color: "#1d4ed8" },
+  active: { bg: "#dcfce7", color: "#15803d" },
+  inactive: { bg: "#f3f4f6", color: "#374151" },
+  on_leave: { bg: "#fef3c7", color: "#a16207" },
+  retail: { bg: "#dbeafe", color: "#1d4ed8" },
+  treatment: { bg: "#dcfce7", color: "#15803d" },
+  storage: { bg: "#fef3c7", color: "#a16207" },
+  confirmed: { bg: "#dcfce7", color: "#15803d" },
+  pending: { bg: "#fef3c7", color: "#a16207" },
+  cancelled: { bg: "#fee2e2", color: "#b91c1c" },
+  completed: { bg: "#dbeafe", color: "#1d4ed8" },
+};
+
+export const Badge = styled.span<BadgeProps>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+  background: ${({ $variant = "default" }) => variantStyles[$variant].bg};
+  color: ${({ $variant = "default" }) => variantStyles[$variant].color};
+`;
+
+export default Badge;
+
+================================================================================
+FILE: frontend/src/ui\components\Card.tsx
+================================================================================
+
+import React from "react";
+import styled, { useTheme } from "styled-components";
+
+type Props = React.HTMLAttributes<HTMLDivElement> & {
+  children: React.ReactNode;
+};
+
+const Wrapper = styled.div`
+  border-radius: ${({ theme }) => theme.radii.lg};
+  padding: 20px;
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const Card = React.forwardRef<HTMLDivElement, Props>(function Card(
+  { children, className, style, ...rest },
+  ref
+) {
+  // ensure theme usage so styled-components' theming type-checks correctly
+  const theme = useTheme();
+  void theme;
+
+  return (
+    <Wrapper ref={ref} className={className} style={style} {...rest}>
+      {children}
+    </Wrapper>
+  );
+});
+
+Card.displayName = "Card";
+
+export default Card;
+
+
+================================================================================
+FILE: frontend/src/ui\components\EmptyState.tsx
+================================================================================
+
+import React from "react";
+import styled from "styled-components";
+import { type LucideIcon } from "lucide-react";
+
+interface EmptyStateProps {
+  icon?: LucideIcon;
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+}
+
+const Container = styled.div`
+  text-align: center;
+  padding: 3rem 1rem;
+  color: ${({ theme }) => theme.color.mutedText};
+`;
+
+const IconWrapper = styled.div`
+  margin: 0 auto 1rem;
+  opacity: 0.5;
+`;
+
+const Title = styled.p`
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+`;
+
+const Description = styled.p`
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+`;
+
+export default function EmptyState({
+  icon: Icon,
+  title = "No items found",
+  description,
+  action,
+}: EmptyStateProps) {
+  return (
+    <Container>
+      {Icon && (
+        <IconWrapper>
+          <Icon size={48} />
+        </IconWrapper>
+      )}
+      <Title>{title}</Title>
+      {description && <Description>{description}</Description>}
+      {action}
+    </Container>
+  );
+}
+
+================================================================================
+FILE: frontend/src/ui\components\Heading.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const sizes = { h1: "28px", h2: "22px", h3: "18px" } as const;
+type Level = keyof typeof sizes;
+
+type Props = React.HTMLAttributes<HTMLHeadingElement> & {
+  level?: Level;
+  as?: Level; // allow <H as="h3" /> usage
+};
+
+const StyledHeading = styled.h2<{ $level: Level }>`
+  font-size: ${({ $level }) => sizes[$level]};
+  font-weight: 800;
+  color: ${({ theme }) => theme.color.grey900};
+  margin-bottom: 12px;
+`;
+
+export default function Heading({ level, as, children, ...rest }: Props) {
+  const resolved: Level = (level ?? as ?? "h2") as Level;
+  return (
+    <StyledHeading as={as ?? resolved} $level={resolved} {...rest}>
+      {children}
+    </StyledHeading>
+  );
+}
+
+
+================================================================================
+FILE: frontend/src/ui\components\InfoGrid.tsx
+================================================================================
+
+import React from "react";
+import styled from "styled-components";
+
+interface InfoGridProps {
+  children: React.ReactNode;
+  columns?: number;
+  className?: string;
+}
+
+export const InfoGrid = styled.div<{ $columns?: number }>`
+  display: grid;
+  grid-template-columns: repeat(${({ $columns = 2 }) => $columns}, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const InfoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+export const InfoLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+export const InfoValue = styled.div`
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+export default InfoGrid;
+
+================================================================================
+FILE: frontend/src/ui\components\Row.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const Row = styled.div`
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 380px;
+`;
+export default Row;
+
+
+================================================================================
+FILE: frontend/src/ui\components\SearchableSelect.tsx
+================================================================================
+
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import styled from "styled-components";
+import Input from "./Input.js";
+
+export interface SimpleOption {
+  id: string;
+  label: string;
+}
+
+export interface SearchableSelectProps {
+  options: SimpleOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  allowFreeInput?: boolean;
+  debounceMs?: number;
+  id?: string;
+  ariaLabel?: string;
+  labelRenderer?: (option: SimpleOption) => React.ReactNode;
+  disabled?: boolean;
+  hasError?: boolean;
+  required?: boolean;
+}
+
+const Wrapper = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const Dropdown = styled.ul<{ $visible: boolean }>`
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 6px 0 0 0;
+  padding: 6px;
+  max-height: 220px;
+  overflow: auto;
+  list-style: none;
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.md};
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  z-index: 9999;
+  display: ${({ $visible }) => ($visible ? "block" : "none")};
+`;
+
+const Option = styled.li<{ $active?: boolean }>`
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+  background: ${({ $active, theme }) =>
+    $active ? theme.color.brand50 : "transparent"};
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.color.brand50};
+  }
+`;
+
+const Empty = styled.div`
+  padding: 8px 10px;
+  color: ${({ theme }) => theme.color.mutedText};
+  font-size: 0.95rem;
+`;
+
+const SearchableSelect = React.forwardRef<
+  HTMLInputElement,
+  SearchableSelectProps
+>(
+  (
+    {
+      options,
+      value,
+      onChange,
+      placeholder = "Search...",
+      allowFreeInput = false,
+      debounceMs = 150,
+      id,
+      ariaLabel,
+      labelRenderer,
+      disabled = false,
+      hasError = false,
+      required = false,
+    },
+    forwardedRef
+  ) => {
+    const internalRef = useRef<HTMLInputElement>(null);
+    const inputRef = (forwardedRef ||
+      internalRef) as React.RefObject<HTMLInputElement>;
+    const listRef = useRef<HTMLUListElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState<string>("");
+    const [highlightIndex, setHighlightIndex] = useState(0);
+    const [filtered, setFiltered] = useState<SimpleOption[]>(options);
+
+    // Initialize query from value
+    useEffect(() => {
+      const found = options.find((o) => o.id === value);
+      setQuery(found ? found.label : value || "");
+    }, [value, options]);
+
+    // Debounced filtering
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) {
+          setFiltered(options);
+          setHighlightIndex(0);
+          return;
+        }
+        const newFiltered = options.filter(
+          (o) =>
+            o.label.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
+        );
+        setFiltered(newFiltered);
+        setHighlightIndex(0);
+      }, debounceMs);
+
+      return () => clearTimeout(timer);
+    }, [query, options, debounceMs]);
+
+    const openDropdown = useCallback(() => {
+      if (disabled) return;
+      setOpen(true);
+      setFiltered(options);
+      setHighlightIndex(0);
+    }, [disabled, options]);
+
+    const closeDropdown = useCallback(() => {
+      setOpen(false);
+    }, []);
+
+    const selectOption = useCallback(
+      (opt: SimpleOption) => {
+        onChange(opt.id);
+        setQuery(opt.label);
+        closeDropdown();
+      },
+      [onChange, closeDropdown]
+    );
+
+    const scrollIntoView = useCallback((index: number) => {
+      const list = listRef.current;
+      if (!list) return;
+      const el = list.children[index] as HTMLElement | undefined;
+      el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, []);
+
+    const onKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!open && ["ArrowDown", "ArrowUp"].includes(e.key)) {
+          e.preventDefault();
+          openDropdown();
+          return;
+        }
+
+        if (!open) return;
+
+        switch (e.key) {
+          case "Escape":
+            e.preventDefault();
+            closeDropdown();
+            break;
+          case "ArrowDown":
+            e.preventDefault();
+            setHighlightIndex((i) => Math.min(i + 1, filtered.length - 1));
+            scrollIntoView(Math.min(highlightIndex + 1, filtered.length - 1));
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            setHighlightIndex((i) => Math.max(0, i - 1));
+            scrollIntoView(Math.max(0, highlightIndex - 1));
+            break;
+          case "Home":
+            e.preventDefault();
+            setHighlightIndex(0);
+            scrollIntoView(0);
+            break;
+          case "End":
+            e.preventDefault();
+            setHighlightIndex(filtered.length - 1);
+            scrollIntoView(filtered.length - 1);
+            break;
+          case "Enter": {
+            e.preventDefault();
+            const opt = filtered[highlightIndex];
+            if (opt) {
+              selectOption(opt);
+            } else if (allowFreeInput && query.trim()) {
+              onChange(query.trim());
+              closeDropdown();
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      },
+      [
+        open,
+        filtered,
+        highlightIndex,
+        allowFreeInput,
+        query,
+        openDropdown,
+        closeDropdown,
+        selectOption,
+        onChange,
+        scrollIntoView,
+      ]
+    );
+
+    // Click outside handler - CRITICAL FIX: Use capture phase to intercept before Modal
+    useEffect(() => {
+      if (!open) return;
+
+      const handleClickOutside = (e: MouseEvent) => {
+        const target = e.target as Node;
+        // If clicking inside wrapper, don't close
+        if (wrapperRef.current?.contains(target)) {
+          return;
+        }
+        // Clicking outside, close the dropdown
+        closeDropdown();
+      };
+
+      // IMPORTANT: Use capture phase (true) to catch event before Modal's handler
+      document.addEventListener("mousedown", handleClickOutside, true);
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside, true);
+      };
+    }, [open, closeDropdown]);
+
+    // Memoized dropdown items
+    const listItems = useMemo(() => {
+      if (filtered.length === 0) {
+        return (
+          <Empty key="empty" role="option" aria-selected={false}>
+            No results found
+          </Empty>
+        );
+      }
+      return filtered.map((opt, idx) => (
+        <Option
+          role="option"
+          id={`${id || "search-select"}-opt-${opt.id}`}
+          aria-selected={idx === highlightIndex}
+          key={opt.id}
+          $active={idx === highlightIndex}
+          onMouseEnter={() => setHighlightIndex(idx)}
+          onClick={(e) => {
+            e.stopPropagation();
+            selectOption(opt);
+          }}
+        >
+          {labelRenderer ? labelRenderer(opt) : opt.label}
+        </Option>
+      ));
+    }, [filtered, highlightIndex, id, labelRenderer, selectOption]);
+
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        setQuery(e.target.value);
+        if (!allowFreeInput) {
+          onChange("");
+        }
+      },
+      [allowFreeInput, onChange]
+    );
+
+    return (
+      <Wrapper ref={wrapperRef}>
+        <Input
+          ref={inputRef}
+          id={id}
+          value={query}
+          placeholder={placeholder}
+          aria-label={ariaLabel || placeholder}
+          aria-expanded={open}
+          aria-controls={`${id || "search-select"}-listbox`}
+          aria-autocomplete="list"
+          role="combobox"
+          onFocus={openDropdown}
+          onChange={handleChange}
+          onKeyDown={onKeyDown}
+          autoComplete="off"
+          disabled={disabled}
+          hasError={hasError}
+          required={required}
+        />
+
+        <Dropdown
+          id={`${id || "search-select"}-listbox`}
+          role="listbox"
+          aria-label={ariaLabel || placeholder}
+          $visible={open}
+          ref={listRef}
+        >
+          {listItems}
+        </Dropdown>
+      </Wrapper>
+    );
+  }
+);
+
+SearchableSelect.displayName = "SearchableSelect";
+
+export default SearchableSelect;
+

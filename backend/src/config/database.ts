@@ -2,24 +2,17 @@ import { Pool, PoolConfig, QueryResultRow } from "pg";
 import { env } from "./env";
 
 // Database configuration
-const config: PoolConfig = env.DATABASE_URL
-  ? {
-      connectionString: env.DATABASE_URL,
-      max: 20, // Maximum number of clients in pool
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 5000, // Return error after 5 seconds if connection not established
-      ssl: env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
-    }
-  : {
-      user: env.DB_USER,
-      host: env.DB_HOST,
-      database: env.DB_NAME,
-      password: env.DB_PASSWORD,
-      port: env.DB_PORT,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-    };
+const config: PoolConfig = {
+  connectionString: env.DATABASE_URL,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+  // NOTE: acceptSupabaseHostedCert is true by default in many examples
+  ssl:
+    env.DB_SSL === "true" || Boolean(env.DATABASE_URL)
+      ? { rejectUnauthorized: env.DB_SSL === "true" ? false : true }
+      : false,
+};
 
 // Create the connection pool
 export const pool = new Pool(config);

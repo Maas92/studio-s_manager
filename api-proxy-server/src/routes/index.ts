@@ -4,6 +4,7 @@ import { apiLimiter } from "../middleware/rateLimiter.js";
 import healthRoutes from "./health.js";
 import authRoutes from "./auth.routes.js";
 import apiRoutes from "./api.routes.js";
+import { mapAuthToUser } from "../middleware/mapAuthToUser.js";
 
 export const setupRoutes = (app: Application) => {
   // Health checks (no auth, no rate limit)
@@ -13,5 +14,5 @@ export const setupRoutes = (app: Application) => {
   app.use("/auth", authRoutes);
 
   // Protected API routes (JWT required)
-  app.use("/", apiLimiter, checkJwt, apiRoutes);
+  app.use("/", apiLimiter, checkJwt, mapAuthToUser, apiRoutes);
 };

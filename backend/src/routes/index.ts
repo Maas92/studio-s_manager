@@ -7,7 +7,7 @@ import locations from "./locationRoutes.js";
 import sales from "./salesRoutes.js";
 import clients from "./clientRoutes.js";
 import treatmentRoutes from "./treatmentRoutes.js";
-// import appointmentRoutes from "./appointmentRoutes.js";
+import appointmentRoutes from "./appointmentRoutes.js";
 // import staffRoutes from "./staffRoutes.js";
 
 const r = Router();
@@ -16,7 +16,7 @@ const r = Router();
 r.use("/products", products);
 r.use("/inventory", inventory);
 r.use("/treatments", treatmentRoutes);
-// r.use("/appointments", appointmentRoutes);
+r.use("/appointments", appointmentRoutes);
 r.use("/clients", clients);
 // r.use("/staff", staffRoutes);
 r.use("/sales", sales);
