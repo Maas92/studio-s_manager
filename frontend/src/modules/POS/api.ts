@@ -1,217 +1,85 @@
+import { createResourceClient } from "../../services/resourceFactory";
 import api from "../../services/api";
 import { z } from "zod";
-import { toArray } from "../../services/normalise";
+import {
+  AppointmentSchema,
+  CreateAppointmentSchema,
+  ProductSchema,
+  TreatmentSchema,
+  StaffSchema,
+  CartItemSchema,
+  ClientSchema,
+  CreateClientSchema,
+  CreateTransactionSchema,
+  DraftSaleSchema,
+  TransactionSchema,
+  type StaffConflict,
+  type Client,
+  type Appointment,
+  type CreateAppointmentInput,
+  type CreateClientInput,
+  type CreateTransactionInput,
+  type CartItem,
+  type CartValidation,
+  type Discount,
+  type DiscountValidation,
+  type DraftSale,
+  type PaymentBreakdown,
+  type PaymentValidation,
+  type Product,
+  type Staff,
+  type Transaction,
+  type Treatment,
+} from "./POSSchema";
 
 // ============================================================================
-// SCHEMAS
+// RESOURCE CLIENTS
 // ============================================================================
 
-// Cart Item Schema
-export const CartItemSchema = z.object({
-  id: z.string(),
-  type: z.enum(["treatment", "product", "appointment"]),
-  name: z.string(),
-  price: z.number(),
-  originalPrice: z.number(),
-  quantity: z.number(),
-  maxQuantity: z.number().optional(),
-  appointmentId: z.string().optional(),
-  clientName: z.string().optional(),
-  treatmentId: z.string().optional(),
-  productId: z.string().optional(),
-  staffId: z.string().optional(),
-  staffName: z.string().optional(),
-  duration: z.number().optional(),
-  notes: z.string().optional(),
-  isAppointmentCheckin: z.boolean().optional(),
-  locked: z.boolean().optional(),
+export const appointmentsApi = createResourceClient<
+  Appointment,
+  CreateAppointmentInput
+>({
+  basePath: "/appointments",
+  schema: AppointmentSchema,
+  createSchema: CreateAppointmentSchema,
 });
 
-// Discount Schema
-export const DiscountSchema = z.object({
-  type: z.enum(["percentage", "fixed", "loyalty"]),
-  value: z.number(),
-  reason: z.string().optional(),
-  requiresApproval: z.boolean().optional(),
+export const clientsApi = createResourceClient<Client, CreateClientInput>({
+  basePath: "/clients",
+  schema: ClientSchema,
+  createSchema: CreateClientSchema,
 });
 
-// Payment Breakdown Schema
-export const PaymentBreakdownSchema = z.object({
-  method: z.enum(["cash", "card", "loyalty", "gift-card"]),
-  amount: z.number(),
-  reference: z.string().optional(),
+export const productsApi = createResourceClient<Product, Partial<Product>>({
+  basePath: "/products",
+  schema: ProductSchema,
 });
 
-// Tips Schema
-export const TipsSchema = z.record(z.string(), z.number());
-
-// Transaction Schema
-export const TransactionSchema = z.object({
-  id: z.string(),
-  clientId: z.string().optional(),
-  clientName: z.string().optional(),
-  items: z.array(CartItemSchema),
-  subtotal: z.number(),
-  discount: DiscountSchema,
-  discountAmount: z.number(),
-  tax: z.number(),
-  tips: TipsSchema,
-  tipsTotal: z.number(),
-  total: z.number(),
-  payments: z.array(PaymentBreakdownSchema),
-  paymentMethod: z.string().optional(), // Primary payment method for display
-  loyaltyPointsEarned: z.number(),
-  loyaltyPointsRedeemed: z.number(),
-  status: z.enum(["pending", "completed", "cancelled", "refunded"]),
-  createdAt: z.string(),
-  completedAt: z.string().optional(),
-  createdBy: z.string(),
+export const treatmentsApi = createResourceClient<
+  Treatment,
+  Partial<Treatment>
+>({
+  basePath: "/treatments",
+  schema: TreatmentSchema,
 });
 
-// Create Transaction Schema
-export const CreateTransactionSchema = z.object({
-  clientId: z.string().optional(),
-  items: z.array(CartItemSchema),
-  discount: DiscountSchema,
-  payments: z.array(PaymentBreakdownSchema),
-  tips: TipsSchema.optional(),
-  loyaltyPointsRedeemed: z.number().optional(),
+export const staffApi = createResourceClient<Staff, Partial<Staff>>({
+  basePath: "/staff",
+  schema: StaffSchema,
 });
 
-// Client Schema
-export const ClientSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  loyaltyPoints: z.number().default(0),
-});
-
-// Create Client Schema
-export const CreateClientSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  loyaltyPoints: z.number().default(0),
-});
-
-// Appointment Schema
-export const AppointmentSchema = z.object({
-  id: z.string(),
-  clientId: z.string(),
-  clientName: z.string().optional(),
-  treatmentId: z.string(),
-  treatmentName: z.string().optional(),
-  datetimeISO: z.string().datetime(),
-  status: z.enum(["confirmed", "pending", "cancelled", "completed"]).optional(),
-  staffId: z.string().optional(),
-  staffName: z.string().optional(),
-  notes: z.string().optional(),
-  duration: z.number().optional(),
-  price: z.number().optional(),
-});
-
-// Create Appointment Schema
-export const CreateAppointmentSchema = z.object({
-  clientId: z.string().min(1, "Client is required"),
-  treatmentId: z.string().min(1, "Treatment is required"),
-  datetimeISO: z.string().datetime(),
-  status: z
-    .enum(["confirmed", "pending", "cancelled", "completed"])
-    .default("confirmed"),
-  staffId: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-// Treatment Schema
-export const TreatmentSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  durationMinutes: z.number(),
-  price: z.number().optional(),
-  category: z.string().optional(),
-  isActive: z.boolean().optional(),
-});
-
-// Product Schema
-export const ProductSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  price: z.number(),
-  stock: z.number(),
-  category: z.string().optional(),
-  sku: z.string().optional(),
-  retail: z.boolean().optional(),
-});
-
-// Staff Schema
-export const StaffSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  role: z.string().optional(),
-  specialties: z.array(z.string()).optional(),
-  available: z.boolean().optional(),
-});
-
-// Draft Sale Schema
-export const DraftSaleSchema = z.object({
-  id: z.string(),
-  timestamp: z.string(),
-  clientId: z.string().optional(),
-  clientData: z.any().optional(),
-  cart: z.array(CartItemSchema),
-  discount: DiscountSchema,
-  tips: TipsSchema.optional(),
-  currentStep: z.number(),
-  expiresAt: z.string(),
+export const transactionsApi = createResourceClient<
+  Transaction,
+  CreateTransactionInput
+>({
+  basePath: "/transactions",
+  schema: TransactionSchema,
+  createSchema: CreateTransactionSchema,
 });
 
 // ============================================================================
-// TYPES
-// ============================================================================
-
-export type CartItem = z.infer<typeof CartItemSchema>;
-export type Discount = z.infer<typeof DiscountSchema>;
-export type PaymentBreakdown = z.infer<typeof PaymentBreakdownSchema>;
-export type Tips = z.infer<typeof TipsSchema>;
-export type Transaction = z.infer<typeof TransactionSchema>;
-export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
-export type Client = z.infer<typeof ClientSchema>;
-export type CreateClientInput = z.infer<typeof CreateClientSchema>;
-export type Appointment = z.infer<typeof AppointmentSchema>;
-export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
-export type Treatment = z.infer<typeof TreatmentSchema>;
-export type Product = z.infer<typeof ProductSchema>;
-export type Staff = z.infer<typeof StaffSchema>;
-export type DraftSale = z.infer<typeof DraftSaleSchema>;
-
-// Validation Types
-export interface CartValidation {
-  canAdd: boolean;
-  reason?: string;
-  warnings?: string[];
-}
-
-export interface StaffConflict {
-  staffId: string;
-  staffName: string;
-  conflictingItems: string[];
-  overlappingTime: boolean;
-}
-
-export interface DiscountValidation {
-  valid: boolean;
-  error?: string;
-}
-
-export interface PaymentValidation {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-// ============================================================================
-// API FUNCTIONS - APPOINTMENTS
+// APPOINTMENT FUNCTIONS
 // ============================================================================
 
 /**
@@ -223,30 +91,11 @@ export async function getTodaysAppointments(): Promise<Appointment[]> {
     const { data } = await api.get(
       `/appointments?date=${today}&status=confirmed`
     );
-    const appointments = toArray(data);
+    const appointments = Array.isArray(data) ? data : [data];
     return appointments.map((apt) => AppointmentSchema.parse(apt));
   } catch (error) {
     console.error("Failed to fetch today's appointments:", error);
     throw new Error("Unable to load appointments. Please try again.");
-  }
-}
-
-/**
- * Create a new appointment (for booking next appointment after sale)
- */
-export async function createAppointment(
-  input: CreateAppointmentInput
-): Promise<Appointment> {
-  try {
-    const validatedInput = CreateAppointmentSchema.parse(input);
-    const { data } = await api.post("/appointments", validatedInput);
-    return AppointmentSchema.parse(data);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new Error(`Validation error: ${error.issues[0]?.message}`);
-    }
-    console.error("Failed to create appointment:", error);
-    throw new Error("Unable to create appointment. Please try again.");
   }
 }
 
@@ -257,10 +106,10 @@ export async function completeAppointment(
   appointmentId: string
 ): Promise<void> {
   try {
-    await api.patch(`/appointments/${appointmentId}`, {
+    await appointmentsApi.update(appointmentId, {
       status: "completed",
       completedAt: new Date().toISOString(),
-    });
+    } as any);
   } catch (error) {
     console.error("Failed to mark appointment as completed:", error);
     throw new Error("Unable to complete appointment.");
@@ -268,7 +117,7 @@ export async function completeAppointment(
 }
 
 // ============================================================================
-// API FUNCTIONS - PRODUCTS & INVENTORY
+// PRODUCT & INVENTORY FUNCTIONS
 // ============================================================================
 
 /**
@@ -277,7 +126,7 @@ export async function completeAppointment(
 export async function getRetailProducts(): Promise<Product[]> {
   try {
     const { data } = await api.get("/products?retail=true");
-    const products = toArray(data);
+    const products = Array.isArray(data) ? data : [data];
     return products.map((product) => ProductSchema.parse(product));
   } catch (error) {
     console.error("Failed to fetch retail products:", error);
@@ -319,7 +168,7 @@ export async function updateStockAfterSale(items: CartItem[]): Promise<void> {
 }
 
 // ============================================================================
-// API FUNCTIONS - TREATMENTS
+// TREATMENT FUNCTIONS
 // ============================================================================
 
 /**
@@ -328,7 +177,7 @@ export async function updateStockAfterSale(items: CartItem[]): Promise<void> {
 export async function getAvailableTreatments(): Promise<Treatment[]> {
   try {
     const { data } = await api.get("/treatments?isActive=true");
-    const treatments = toArray(data);
+    const treatments = Array.isArray(data) ? data : [data];
     return treatments.map((treatment) => TreatmentSchema.parse(treatment));
   } catch (error) {
     console.error("Failed to fetch treatments:", error);
@@ -337,7 +186,7 @@ export async function getAvailableTreatments(): Promise<Treatment[]> {
 }
 
 // ============================================================================
-// API FUNCTIONS - STAFF
+// STAFF FUNCTIONS
 // ============================================================================
 
 /**
@@ -347,7 +196,7 @@ export async function getAvailableStaff(date?: string): Promise<Staff[]> {
   try {
     const params = date ? `?date=${date}` : "";
     const { data } = await api.get(`/staff${params}`);
-    const staff = toArray(data);
+    const staff = Array.isArray(data) ? data : [data];
     return staff.map((member) => StaffSchema.parse(member));
   } catch (error) {
     console.error("Failed to fetch staff:", error);
@@ -412,7 +261,7 @@ export function detectStaffConflicts(cart: CartItem[]): StaffConflict[] {
 }
 
 // ============================================================================
-// API FUNCTIONS - CLIENTS
+// CLIENT FUNCTIONS
 // ============================================================================
 
 /**
@@ -428,36 +277,6 @@ export async function verifyClient(
   } catch (error) {
     console.error("Failed to verify client:", error);
     throw new Error("Unable to verify client. Please try again.");
-  }
-}
-
-/**
- * Create a new client
- */
-export async function createClient(input: CreateClientInput): Promise<Client> {
-  try {
-    const validatedInput = CreateClientSchema.parse(input);
-    const { data } = await api.post("/clients", validatedInput);
-    return ClientSchema.parse(data);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new Error(`Validation error: ${error.issues[0]?.message}`);
-    }
-    console.error("Failed to create client:", error);
-    throw new Error("Unable to create client. Please try again.");
-  }
-}
-
-/**
- * Get client by ID
- */
-export async function getClientById(clientId: string): Promise<Client> {
-  try {
-    const { data } = await api.get(`/clients/${clientId}`);
-    return ClientSchema.parse(data);
-  } catch (error) {
-    console.error("Failed to fetch client:", error);
-    throw new Error("Unable to load client information.");
   }
 }
 
@@ -678,29 +497,13 @@ export async function createTransaction(
       createdBy: "current-user", // Replace with actual user ID
     };
 
-    const { data } = await api.post("/transactions", transactionData);
-    return TransactionSchema.parse(data);
+    return await transactionsApi.create(transactionData as any);
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new Error(`Validation error: ${error.issues[0]?.message}`);
     }
     console.error("Failed to create transaction:", error);
     throw new Error("Unable to complete transaction. Please try again.");
-  }
-}
-
-/**
- * Get transaction by ID
- */
-export async function getTransactionById(
-  transactionId: string
-): Promise<Transaction> {
-  try {
-    const { data } = await api.get(`/transactions/${transactionId}`);
-    return TransactionSchema.parse(data);
-  } catch (error) {
-    console.error("Failed to fetch transaction:", error);
-    throw new Error("Unable to load transaction.");
   }
 }
 
@@ -802,32 +605,114 @@ export function clearDraft(): void {
 }
 
 // ============================================================================
-// EXPORT ALL
+// CONVENIENCE EXPORTS
+// ============================================================================
+
+// Re-export resource client methods for convenience
+export const {
+  list: listAppointments,
+  get: getAppointment,
+  create: createAppointment,
+  update: updateAppointment,
+  delete: deleteAppointment,
+} = appointmentsApi;
+
+export const {
+  list: listClients,
+  get: getClient,
+  create: createClient,
+  update: updateClient,
+  delete: deleteClient,
+} = clientsApi;
+
+export const {
+  list: listProducts,
+  get: getProduct,
+  create: createProduct,
+  update: updateProduct,
+  delete: deleteProduct,
+} = productsApi;
+
+export const {
+  list: listTreatments,
+  get: getTreatment,
+  create: createTreatment,
+  update: updateTreatment,
+  delete: deleteTreatment,
+} = treatmentsApi;
+
+export const {
+  list: listStaff,
+  get: getStaff,
+  create: createStaff,
+  update: updateStaff,
+  delete: deleteStaff,
+} = staffApi;
+
+export const {
+  list: listTransactions,
+  get: getTransaction,
+  update: updateTransaction,
+  delete: deleteTransaction,
+} = transactionsApi;
+
+// ============================================================================
+// DEFAULT EXPORT
 // ============================================================================
 
 export default {
+  // Resource clients
+  appointmentsApi,
+  clientsApi,
+  productsApi,
+  treatmentsApi,
+  staffApi,
+  transactionsApi,
+
   // Appointments
   getTodaysAppointments,
   createAppointment,
   completeAppointment,
+  listAppointments,
+  getAppointment,
+  updateAppointment,
+  deleteAppointment,
 
   // Products
   getRetailProducts,
   checkProductStock,
   updateStockAfterSale,
+  listProducts,
+  getProduct,
+  createProduct,
+  updateProduct,
+  deleteProduct,
 
   // Treatments
   getAvailableTreatments,
+  listTreatments,
+  getTreatment,
+  createTreatment,
+  updateTreatment,
+  deleteTreatment,
 
   // Staff
   getAvailableStaff,
   checkStaffConflicts,
   detectStaffConflicts,
+  listStaff,
+  getStaff,
+  createStaff,
+  updateStaff,
+  deleteStaff,
 
   // Clients
   verifyClient,
   createClient,
-  getClientById,
+  listClients,
+  getClient,
+  updateClient,
+  deleteClient,
 
   // Calculations
   calculateLoyaltyPoints,
@@ -840,7 +725,10 @@ export default {
 
   // Transactions
   createTransaction,
-  getTransactionById,
+  listTransactions,
+  getTransaction,
+  updateTransaction,
+  deleteTransaction,
 
   // Receipts
   sendReceipt,

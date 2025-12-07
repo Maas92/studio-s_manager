@@ -22,9 +22,9 @@ export class ClientService {
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(" ") || ".";
 
-    // Check if client with same phone exists
+    // Check if client with same phone exists - FIXED: use is_active
     const existingClient = await pool.query(
-      "SELECT id FROM clients WHERE phone = $1 AND active = true",
+      "SELECT id FROM clients WHERE phone = $1 AND is_active = true",
       [data.phone]
     );
 
@@ -42,7 +42,7 @@ export class ClientService {
         notes,
         date_of_birth,
         address,
-        active,
+        is_active,
         created_at,
         updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW()) 
@@ -65,6 +65,8 @@ export class ClientService {
 
   /**
    * Find all clients with pagination
+   * FIXED: Use 'bookings' table instead of 'appointments'
+   * FIXED: Use 'is_active' instead of 'active'
    */
   async findAll(filters: { search?: string; page?: number; limit?: number }) {
     const { search, page = 1, limit = 50 } = filters;
@@ -73,16 +75,16 @@ export class ClientService {
     let query = `
       SELECT 
         c.*,
-        COUNT(DISTINCT a.id) as total_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'completed') as completed_appointments,
+        COUNT(DISTINCT b.id) as total_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as completed_appointments,
         COUNT(DISTINCT s.id) as total_purchases,
         SUM(s.final_amount) as lifetime_value,
-        MAX(a.appointment_date) as last_appointment_date,
+        MAX(b.booking_date) as last_appointment_date,
         MAX(s.sale_date) as last_purchase_date
       FROM clients c
-      LEFT JOIN appointments a ON c.id = a.client_id
+      LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.active = true
+      WHERE c.is_active = true
     `;
 
     const params: any[] = [];
@@ -107,8 +109,8 @@ export class ClientService {
 
     params.push(limit, offset);
 
-    // Count query
-    let countQuery = `SELECT COUNT(*) FROM clients WHERE active = true`;
+    // Count query - FIXED: use is_active
+    let countQuery = `SELECT COUNT(*) FROM clients WHERE is_active = true`;
     const countParams: any[] = [];
 
     if (search) {
@@ -127,7 +129,7 @@ export class ClientService {
     ]);
 
     return {
-      clients: dataResult.rows.map(this.formatClient),
+      clients: dataResult.rows.map(this.formatClient.bind(this)),
       total: parseInt(countResult.rows[0].count),
       page,
       limit,
@@ -137,6 +139,7 @@ export class ClientService {
 
   /**
    * Search clients (for quick search/autocomplete)
+   * FIXED: use is_active
    */
   async search(searchTerm: string) {
     const searchPattern = `%${searchTerm}%`;
@@ -150,7 +153,7 @@ export class ClientService {
         phone,
         whatsapp
       FROM clients 
-      WHERE active = true
+      WHERE is_active = true
         AND (
           first_name ILIKE $1 OR 
           last_name ILIKE $1 OR 
@@ -173,21 +176,22 @@ export class ClientService {
 
   /**
    * Find client by ID with detailed info
+   * FIXED: Use 'bookings' instead of 'appointments'
    */
   async findById(id: string) {
     const result = await pool.query(
       `SELECT 
         c.*,
-        COUNT(DISTINCT a.id) as total_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'completed') as completed_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'cancelled') as cancelled_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'no_show') as no_shows,
+        COUNT(DISTINCT b.id) as total_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as completed_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'cancelled') as cancelled_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.no_show = true) as no_shows,
         COUNT(DISTINCT s.id) as total_purchases,
         SUM(s.final_amount) as lifetime_value,
-        MAX(a.appointment_date) as last_appointment_date,
+        MAX(b.booking_date) as last_appointment_date,
         MAX(s.sale_date) as last_purchase_date
       FROM clients c
-      LEFT JOIN appointments a ON c.id = a.client_id
+      LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN sales s ON c.id = s.client_id
       WHERE c.id = $1
       GROUP BY c.id`,
@@ -259,6 +263,7 @@ export class ClientService {
 
   /**
    * Get client history (appointments and purchases)
+   * FIXED: Use 'bookings' table and 'services' table
    */
   async getHistory(id: string) {
     // Verify client exists
@@ -272,22 +277,22 @@ export class ClientService {
     }
 
     const [appointments, purchases] = await Promise.all([
-      // Get appointments
+      // Get appointments from bookings table
       pool.query(
         `SELECT 
-          a.id,
-          a.appointment_date,
-          a.start_time,
-          a.end_time,
-          a.status,
-          a.notes,
-          t.name as treatment_name,
-          t.price as treatment_price,
-          t.duration_minutes
-        FROM appointments a
-        LEFT JOIN treatments t ON a.treatment_id = t.id
-        WHERE a.client_id = $1
-        ORDER BY a.appointment_date DESC, a.start_time DESC
+          b.id,
+          b.booking_date as appointment_date,
+          b.start_time,
+          b.end_time,
+          b.status,
+          b.notes,
+          s.name as treatment_name,
+          s.price as treatment_price,
+          s.duration_minutes
+        FROM bookings b
+        LEFT JOIN services s ON b.service_id = s.id
+        WHERE b.client_id = $1
+        ORDER BY b.booking_date DESC, b.start_time DESC
         LIMIT 50`,
         [id]
       ),
@@ -295,14 +300,14 @@ export class ClientService {
       // Get purchases
       pool.query(
         `SELECT 
-          s.id,
-          s.sale_date,
-          s.final_amount,
-          s.status,
-          s.receipt_number,
+          sl.id,
+          sl.sale_date,
+          sl.final_amount,
+          sl.status,
+          sl.receipt_number,
           json_agg(
             json_build_object(
-              'name', COALESCE(p.name, t.name),
+              'name', COALESCE(p.name, s.name),
               'quantity', si.quantity,
               'price', si.unit_price,
               'type', CASE 
@@ -311,13 +316,13 @@ export class ClientService {
               END
             )
           ) as items
-        FROM sales s
-        JOIN sale_items si ON s.id = si.sale_id
+        FROM sales sl
+        JOIN sale_items si ON sl.id = si.sale_id
         LEFT JOIN products p ON si.product_id = p.id
-        LEFT JOIN treatments t ON si.service_id = t.id
-        WHERE s.client_id = $1
-        GROUP BY s.id
-        ORDER BY s.sale_date DESC
+        LEFT JOIN services s ON si.service_id = s.id
+        WHERE sl.client_id = $1
+        GROUP BY sl.id
+        ORDER BY sl.sale_date DESC
         LIMIT 50`,
         [id]
       ),
@@ -331,23 +336,24 @@ export class ClientService {
 
   /**
    * Get client statistics
+   * FIXED: Use 'bookings' and 'services' tables
    */
   async getStats(id: string) {
     const result = await pool.query(
       `SELECT 
-        COUNT(DISTINCT a.id) as total_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'completed') as completed_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'cancelled') as cancelled_appointments,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'no_show') as no_shows,
+        COUNT(DISTINCT b.id) as total_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as completed_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'cancelled') as cancelled_appointments,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.no_show = true) as no_shows,
         COUNT(DISTINCT s.id) as total_purchases,
         COALESCE(SUM(s.final_amount), 0) as total_spent,
         COALESCE(AVG(s.final_amount), 0) as average_purchase,
-        MAX(a.appointment_date) as last_visit,
-        MIN(a.appointment_date) as first_visit,
-        array_agg(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL) as favorite_treatments
+        MAX(b.booking_date) as last_visit,
+        MIN(b.booking_date) as first_visit,
+        array_agg(DISTINCT srv.name) FILTER (WHERE srv.name IS NOT NULL) as favorite_treatments
       FROM clients c
-      LEFT JOIN appointments a ON c.id = a.client_id
-      LEFT JOIN treatments t ON a.treatment_id = t.id
+      LEFT JOIN bookings b ON c.id = b.client_id
+      LEFT JOIN services srv ON b.service_id = srv.id
       LEFT JOIN sales s ON c.id = s.client_id
       WHERE c.id = $1
       GROUP BY c.id`,
@@ -376,11 +382,12 @@ export class ClientService {
 
   /**
    * Soft delete client (mark as inactive)
+   * FIXED: Use is_active
    */
   async delete(id: string) {
     const result = await pool.query(
       `UPDATE clients 
-       SET active = false, updated_at = NOW()
+       SET is_active = false, updated_at = NOW()
        WHERE id = $1
        RETURNING id`,
       [id]
@@ -395,6 +402,7 @@ export class ClientService {
 
   /**
    * Format client object for response
+   * FIXED: Use is_active
    */
   private formatClient(client: any) {
     return {
@@ -408,7 +416,7 @@ export class ClientService {
       notes: client.notes,
       dateOfBirth: client.date_of_birth,
       address: client.address,
-      active: client.active !== false,
+      active: client.is_active !== false,
       totalAppointments: parseInt(client.total_appointments) || 0,
       completedAppointments: parseInt(client.completed_appointments) || 0,
       cancelledAppointments: parseInt(client.cancelled_appointments) || 0,

@@ -1,122 +1,31 @@
 import api from "../../services/api";
-import { z } from "zod";
-import { toArray } from "../../services/normalise";
-import { mockStockItems } from "./mockStock";
+import { createResourceClient } from "../../services/resourceFactory";
+import {
+  StockItemSchema,
+  CreateStockItemSchema,
+  TransferStockSchema,
+  type StockItem,
+  type CreateStockItemInput,
+  type TransferStockInput,
+} from "./StockSchema";
 
-// Schemas
-export const StockLocationSchema = z.enum(["retail", "treatment", "storage"]);
-
-export const StockItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  sku: z.string().optional(),
-  category: z.string().optional(),
-  location: StockLocationSchema,
-  quantity: z.number(),
-  minQuantity: z.number().optional(),
-  unit: z.string().optional(),
-  cost: z.number().optional(),
-  retailPrice: z.number().optional(),
-  supplier: z.string().optional(),
-  notes: z.string().optional(),
-  lastRestocked: z.string().optional(),
+// Create typed API client
+export const stockApi = createResourceClient<StockItem, CreateStockItemInput>({
+  basePath: "/stock",
+  schema: StockItemSchema,
+  createSchema: CreateStockItemSchema,
 });
 
-export const CreateStockItemSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  sku: z.string().optional(),
-  category: z.string().optional(),
-  location: StockLocationSchema,
-  quantity: z.number().min(0, "Quantity must be positive"),
-  minQuantity: z.number().optional(),
-  unit: z.string().optional(),
-  cost: z.number().optional(),
-  retailPrice: z.number().optional(),
-  supplier: z.string().optional(),
-  notes: z.string().optional(),
-});
+// Export individual functions for convenience
+export const {
+  list: listStockItems,
+  get: getStockItem,
+  create: createStockItem,
+  update: updateStockItem,
+  delete: deleteStockItem,
+} = stockApi;
 
-export const TransferStockSchema = z.object({
-  itemId: z.string(),
-  fromLocation: StockLocationSchema,
-  toLocation: StockLocationSchema,
-  quantity: z.number().min(1, "Quantity must be at least 1"),
-  notes: z.string().optional(),
-});
-
-// Types
-export type StockLocation = z.infer<typeof StockLocationSchema>;
-export type StockItem = z.infer<typeof StockItemSchema>;
-export type CreateStockItemInput = z.infer<typeof CreateStockItemSchema>;
-export type TransferStockInput = z.infer<typeof TransferStockSchema>;
-
-const USE_MOCK_DATA = true;
-
-// API Functions
-export async function listStockItems(): Promise<StockItem[]> {
-  if (USE_MOCK_DATA) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    return mockStockItems;
-  }
-
-  try {
-    const { data } = await api.get("/stock");
-    const items = toArray<StockItem>(data);
-    return items.map((item) => StockItemSchema.parse(item));
-  } catch (error) {
-    console.error("Failed to fetch stock items:", error);
-    throw new Error("Unable to load stock items. Please try again.");
-  }
-}
-
-export async function getStockItem(id: string): Promise<StockItem> {
-  try {
-    const { data } = await api.get(`/stock/${id}`);
-    return StockItemSchema.parse(data);
-  } catch (error) {
-    console.error("Failed to fetch stock item:", error);
-    throw new Error("Unable to load stock item details. Please try again.");
-  }
-}
-
-export async function createStockItem(
-  input: CreateStockItemInput
-): Promise<StockItem> {
-  try {
-    const validatedInput = CreateStockItemSchema.parse(input);
-    const { data } = await api.post("/stock", validatedInput);
-    return StockItemSchema.parse(data);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new Error(`Validation error: ${error.issues[0]?.message}`);
-    }
-    console.error("Failed to create stock item:", error);
-    throw new Error("Unable to create stock item. Please try again.");
-  }
-}
-
-export async function updateStockItem(
-  id: string,
-  updates: Partial<CreateStockItemInput>
-): Promise<StockItem> {
-  try {
-    const { data } = await api.patch(`/stock/${id}`, updates);
-    return StockItemSchema.parse(data);
-  } catch (error) {
-    console.error("Failed to update stock item:", error);
-    throw new Error("Unable to update stock item. Please try again.");
-  }
-}
-
-export async function deleteStockItem(id: string): Promise<void> {
-  try {
-    await api.delete(`/stock/${id}`);
-  } catch (error) {
-    console.error("Failed to delete stock item:", error);
-    throw new Error("Unable to delete stock item. Please try again.");
-  }
-}
-
+// Custom transfer stock function (not part of standard CRUD)
 export async function transferStock(
   input: TransferStockInput
 ): Promise<{ success: boolean; message: string }> {
@@ -134,9 +43,6 @@ export async function transferStock(
       message: data.message || "Stock transferred successfully",
     };
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new Error(`Validation error: ${error.issues[0]?.message}`);
-    }
     if (error instanceof Error) {
       throw error;
     }
@@ -144,3 +50,6 @@ export async function transferStock(
     throw new Error("Unable to transfer stock. Please try again.");
   }
 }
+
+// Export types
+export type { StockItem, CreateStockItemInput, TransferStockInput };

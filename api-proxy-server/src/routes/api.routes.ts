@@ -24,6 +24,9 @@ const inventoryRoutes = [
   "inventory",
   "sales",
   "clients",
+  "appointments",
+  "staff",
+  "bookings",
 ];
 
 inventoryRoutes.forEach((route) => {

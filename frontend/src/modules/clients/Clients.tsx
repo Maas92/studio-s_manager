@@ -1,27 +1,21 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
-import toast from "react-hot-toast";
-import {
-  listClients,
-  createClient,
-  updateClient,
-  deleteClient,
-  type Client,
-  type CreateClientInput,
-} from "./api";
+import { clientsApi } from "./api";
+import type { Client, CreateClientInput } from "./api";
 import { listAppointments, type Appointment } from "../appointments/api";
 import Card from "../../ui/components/Card";
 import Button from "../../ui/components/Button";
-import Input from "../../ui/components/Input";
 import Spinner from "../../ui/components/Spinner";
 import ClientDetailModal from "./ClientDetailModal";
 import CreateClientModal from "./CreateClientModal";
-import AppointmentModal, {
-  type AppointmentFormValues,
-} from "../appointments/AppointmentsModal";
-import { Plus, Search, User, Phone, Calendar, Clock } from "lucide-react";
-import { useState, useCallback, useMemo } from "react";
-import { listTreatments, listStaff } from "../appointments/api";
+import { Plus, Phone, Calendar, Clock, User } from "lucide-react";
+import { useCallback, useMemo } from "react";
+import { useResource } from "../../hooks/useResource";
+import { useListFilter } from "../../hooks/useListFilter";
+import { useModalState } from "../../hooks/useModalState";
+import PageHeader from "../../ui/components/PageHeader";
+import SearchBar from "../../ui/components/SearchBar";
+import EmptyState from "../../ui/components/EmptyState";
+import { useQuery } from "@tanstack/react-query";
 
 const PageWrapper = styled.div`
   padding: 2rem;
@@ -35,46 +29,6 @@ const StickyHeader = styled.div`
   z-index: 10;
   background: ${({ theme }) => theme.color.bg || "#ffffff"};
   padding-bottom: 1.5rem;
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-
-  @media (max-width: 640px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-
-const PageTitle = styled.h2`
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.color.text};
-`;
-
-const SearchBar = styled.div`
-  position: relative;
-  width: 100%;
-  max-width: 500px;
-`;
-
-const SearchIcon = styled.div`
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: ${({ theme }) => theme.color.mutedText};
-  pointer-events: none;
-`;
-
-const SearchInput = styled(Input)`
-  padding-left: 3.75rem;
 `;
 
 const Grid = styled.div`
@@ -172,12 +126,6 @@ const AppointmentDetails = styled.div`
   color: ${({ theme }) => theme.color.text};
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 3rem 1rem;
-  color: ${({ theme }) => theme.color.mutedText};
-`;
-
 const ErrorMessage = styled.div`
   padding: 1rem;
   background: ${({ theme }) => theme.color.red500 || "#fef2f2"};
@@ -185,13 +133,6 @@ const ErrorMessage = styled.div`
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid ${({ theme }) => theme.color.red600 || "#fecaca"};
 `;
-
-const INITIAL_APPOINTMENT_FORM: AppointmentFormValues = {
-  client: "",
-  treatment: "",
-  staff: "",
-  datetimeLocal: "",
-};
 
 function getInitials(name: string): string {
   return name
@@ -203,26 +144,24 @@ function getInitials(name: string): string {
 }
 
 export default function Clients() {
-  const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-  const [appointmentForm, setAppointmentForm] = useState<AppointmentFormValues>(
-    INITIAL_APPOINTMENT_FORM
-  );
+  // Modal states using custom hook
+  const detailModal = useModalState<Client>();
+  const createModal = useModalState();
 
-  // Queries
+  // Use your generic resource hook
   const {
-    data: clients = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: listClients,
-    staleTime: 30000,
+    listQuery: { data: clients = [], isLoading, isError, error },
+    createMutation,
+    updateMutation,
+    deleteMutation,
+  } = useResource({
+    resourceKey: "clients",
+    client: clientsApi,
+    toastMessages: {
+      create: "Client created successfully",
+      update: "Client updated successfully",
+      delete: "Client deleted successfully",
+    },
   });
 
   const { data: appointments = [] } = useQuery({
@@ -231,95 +170,49 @@ export default function Clients() {
     staleTime: 30000,
   });
 
-  const { data: treatments = [] } = useQuery({
-    queryKey: ["treatments"],
-    queryFn: listTreatments,
-    staleTime: 60000,
-  });
+  // Filtering using custom hook
+  const { filteredItems, searchQuery, setSearchQuery } = useListFilter(
+    clients,
+    {
+      searchFields: ["name", "email", "phone"],
+    }
+  );
 
-  const { data: staff = [] } = useQuery({
-    queryKey: ["staff"],
-    queryFn: listStaff,
-    staleTime: 60000,
-  });
-
-  // Mutations
-  const createMutation = useMutation({
-    mutationFn: createClient,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      setShowCreateModal(false);
-      toast.success("Client created successfully", {
-        duration: 4000,
-        position: "top-right",
+  // Callbacks
+  const handleCreate = useCallback(
+    (input: CreateClientInput) => {
+      createMutation.mutate(input, {
+        onSuccess: () => createModal.close(),
       });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create client",
-        { duration: 5000, position: "top-right" }
+    [createMutation, createModal]
+  );
+
+  const handleUpdate = useCallback(
+    (id: string, updates: Partial<CreateClientInput>) => {
+      updateMutation.mutate(
+        { id, updates },
+        {
+          onSuccess: () => detailModal.close(),
+        }
       );
     },
-  });
+    [updateMutation, detailModal]
+  );
 
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      updates,
-    }: {
-      id: string;
-      updates: Partial<CreateClientInput>;
-    }) => updateClient(id, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      setShowDetailModal(false);
-      setSelectedClient(null);
-      toast.success("Client updated successfully", {
-        duration: 4000,
-        position: "top-right",
-      });
+  const handleDelete = useCallback(
+    (id: string, confirmMessage?: string) => {
+      const message =
+        confirmMessage || `Are you sure you want to delete this client?`;
+      if (window.confirm(message)) {
+        deleteMutation.mutate(id, {
+          onSuccess: () => detailModal.close(),
+        });
+      }
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update client",
-        { duration: 5000, position: "top-right" }
-      );
-    },
-  });
+    [deleteMutation, detailModal]
+  );
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteClient,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      setShowDetailModal(false);
-      setSelectedClient(null);
-      toast.success("Client deleted successfully", {
-        duration: 4000,
-        position: "top-right",
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete client",
-        { duration: 5000, position: "top-right" }
-      );
-    },
-  });
-
-  // Filter clients based on search
-  const filteredClients = useMemo(() => {
-    if (!searchQuery.trim()) return clients;
-
-    const query = searchQuery.toLowerCase();
-    return clients.filter(
-      (client) =>
-        client.name.toLowerCase().includes(query) ||
-        client.email?.toLowerCase().includes(query) ||
-        client.phone?.toLowerCase().includes(query)
-    );
-  }, [clients, searchQuery]);
-
-  // Get upcoming appointment for a client
   const getUpcomingAppointment = useCallback(
     (clientId: string): Appointment | null => {
       const now = new Date();
@@ -338,43 +231,10 @@ export default function Clients() {
     [appointments]
   );
 
-  // Handlers
-  const handleClientClick = useCallback((client: Client) => {
-    setSelectedClient(client);
-    setShowDetailModal(true);
-  }, []);
-
-  const handleUpdateClient = useCallback(
-    (id: string, updates: Partial<CreateClientInput>) => {
-      updateMutation.mutate({ id, updates });
-    },
-    [updateMutation]
-  );
-
-  const handleDeleteClient = useCallback(
-    (id: string) => {
-      deleteMutation.mutate(id);
-    },
-    [deleteMutation]
-  );
-
-  const handleCreateAppointmentForClient = useCallback(
-    (clientId: string, clientName: string) => {
-      setAppointmentForm({
-        ...INITIAL_APPOINTMENT_FORM,
-        client: clientId,
-      });
-      setShowAppointmentModal(true);
-    },
-    []
-  );
-
   if (isLoading) {
     return (
       <PageWrapper>
-        <HeaderRow>
-          <PageTitle>Clients</PageTitle>
-        </HeaderRow>
+        <PageHeader title="Clients" />
         <Spinner />
       </PageWrapper>
     );
@@ -383,9 +243,7 @@ export default function Clients() {
   if (isError) {
     return (
       <PageWrapper>
-        <HeaderRow>
-          <PageTitle>Clients</PageTitle>
-        </HeaderRow>
+        <PageHeader title="Clients" />
         <ErrorMessage>
           {error instanceof Error ? error.message : "Error loading clients"}
         </ErrorMessage>
@@ -396,52 +254,43 @@ export default function Clients() {
   return (
     <PageWrapper>
       <StickyHeader>
-        <HeaderRow>
-          <PageTitle>Clients</PageTitle>
+        <PageHeader title="Clients">
           <Button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => createModal.open()}
             variation="primary"
             size="medium"
           >
             <Plus size={18} />
             New Client
           </Button>
-        </HeaderRow>
+        </PageHeader>
 
-        <SearchBar>
-          <SearchIcon>
-            <Search size={20} />
-          </SearchIcon>
-          <SearchInput
-            type="text"
-            placeholder="Search clients by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </SearchBar>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search clients by name, email, or phone..."
+        />
       </StickyHeader>
 
-      {filteredClients.length === 0 ? (
-        <EmptyState>
-          <User size={48} style={{ margin: "0 auto 1rem", opacity: 0.5 }} />
-          <p>
-            {searchQuery
-              ? "No clients found matching your search."
-              : "No clients yet."}
-          </p>
-          <p>
-            {!searchQuery && 'Click "New Client" to add your first client.'}
-          </p>
-        </EmptyState>
+      {filteredItems.length === 0 ? (
+        <EmptyState
+          icon={User}
+          title={searchQuery ? "No clients found" : "No clients yet"}
+          description={
+            !searchQuery
+              ? 'Click "New Client" to add your first client.'
+              : undefined
+          }
+        />
       ) : (
         <Grid>
-          {filteredClients.map((client) => {
+          {filteredItems.map((client) => {
             const upcomingApt = getUpcomingAppointment(client.id);
 
             return (
               <ClientCard
                 key={client.id}
-                onClick={() => handleClientClick(client)}
+                onClick={() => detailModal.open(client)}
               >
                 <ClientHeader>
                   <ClientAvatar>{getInitials(client.name)}</ClientAvatar>
@@ -508,46 +357,20 @@ export default function Clients() {
       )}
 
       <ClientDetailModal
-        isOpen={showDetailModal}
-        onClose={() => {
-          setShowDetailModal(false);
-          setSelectedClient(null);
-        }}
-        client={selectedClient}
-        onUpdate={handleUpdateClient}
-        onDelete={handleDeleteClient}
-        onCreateAppointment={handleCreateAppointmentForClient}
+        isOpen={detailModal.isOpen}
+        onClose={detailModal.close}
+        client={detailModal.selectedItem}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
         updating={updateMutation.isPending}
         deleting={deleteMutation.isPending}
       />
 
       <CreateClientModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={(values) => createMutation.mutate(values)}
+        isOpen={createModal.isOpen}
+        onClose={createModal.close}
+        onCreate={handleCreate}
         creating={createMutation.isPending}
-      />
-
-      <AppointmentModal
-        isOpen={showAppointmentModal}
-        onClose={() => {
-          setShowAppointmentModal(false);
-          setAppointmentForm(INITIAL_APPOINTMENT_FORM);
-        }}
-        values={appointmentForm}
-        onChange={(patch) =>
-          setAppointmentForm((prev) => ({ ...prev, ...patch }))
-        }
-        onSubmit={() => {
-          // This would call your create appointment mutation
-          console.log("Create appointment:", appointmentForm);
-          setShowAppointmentModal(false);
-          setAppointmentForm(INITIAL_APPOINTMENT_FORM);
-        }}
-        submitting={false}
-        clients={clients}
-        treatments={treatments}
-        staff={staff}
       />
     </PageWrapper>
   );
