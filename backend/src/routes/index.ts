@@ -8,7 +8,9 @@ import sales from "./salesRoutes.js";
 import clients from "./clientRoutes.js";
 import treatmentRoutes from "./treatmentRoutes.js";
 import appointmentRoutes from "./appointmentRoutes.js";
-// import staffRoutes from "./staffRoutes.js";
+import staffRoutes from "./staffRoutes.js";
+import stockRoutes from "./stockRoutes.js";
+import transactionRoutes from "./transactionRoutes.js";
 
 const r = Router();
 
@@ -18,8 +20,10 @@ r.use("/inventory", inventory);
 r.use("/treatments", treatmentRoutes);
 r.use("/appointments", appointmentRoutes);
 r.use("/clients", clients);
-// r.use("/staff", staffRoutes);
+r.use("/staff", staffRoutes);
 r.use("/sales", sales);
+r.use("/transactions", transactionRoutes); // For POS
+r.use("/stock", stockRoutes);
 
 // Supporting/lookup tables
 r.use("/categories", categories);
