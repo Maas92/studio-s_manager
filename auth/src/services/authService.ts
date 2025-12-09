@@ -61,10 +61,10 @@ export class AuthService {
       .exec();
 
     // DEBUG: Log everything
-    console.log("=== LOGIN DEBUG ===");
-    console.log("Email:", credentials.email);
-    console.log("User found:", !!user);
-    console.log("===================");
+    logger.info("=== LOGIN DEBUG ===");
+    logger.info("Email:", credentials.email);
+    logger.info("User found:", !!user);
+    logger.info("===================");
 
     if (!user) {
       throw AppError.unauthorized("Invalid email or password");
@@ -76,9 +76,9 @@ export class AuthService {
       credentials.password
     );
 
-    console.log("=== PASSWORD VERIFICATION ===");
-    console.log("Is valid:", isValidPassword);
-    console.log("=============================");
+    logger.info("=== PASSWORD VERIFICATION ===");
+    logger.info("Is valid:", isValidPassword);
+    logger.info("=============================");
 
     if (!isValidPassword) {
       logger.warn(`Failed login attempt for user: ${credentials.email}`);

@@ -1,5 +1,11 @@
 import { Pool, PoolConfig, QueryResultRow } from "pg";
 import { env } from "./env";
+import {
+  logger,
+  logStartup,
+  logShutdown,
+  logDatabaseConnection,
+} from "../utils/logger";
 
 // Database configuration
 const config: PoolConfig = {
@@ -19,17 +25,20 @@ export const pool = new Pool(config);
 
 // Handle pool errors
 pool.on("error", (err, client) => {
-  console.error("Unexpected error on idle client", err);
+  logger.error("Unexpected error on idle client", err);
   // Don't exit the process, but log the error
 });
 
 // Handle pool connection events
 pool.on("connect", () => {
-  console.log("📊 New database client connected");
+  logDatabaseConnection("success", {
+    host: "localhost",
+    database: "postgres",
+  });
 });
 
 pool.on("remove", () => {
-  console.log("🔌 Database client removed from pool");
+  logger.info("🔌 Database client removed from pool");
 });
 
 /**
@@ -39,12 +48,12 @@ pool.on("remove", () => {
 export const testConnection = async (): Promise<boolean> => {
   try {
     const res = await pool.query("SELECT NOW() as now, version() as version");
-    console.log("✅ PostgreSQL connected successfully");
-    console.log(`   Time: ${res.rows[0].now}`);
-    console.log(`   Version: ${res.rows[0].version.split(",")[0]}`);
+    logger.info("✅ PostgreSQL connected successfully");
+    logger.info(`   Time: ${res.rows[0].now}`);
+    logger.info(`   Version: ${res.rows[0].version.split(",")[0]}`);
     return true;
   } catch (err) {
-    console.error("❌ Database connection failed:", err);
+    logger.error("❌ Database connection failed:", err);
     return false;
   }
 };
@@ -72,9 +81,9 @@ export const getClient = () => pool.connect();
 export const closePool = async (): Promise<void> => {
   try {
     await pool.end();
-    console.log("🔒 Database pool closed successfully");
+    logger.warn("🔒 Database pool closed successfully");
   } catch (err) {
-    console.error("Error closing database pool:", err);
+    logger.error("Error closing database pool:", err);
     throw err;
   }
 };

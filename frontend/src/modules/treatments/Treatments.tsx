@@ -19,7 +19,7 @@ import AppointmentModal, {
 import { Search, Clock, DollarSign, TrendingUp, Sparkles } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import CreateTreatmentModal from "./CreateTreatmentModal";
-import { Plus } from "lucide-react"; // if not already imported
+import { Plus } from "lucide-react";
 import Button from "../../ui/components/Button";
 
 interface TreatmentsProps {
@@ -338,7 +338,6 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
           t.tags?.some((tag) => tag.toLowerCase().includes(query))
       );
     }
-    console.log(treatments);
     return filtered.sort(
       (a, b) => (b.popularityScore || 0) - (a.popularityScore || 0)
     );
@@ -532,7 +531,6 @@ export default function Treatments({ isAdmin = false }: TreatmentsProps) {
           setAppointmentForm((prev) => ({ ...prev, ...patch }))
         }
         onSubmit={() => {
-          console.log("Create appointment:", appointmentForm);
           setShowAppointmentModal(false);
           setAppointmentForm(INITIAL_APPOINTMENT_FORM);
           toast.success("Appointment booked successfully!");

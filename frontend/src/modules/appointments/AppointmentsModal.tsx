@@ -199,17 +199,12 @@ export default function AppointmentModal({
   const handleDateChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newDate = e.target.value;
-      console.log("=== DATE CHANGE ===");
-      console.log("New date selected:", newDate);
-      console.log("Current datetimeLocal:", values.datetimeLocal);
 
       // Get current time by splitting datetimeLocal (or empty if not set)
       const { time: currentTime } = splitDatetimeLocal(values.datetimeLocal);
-      console.log("Current time extracted:", currentTime);
 
       // Join new date with current time (even if time is empty)
       const newDateTime = joinDateTimeLocal(newDate, currentTime);
-      console.log("New datetime to save:", newDateTime);
 
       // IMPORTANT: Save the partial datetime even if time isn't selected yet
       onChange({ datetimeLocal: newDateTime });
@@ -220,17 +215,12 @@ export default function AppointmentModal({
   const handleTimeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newTime = e.target.value;
-      console.log("=== TIME CHANGE ===");
-      console.log("New time selected:", newTime);
-      console.log("Current datetimeLocal:", values.datetimeLocal);
 
       // Get current date by splitting datetimeLocal (or empty if not set)
       const { date: currentDate } = splitDatetimeLocal(values.datetimeLocal);
-      console.log("Current date extracted:", currentDate);
 
       // Join current date with new time (even if date isn't selected yet)
       const newDateTime = joinDateTimeLocal(currentDate, newTime);
-      console.log("New datetime to save:", newDateTime);
 
       // IMPORTANT: Save the partial datetime even if date isn't selected yet
       onChange({ datetimeLocal: newDateTime });
@@ -254,7 +244,6 @@ export default function AppointmentModal({
   // Split datetimeLocal for display in inputs
   const { date, time } = useMemo(() => {
     const result = splitDatetimeLocal(values.datetimeLocal);
-    console.log("Rendering with date:", result.date, "time:", result.time);
     return result;
   }, [values.datetimeLocal]);
 

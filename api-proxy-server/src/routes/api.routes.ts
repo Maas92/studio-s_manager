@@ -38,9 +38,6 @@ inventoryRoutes.forEach((route) => {
       isBackendService: true, // Backend service requires GATEWAY_SECRET
     })
   );
-  console.log(
-    `Proxy setup for /${route} to ${env.INVENTORY_SERVICE_URL}/${route}`
-  );
 });
 
 export default router;

@@ -5,7 +5,7 @@ import { logger } from "../utils/logger";
 interface AppointmentFilters {
   client_id?: string;
   staff_id?: string;
-  treatment_id?: string;
+  service_id?: string; // Changed from treatment_id
   status?: string;
   date_from?: string;
   date_to?: string;
@@ -16,8 +16,8 @@ interface AppointmentFilters {
 interface CreateAppointmentData {
   client_id: string;
   staff_id: string;
-  treatment_id: string;
-  appointment_date: string;
+  service_id: string; // Changed from treatment_id
+  booking_date: string; // Changed from appointment_date
   start_time: string;
   end_time: string;
   duration_minutes: number;
@@ -28,12 +28,13 @@ interface CreateAppointmentData {
 export class AppointmentService {
   /**
    * Find all appointments with filters
+   * FIXED: Use 'bookings' table and 'services' table
    */
   async findAll(filters: AppointmentFilters) {
     const {
       client_id,
       staff_id,
-      treatment_id,
+      service_id,
       status,
       date_from,
       date_to,
@@ -46,32 +47,32 @@ export class AppointmentService {
     const conditions: string[] = [];
 
     if (client_id) {
-      conditions.push(`a.client_id = $${paramIndex++}`);
+      conditions.push(`b.client_id = $${paramIndex++}`);
       params.push(client_id);
     }
 
     if (staff_id) {
-      conditions.push(`a.staff_id = $${paramIndex++}`);
+      conditions.push(`b.staff_id = $${paramIndex++}`);
       params.push(staff_id);
     }
 
-    if (treatment_id) {
-      conditions.push(`a.treatment_id = $${paramIndex++}`);
-      params.push(treatment_id);
+    if (service_id) {
+      conditions.push(`b.service_id = $${paramIndex++}`);
+      params.push(service_id);
     }
 
     if (status) {
-      conditions.push(`a.status = $${paramIndex++}`);
+      conditions.push(`b.status = $${paramIndex++}`);
       params.push(status);
     }
 
     if (date_from) {
-      conditions.push(`a.appointment_date >= $${paramIndex++}`);
+      conditions.push(`b.booking_date >= $${paramIndex++}`);
       params.push(date_from);
     }
 
     if (date_to) {
-      conditions.push(`a.appointment_date <= $${paramIndex++}`);
+      conditions.push(`b.booking_date <= $${paramIndex++}`);
       params.push(date_to);
     }
 
@@ -83,24 +84,24 @@ export class AppointmentService {
 
     const query = `
       SELECT 
-        a.*,
+        b.*,
         c.first_name || ' ' || c.last_name as client_name,
         c.phone as client_phone,
         c.email as client_email,
-        t.name as treatment_name,
-        t.duration_minutes as treatment_duration,
-        t.price as treatment_price
-      FROM appointments a
-      LEFT JOIN clients c ON a.client_id = c.id
-      LEFT JOIN treatments t ON a.treatment_id = t.id
+        s.name as treatment_name,
+        s.duration_minutes as treatment_duration,
+        s.price as treatment_price
+      FROM bookings b
+      LEFT JOIN clients c ON b.client_id = c.id
+      LEFT JOIN services s ON b.service_id = s.id
       ${whereClause}
-      ORDER BY a.appointment_date DESC, a.start_time DESC
+      ORDER BY b.booking_date DESC, b.start_time DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
     const countQuery = `
       SELECT COUNT(*) 
-      FROM appointments a
+      FROM bookings b
       ${whereClause}
     `;
 
@@ -120,23 +121,24 @@ export class AppointmentService {
 
   /**
    * Find appointment by ID
+   * FIXED: Use 'bookings' and 'services' tables
    */
   async findById(id: string) {
     const result = await pool.query(
       `
       SELECT 
-        a.*,
+        b.*,
         c.first_name || ' ' || c.last_name as client_name,
         c.phone as client_phone,
         c.email as client_email,
-        t.name as treatment_name,
-        t.description as treatment_description,
-        t.duration_minutes as treatment_duration,
-        t.price as treatment_price
-      FROM appointments a
-      LEFT JOIN clients c ON a.client_id = c.id
-      LEFT JOIN treatments t ON a.treatment_id = t.id
-      WHERE a.id = $1
+        s.name as treatment_name,
+        s.description as treatment_description,
+        s.duration_minutes as treatment_duration,
+        s.price as treatment_price
+      FROM bookings b
+      LEFT JOIN clients c ON b.client_id = c.id
+      LEFT JOIN services s ON b.service_id = s.id
+      WHERE b.id = $1
     `,
       [id]
     );
@@ -150,22 +152,24 @@ export class AppointmentService {
 
   /**
    * Create new appointment
+   * FIXED: Use 'bookings' table
    */
   async create(data: CreateAppointmentData) {
     // Check for conflicts
     const conflictCheck = await pool.query(
       `
-      SELECT id FROM appointments
+      SELECT id FROM bookings
       WHERE staff_id = $1
-        AND appointment_date = $2
-        AND status NOT IN ('cancelled', 'no_show')
+        AND booking_date = $2
+        AND status NOT IN ('cancelled')
+        AND no_show = false
         AND (
           (start_time <= $3 AND end_time > $3)
           OR (start_time < $4 AND end_time >= $4)
           OR (start_time >= $3 AND end_time <= $4)
         )
     `,
-      [data.staff_id, data.appointment_date, data.start_time, data.end_time]
+      [data.staff_id, data.booking_date, data.start_time, data.end_time]
     );
 
     if (conflictCheck.rows.length > 0) {
@@ -176,24 +180,23 @@ export class AppointmentService {
 
     const result = await pool.query(
       `
-      INSERT INTO appointments (
-        client_id, staff_id, treatment_id, 
-        appointment_date, start_time, end_time, 
-        duration_minutes, status, notes, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO bookings (
+        client_id, staff_id, service_id, 
+        booking_date, start_time, end_time, 
+        total_price, status, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `,
       [
         data.client_id,
         data.staff_id,
-        data.treatment_id,
-        data.appointment_date,
+        data.service_id,
+        data.booking_date,
         data.start_time,
         data.end_time,
-        data.duration_minutes,
+        0, // total_price - you might want to fetch this from services table
         "scheduled",
         data.notes || null,
-        data.created_by || null,
       ]
     );
 
@@ -203,6 +206,7 @@ export class AppointmentService {
 
   /**
    * Update appointment
+   * FIXED: Use 'bookings' table
    */
   async update(id: string, data: Partial<CreateAppointmentData>) {
     const fields: string[] = [];
@@ -212,11 +216,10 @@ export class AppointmentService {
     const allowedFields = [
       "client_id",
       "staff_id",
-      "treatment_id",
-      "appointment_date",
+      "service_id",
+      "booking_date",
       "start_time",
       "end_time",
-      "duration_minutes",
       "notes",
       "status",
     ];
@@ -236,7 +239,7 @@ export class AppointmentService {
 
     const result = await pool.query(
       `
-      UPDATE appointments
+      UPDATE bookings
       SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
       WHERE id = $${paramIndex}
       RETURNING *
@@ -254,20 +257,20 @@ export class AppointmentService {
 
   /**
    * Cancel appointment
+   * FIXED: Use 'bookings' table
    */
   async cancel(id: string, reason?: string, cancelled_by?: string) {
     const result = await pool.query(
       `
-      UPDATE appointments
+      UPDATE bookings
       SET status = 'cancelled',
           cancellation_reason = $1,
-          cancelled_by = $2,
           cancelled_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
+      WHERE id = $2
       RETURNING *
     `,
-      [reason || null, cancelled_by || null, id]
+      [reason || null, id]
     );
 
     if (result.rows.length === 0) {
@@ -280,11 +283,12 @@ export class AppointmentService {
 
   /**
    * Check-in appointment
+   * FIXED: Use 'bookings' table
    */
   async checkIn(id: string) {
     const result = await pool.query(
       `
-      UPDATE appointments
+      UPDATE bookings
       SET status = 'checked_in',
           checked_in_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
@@ -306,13 +310,14 @@ export class AppointmentService {
 
   /**
    * Complete appointment
+   * FIXED: Use 'bookings' table
    */
   async complete(id: string, notes?: string) {
     const result = await pool.query(
       `
-      UPDATE appointments
+      UPDATE bookings
       SET status = 'completed',
-          completion_notes = $1,
+          notes = COALESCE($1, notes),
           completed_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $2 AND status IN ('scheduled', 'checked_in')
@@ -331,6 +336,7 @@ export class AppointmentService {
 
   /**
    * Get availability slots for a staff member
+   * FIXED: Use 'bookings' table
    */
   async getAvailability(
     staff_id: string,
@@ -347,10 +353,11 @@ export class AppointmentService {
     const existingAppointments = await pool.query(
       `
       SELECT start_time, end_time
-      FROM appointments
+      FROM bookings
       WHERE staff_id = $1
-        AND appointment_date = $2
-        AND status NOT IN ('cancelled', 'no_show')
+        AND booking_date = $2
+        AND status NOT IN ('cancelled')
+        AND no_show = false
       ORDER BY start_time
     `,
       [staff_id, date]
@@ -396,6 +403,7 @@ export class AppointmentService {
 
   /**
    * Get calendar view of appointments
+   * FIXED: Use 'bookings' and 'services' tables
    */
   async getCalendar(start_date: string, end_date: string, staff_id?: string) {
     const params: any[] = [start_date, end_date];
@@ -403,28 +411,28 @@ export class AppointmentService {
     let staffCondition = "";
 
     if (staff_id) {
-      staffCondition = `AND a.staff_id = $${paramIndex}`;
+      staffCondition = `AND b.staff_id = $${paramIndex}`;
       params.push(staff_id);
     }
 
     const result = await pool.query(
       `
       SELECT 
-        a.id,
-        a.appointment_date,
-        a.start_time,
-        a.end_time,
-        a.status,
+        b.id,
+        b.booking_date as appointment_date,
+        b.start_time,
+        b.end_time,
+        b.status,
         c.first_name || ' ' || c.last_name as client_name,
-        t.name as treatment_name,
-        t.price as treatment_price
-      FROM appointments a
-      LEFT JOIN clients c ON a.client_id = c.id
-      LEFT JOIN treatments t ON a.treatment_id = t.id
-      WHERE a.appointment_date >= $1
-        AND a.appointment_date <= $2
+        s.name as treatment_name,
+        s.price as treatment_price
+      FROM bookings b
+      LEFT JOIN clients c ON b.client_id = c.id
+      LEFT JOIN services s ON b.service_id = s.id
+      WHERE b.booking_date >= $1
+        AND b.booking_date <= $2
         ${staffCondition}
-      ORDER BY a.appointment_date, a.start_time
+      ORDER BY b.booking_date, b.start_time
     `,
       params
     );

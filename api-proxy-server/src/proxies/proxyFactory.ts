@@ -72,13 +72,13 @@ export const createProxy = (config: ProxyConfig) => {
           proxyReqOpts.headers["x-user-role"] = String(srcReq.user.role);
         }
 
-        console.log("✅ Forwarding user headers:", {
+        logger.debug("✅ Forwarding user headers:", {
           "x-user-id": srcReq.user.id,
           "x-user-email": srcReq.user.email,
           "x-user-role": srcReq.user.role,
         });
       } else {
-        console.log("⚠️ No user found in request - headers not forwarded");
+        logger.warn("⚠️ No user found in request - headers not forwarded");
       }
 
       return proxyReqOpts;

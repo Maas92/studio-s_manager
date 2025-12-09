@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger.js";
 
 export const mapAuthToUser = (
   req: Request,
@@ -14,13 +15,13 @@ export const mapAuthToUser = (
       firstName: req.auth.firstName,
       lastName: req.auth.lastName,
     };
-    console.log("✅ Mapped req.auth to req.user:", {
+    logger.debug("✅ Mapped req.auth to req.user:", {
       id: req.user.id,
       email: req.user.email,
       role: req.user.role,
     });
   } else {
-    console.log("⚠️ No req.auth found - user not authenticated");
+    logger.warn("⚠️ No req.auth found - user not authenticated");
   }
   next();
 };

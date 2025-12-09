@@ -3,6 +3,7 @@ import { jwtVerify, createRemoteJWKSet } from "jose";
 import AppError from "../utils/appError.js";
 import catchAsync from "../utils/catchAsync.js";
 import { env } from "../config/env.js";
+import logger from "../utils/logger.js";
 
 interface JwtPayload {
   sub: string;
@@ -27,7 +28,7 @@ const JWKS = createRemoteJWKSet(new URL(env.JWKS_URL));
 
 export const protect = catchAsync(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    console.log("\n🔒 PROTECT MIDDLEWARE");
+    logger.debug("\n🔒 PROTECT MIDDLEWARE");
 
     // 1) Get token from header or cookie
     let token: string | undefined;
@@ -37,14 +38,14 @@ export const protect = catchAsync(
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
-      console.log("✅ Token from Authorization header");
+      logger.info("✅ Token from Authorization header");
     } else if (req.cookies.jwt) {
       token = req.cookies.jwt;
-      console.log("✅ Token from jwt cookie");
+      logger.info("✅ Token from jwt cookie");
     }
 
     if (!token) {
-      console.log("❌ No token found");
+      logger.warn("❌ No token found");
       return next(
         new AppError("You are not logged in! Please log in to get access.", 401)
       );
@@ -53,17 +54,17 @@ export const protect = catchAsync(
     // 2) Verify token using RSA public key from JWKS
     let decoded: JwtPayload;
     try {
-      console.log("🔍 Verifying token with JWKS...");
+      logger.info("🔍 Verifying token with JWKS...");
       const { payload } = await jwtVerify(token, JWKS, {
         issuer: env.JWT_ISSUER,
         audience: env.JWT_AUDIENCE,
       });
 
       decoded = payload as unknown as JwtPayload;
-      console.log("✅ Token verified successfully");
-      console.log("User:", decoded.sub, decoded.email, decoded.role);
+      logger.info("✅ Token verified successfully");
+      logger.info("User:", decoded.sub, decoded.email, decoded.role);
     } catch (err: any) {
-      console.log("❌ Token verification failed:", err.message);
+      logger.warn("❌ Token verification failed:", err.message);
       if (err.code === "ERR_JWT_EXPIRED") {
         return next(
           new AppError("Your token has expired! Please log in again.", 401)
@@ -79,7 +80,7 @@ export const protect = catchAsync(
       role: decoded.role,
     };
 
-    console.log("✅ User attached to request\n");
+    logger.debug("✅ User attached to request\n");
     next();
   }
 );

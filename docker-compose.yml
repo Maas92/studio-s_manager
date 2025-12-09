@@ -1,178 +1,106 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database (Business Data)
-  postgres:
-    image: postgres:15-alpine
-    container_name: beauty-studio-db
-    restart: always
-    environment:
-      POSTGRES_USER: beautystudio
-      POSTGRES_PASSWORD: beautystudio123
-      POSTGRES_DB: beautystudio
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - beauty-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U beautystudio"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # MongoDB Database (Authentication & Users)
-  mongodb:
-    image: mongo:7-jammy
-    container_name: beauty-studio-mongodb
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: beautystudio
-      MONGO_INITDB_ROOT_PASSWORD: beautystudio123
-      MONGO_INITDB_DATABASE: beautystudio_auth
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - beauty-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: beauty-studio-redis
-    restart: always
-    ports:
-      - "6379:6379"
-    networks:
-      - beauty-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # API Gateway
-  api-gateway:
+  # Auth Service
+  auth:
     build:
-      context: ./services/api-gateway
+      context: ./auth
       dockerfile: Dockerfile
-    container_name: api-gateway
-    restart: always
+    container_name: studio-s-auth
     environment:
-      NODE_ENV: development
-      PORT: 4000
-      AUTH_SERVICE_URL: http://auth-service:4002
-      INVENTORY_SERVICE_URL: http://inventory-service:4001
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      JWT_EXPIRES_IN: 90d
-      RATE_LIMIT_WINDOW_MS: 900000
-      RATE_LIMIT_MAX_REQUESTS: 100
-      FRONTEND_URL: http://localhost:3000
-    ports:
-      - "4000:4000"
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./services/api-gateway:/app
-      - /app/node_modules
-      - /app/dist
-    networks:
-      - beauty-network
-
-  # Auth Service (MongoDB)
-  auth-service:
-    build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
-    container_name: auth-service
-    restart: always
-    environment:
-      NODE_ENV: development
-      PORT: 4002
-      MONGODB_URI: mongodb://beautystudio:beautystudio123@mongodb:27017/beautystudio_auth?authSource=admin
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      JWT_EXPIRES_IN: 90d
-      JWT_COOKIE_EXPIRES_IN: 90
-      BCRYPT_ROUNDS: 12
-      EMAIL_FROM: noreply@beautystudio.com
-    ports:
-      - "4002:4002"
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./services/auth-service:/app
-      - /app/node_modules
-      - /app/dist
-    networks:
-      - beauty-network
-
-  # Inventory Service (PostgreSQL)
-  inventory-service:
-    build:
-      context: ./services/inventory-service
-      dockerfile: Dockerfile
-    container_name: inventory-service
-    restart: always
-    environment:
-      NODE_ENV: development
-      PORT: 4001
-      DATABASE_URL: postgresql://beautystudio:beautystudio123@postgres:5432/beautystudio
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      AUTH_SERVICE_URL: http://auth-service:4002
+      - NODE_ENV=production
+      - LOG_LEVEL=warn  # Only warnings and errors
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - ACCESS_TOKEN_TTL=15m
+      - REFRESH_TOKEN_TTL=7d
     ports:
       - "4001:4001"
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./services/inventory-service:/app
-      - /app/node_modules
-      - /app/dist
-    networks:
-      - beauty-network
+    # Limit logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
 
-  # Frontend React App
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: studio-s-backend
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn  # Only warnings and errors
+      - DB_POOL_LOGGING=false  # Disable pool logging
+      - PORT=5003
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+    ports:
+      - "5003:5003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Limit logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  # API Gateway
+  gateway:
+    build:
+      context: ./api-proxy-server
+      dockerfile: Dockerfile
+    container_name: studio-s-gateway
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - PORT=4000
+      - AUTH_SERVICE_URL=http://auth:4001
+      - BACKEND_SERVICE_URL=http://backend:5003
+    ports:
+      - "4000:4000"
+    depends_on:
+      - auth
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  # Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: beauty-studio-frontend
-    restart: always
+    container_name: studio-s-frontend
     environment:
-      REACT_APP_API_URL: http://localhost:4000/api/v1
+      - NODE_ENV=production
+      - VITE_API_URL=http://localhost:4000
     ports:
-      - "3000:3000"
+      - "5173:80"
     depends_on:
-      - api-gateway
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - beauty-network
-    stdin_open: true
-    tty: true
-
+      - gateway
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
 networks:
-  beauty-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  mongodb_data:
+  default:
+    name: studio-s-network
