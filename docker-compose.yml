@@ -8,19 +8,21 @@ services:
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=warn  # Only warnings and errors
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - JWT_SECRET=${JWT_SECRET}
-      - ACCESS_TOKEN_TTL=15m
-      - REFRESH_TOKEN_TTL=7d
+      - SERVICE_NAME=auth-service
+      - PORT=5002
+      - MONGODB_URI=mongodb+srv://mansoorghumra92_db_user:Mansoor92@cluster0.3m4i0vw.mongodb.net/?appName=Cluster0
+      - JWT_ISSUER=studio-s-auth
+      - JWT_AUDIENCE=studio-s-clients
+      - JWT_KID=studio-s-auth-1
+      - ACCESS_TOKEN_TTL_SEC=172800
+      - REFRESH_TOKEN_TTL_SEC=1209600
+      - COOKIE_SECURE=false
+      - COOKIE_SAMESITE=lax
+      - TRUST_PROXY=loopback
+      - CORS_ORIGIN=http://localhost:5173
+      - SELF_JWKS_URL=http://localhost:5002/.well-known/jwks.json
     ports:
-      - "4001:4001"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - "5002:5002"
     # Limit logging
     logging:
       driver: "json-file"
@@ -39,17 +41,16 @@ services:
       - NODE_ENV=production
       - LOG_LEVEL=warn  # Only warnings and errors
       - DB_POOL_LOGGING=false  # Disable pool logging
+      - SERVICE_NAME=backend-service
       - PORT=5003
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
+      - DB_SSL=true
+      - DATABASE_URL=postgresql://postgres.zwoirifwzsfvkqanjefh:0BCq7HCmU1diACQ8@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production-min-32-chars
+      - AUTH_SERVICE_URL=http://auth-service:4002
+      - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
     ports:
       - "5003:5003"
-    depends_on:
-      postgres:
-        condition: service_healthy
     # Limit logging
     logging:
       driver: "json-file"
@@ -67,9 +68,20 @@ services:
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=warn
+      - SERVICE_NAME=api-gateway
       - PORT=4000
-      - AUTH_SERVICE_URL=http://auth:4001
-      - BACKEND_SERVICE_URL=http://backend:5003
+      - AUTH_SERVICE_URL=http://localhost:5002
+      - INVENTORY_SERVICE_URL=http://localhost:5003
+      - FRONTEND_URL=http://localhost:5173
+      - JWKS_URL=http://localhost:5002/.well-known/jwks.json
+      - JWT_ISSUER=studio-s-auth
+      - JWT_AUDIENCE=studio-s-clients
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - RATE_LIMIT_WINDOW_MS=900000
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=90d
+      - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
     ports:
       - "4000:4000"
     depends_on:
@@ -83,24 +95,24 @@ services:
     restart: unless-stopped
 
   # Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: studio-s-frontend
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=http://localhost:4000
-    ports:
-      - "5173:80"
-    depends_on:
-      - gateway
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: unless-stopped
-networks:
-  default:
-    name: studio-s-network
+#   frontend:
+#     build:
+#       context: ./frontend
+#       dockerfile: Dockerfile
+#     container_name: studio-s-frontend
+#     environment:
+#       - NODE_ENV=production
+#       - VITE_API_BASE_URL=http://localhost:4000
+#     ports:
+#       - "5173:5173"
+#     depends_on:
+#       - gateway
+#     logging:
+#       driver: "json-file"
+#       options:
+#         max-size: "10m"
+#         max-file: "3"
+#     restart: unless-stopped
+# networks:
+#   default:
+#     name: studio-s-network

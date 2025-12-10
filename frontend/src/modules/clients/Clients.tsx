@@ -27,7 +27,7 @@ const StickyHeader = styled.div`
   position: sticky;
   top: 0;
   z-index: 10;
-  background: ${({ theme }) => theme.color.bg || "#ffffff"};
+  background: ${({ theme }) => theme.color.bg};
   padding-bottom: 1.5rem;
 `;
 

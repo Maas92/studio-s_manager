@@ -4,10 +4,10 @@
   "description": "backend service for Studio S manager",
   "license": "ISC",
   "author": "Mansoor",
-  "type": "commonjs",
-  "main": "server.ts",
+  "type": "module",
+  "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --skipLibCheck",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "lint": "eslint .",

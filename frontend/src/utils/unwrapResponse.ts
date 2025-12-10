@@ -26,6 +26,14 @@ export function unwrapResponse<T = any>(raw: unknown): T | T[] | null {
     "payload",
     "treatments",
     "treatment",
+    "appointment",
+    "appointments",
+    "client",
+    "clients",
+    "staff",
+    "user",
+    "users",
+    "stock",
   ];
 
   // If already an array, return it

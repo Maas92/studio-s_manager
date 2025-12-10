@@ -27,6 +27,7 @@ const inventoryRoutes = [
   "appointments",
   "staff",
   "bookings",
+  "stock",
 ];
 
 inventoryRoutes.forEach((route) => {

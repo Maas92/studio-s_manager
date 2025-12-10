@@ -64,7 +64,7 @@ const ViewToggle = styled.div`
   display: flex;
   gap: 0.5rem;
   padding: 0.25rem;
-  background: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
+  background: ${({ theme }) => theme.color.grey100};
   border-radius: ${({ theme }) => theme.radii.md};
 `;
 
@@ -96,10 +96,10 @@ const ViewButton = styled.button<{ $active?: boolean }>`
 
 const ErrorMessage = styled.div`
   padding: 1rem;
-  background: ${({ theme }) => theme.color.red600 || "#fef2f2"};
-  color: ${({ theme }) => theme.color.red500 || "#b91c1c"};
+  background: ${({ theme }) => theme.color.red600};
+  color: ${({ theme }) => theme.color.grey100};
   border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.red600 || "#fecaca"};
+  border: 1px solid ${({ theme }) => theme.color.red600};
 `;
 
 const EmptyState = styled.div`

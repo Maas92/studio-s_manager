@@ -1,4 +1,3 @@
-// src/controllers/authController.ts
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import User, { IUser } from "../models/userModel.js";

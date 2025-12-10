@@ -1,4 +1,4 @@
-FROM node:latest AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -14,8 +14,11 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+#Remove devDependencies
+RUN npm prune --production
+
 # Production image
-FROM node:latest
+FROM node:25-alpine
 
 WORKDIR /app
 

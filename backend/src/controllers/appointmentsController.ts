@@ -4,6 +4,7 @@ import { appointmentService } from "../services/appointment.service";
 import catchAsync from "../utils/catchAsync";
 import AppError from "../utils/appError";
 import { logger } from "../utils/logger";
+import { toCamelCase } from "../utils/fieldMapper";
 
 /**
  * Get all appointments with filtering
@@ -48,7 +49,7 @@ export const getAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment,
+        appointment: toCamelCase(appointment),
       },
     });
   }
@@ -72,7 +73,7 @@ export const createAppointment = catchAsync(
     res.status(201).json({
       status: "success",
       data: {
-        appointment,
+        appointment: toCamelCase(appointment),
       },
     });
   }
@@ -96,7 +97,7 @@ export const updateAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment,
+        appointment: toCamelCase(appointment),
       },
     });
   }
@@ -123,7 +124,7 @@ export const cancelAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment,
+        appointment: toCamelCase(appointment),
       },
     });
   }
@@ -144,7 +145,7 @@ export const checkInAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment,
+        appointment: toCamelCase(appointment),
       },
     });
   }
@@ -167,7 +168,7 @@ export const completeAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment,
+        appointment: toCamelCase(appointment),
       },
     });
   }
@@ -224,7 +225,7 @@ export const getCalendar = catchAsync(
       status: "success",
       results: appointments.length,
       data: {
-        appointments,
+        appointment: toCamelCase(appointments),
       },
     });
   }
