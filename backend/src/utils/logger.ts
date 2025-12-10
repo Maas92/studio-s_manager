@@ -1,5 +1,5 @@
 import winston from "winston";
-import { env } from "../config/env";
+import { env } from '../config/env.js';
 import fs from "fs";
 import path from "path";
 

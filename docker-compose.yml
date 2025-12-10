@@ -19,8 +19,8 @@ services:
       - COOKIE_SECURE=false
       - COOKIE_SAMESITE=lax
       - TRUST_PROXY=loopback
-      - CORS_ORIGIN=http://localhost:5173
-      - SELF_JWKS_URL=http://localhost:5002/.well-known/jwks.json
+      - CORS_ORIGIN=http://frontend:5173
+      - SELF_JWKS_URL=http://auth:5002/.well-known/jwks.json
     ports:
       - "5002:5002"
     # Limit logging
@@ -47,7 +47,7 @@ services:
       - DATABASE_URL=postgresql://postgres.zwoirifwzsfvkqanjefh:0BCq7HCmU1diACQ8@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production-min-32-chars
-      - AUTH_SERVICE_URL=http://auth-service:4002
+      - AUTH_SERVICE_URL=http://auth:4002
       - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
     ports:
       - "5003:5003"
@@ -70,10 +70,10 @@ services:
       - LOG_LEVEL=warn
       - SERVICE_NAME=api-gateway
       - PORT=4000
-      - AUTH_SERVICE_URL=http://localhost:5002
-      - INVENTORY_SERVICE_URL=http://localhost:5003
+      - AUTH_SERVICE_URL=http://auth:5002
+      - INVENTORY_SERVICE_URL=http://backend:5003
       - FRONTEND_URL=http://localhost:5173
-      - JWKS_URL=http://localhost:5002/.well-known/jwks.json
+      - JWKS_URL=http://auth:5002/.well-known/jwks.json
       - JWT_ISSUER=studio-s-auth
       - JWT_AUDIENCE=studio-s-clients
       - RATE_LIMIT_MAX_REQUESTS=100
@@ -95,24 +95,24 @@ services:
     restart: unless-stopped
 
   # Frontend
-#   frontend:
-#     build:
-#       context: ./frontend
-#       dockerfile: Dockerfile
-#     container_name: studio-s-frontend
-#     environment:
-#       - NODE_ENV=production
-#       - VITE_API_BASE_URL=http://localhost:4000
-#     ports:
-#       - "5173:5173"
-#     depends_on:
-#       - gateway
-#     logging:
-#       driver: "json-file"
-#       options:
-#         max-size: "10m"
-#         max-file: "3"
-#     restart: unless-stopped
-# networks:
-#   default:
-#     name: studio-s-network
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: studio-s-frontend
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=http://gateway:4000
+    ports:
+      - "5173:80"
+    depends_on:
+      - gateway
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+networks:
+  default:
+    name: studio-s-network

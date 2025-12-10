@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import AppError from "../utils/appError";
-import { logger } from "../utils/logger";
-import { env } from "../config/env";
+import AppError from '../utils/appError.js';
+import { logger } from '../utils/logger.js';
+import { env } from '../config/env.js';
 
 /**
  * Handle database-specific errors

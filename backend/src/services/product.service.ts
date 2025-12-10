@@ -1,7 +1,7 @@
-import { pool } from '../config/database';
-import { Product } from '../types';
-import AppError from '../utils/appError';
-import { logger } from '../utils/logger';
+import { pool } from "../config/database.js";
+import { Product } from "../types/index.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
 
 export class ProductService {
   /**
@@ -26,7 +26,7 @@ export class ProductService {
         search,
         page = 1,
         limit = 50,
-        sort = 'created_at',
+        sort = "created_at",
       } = filters;
 
       const params: any[] = [];
@@ -62,21 +62,22 @@ export class ProductService {
         paramIndex++;
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause =
+        conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
       // Build ORDER BY clause
       const sortMap: Record<string, string> = {
-        name: 'p.name',
-        sku: 'p.sku',
-        created_at: 'p.created_at',
-        updated_at: 'p.updated_at',
-        price_cents: 'p.price_cents',
-        cost_cents: 'p.cost_cents',
+        name: "p.name",
+        sku: "p.sku",
+        created_at: "p.created_at",
+        updated_at: "p.updated_at",
+        price_cents: "p.price_cents",
+        cost_cents: "p.cost_cents",
       };
 
-      const sortDirection = sort.startsWith('-') ? 'DESC' : 'ASC';
-      const sortField = sort.replace(/^-/, '');
-      const orderBy = sortMap[sortField] || 'p.created_at';
+      const sortDirection = sort.startsWith("-") ? "DESC" : "ASC";
+      const sortField = sort.replace(/^-/, "");
+      const orderBy = sortMap[sortField] || "p.created_at";
 
       // Pagination
       const offset = (page - 1) * limit;
@@ -97,7 +98,10 @@ export class ProductService {
 
       const [dataResult, countResult] = await Promise.all([
         pool.query(query, params),
-        pool.query(`SELECT COUNT(*) FROM products p ${whereClause}`, params.slice(0, -2)),
+        pool.query(
+          `SELECT COUNT(*) FROM products p ${whereClause}`,
+          params.slice(0, -2)
+        ),
       ]);
 
       return {
@@ -108,7 +112,7 @@ export class ProductService {
         totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit),
       };
     } catch (error) {
-      logger.error('Error in ProductService.findAll:', error);
+      logger.error("Error in ProductService.findAll:", error);
       throw error;
     }
   }
@@ -145,12 +149,12 @@ export class ProductService {
       );
 
       if (result.rows.length === 0) {
-        throw new AppError('Product not found', 404);
+        throw new AppError("Product not found", 404);
       }
 
       return result.rows[0];
     } catch (error) {
-      logger.error('Error in ProductService.findById:', error);
+      logger.error("Error in ProductService.findById:", error);
       throw error;
     }
   }
@@ -189,10 +193,10 @@ export class ProductService {
       logger.info(`Product created: ${result.rows[0].id}`);
       return result.rows[0];
     } catch (error: any) {
-      if (error.code === '23505') {
-        throw new AppError('A product with this SKU already exists', 409);
+      if (error.code === "23505") {
+        throw new AppError("A product with this SKU already exists", 409);
       }
-      logger.error('Error in ProductService.create:', error);
+      logger.error("Error in ProductService.create:", error);
       throw error;
     }
   }
@@ -208,14 +212,14 @@ export class ProductService {
 
       // Build SET clause dynamically
       const updateFields: Array<{ key: keyof Product; dbColumn: string }> = [
-        { key: 'sku', dbColumn: 'sku' },
-        { key: 'name', dbColumn: 'name' },
-        { key: 'category_id', dbColumn: 'category_id' },
-        { key: 'supplier_id', dbColumn: 'supplier_id' },
-        { key: 'cost_cents', dbColumn: 'cost_cents' },
-        { key: 'price_cents', dbColumn: 'price_cents' },
-        { key: 'retail', dbColumn: 'retail' },
-        { key: 'active', dbColumn: 'active' },
+        { key: "sku", dbColumn: "sku" },
+        { key: "name", dbColumn: "name" },
+        { key: "category_id", dbColumn: "category_id" },
+        { key: "supplier_id", dbColumn: "supplier_id" },
+        { key: "cost_cents", dbColumn: "cost_cents" },
+        { key: "price_cents", dbColumn: "price_cents" },
+        { key: "retail", dbColumn: "retail" },
+        { key: "active", dbColumn: "active" },
       ];
 
       for (const { key, dbColumn } of updateFields) {
@@ -226,27 +230,27 @@ export class ProductService {
       }
 
       if (fields.length === 0) {
-        throw new AppError('No fields to update', 400);
+        throw new AppError("No fields to update", 400);
       }
 
       values.push(id);
 
       const result = await pool.query(
         `UPDATE products 
-        SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+        SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
         WHERE id = $${paramIndex}
         RETURNING *`,
         values
       );
 
       if (result.rows.length === 0) {
-        throw new AppError('Product not found', 404);
+        throw new AppError("Product not found", 404);
       }
 
       logger.info(`Product updated: ${id}`);
       return result.rows[0];
     } catch (error) {
-      logger.error('Error in ProductService.update:', error);
+      logger.error("Error in ProductService.update:", error);
       throw error;
     }
   }
@@ -257,24 +261,24 @@ export class ProductService {
   async delete(id: string) {
     try {
       const result = await pool.query(
-        'DELETE FROM products WHERE id = $1 RETURNING id',
+        "DELETE FROM products WHERE id = $1 RETURNING id",
         [id]
       );
 
       if (result.rows.length === 0) {
-        throw new AppError('Product not found', 404);
+        throw new AppError("Product not found", 404);
       }
 
       logger.info(`Product deleted: ${id}`);
       return true;
     } catch (error: any) {
-      if (error.code === '23503') {
+      if (error.code === "23503") {
         throw new AppError(
-          'Cannot delete product as it has associated inventory records',
+          "Cannot delete product as it has associated inventory records",
           400
         );
       }
-      logger.error('Error in ProductService.delete:', error);
+      logger.error("Error in ProductService.delete:", error);
       throw error;
     }
   }

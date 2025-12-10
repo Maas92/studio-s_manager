@@ -1,14 +1,14 @@
 import express from "express";
-import * as productController from "../controllers/productController";
-import { restrictTo } from "../middleware/userMiddleware";
-import { validate } from "../middleware/validation";
+import * as productController from '../controllers/productController.js';
+import { restrictTo } from '../middleware/userMiddleware.js';
+import { validate } from '../middleware/validation.js';
 import {
   createProductSchema,
   updateProductSchema,
   getProductSchema,
   deleteProductSchema,
   productQuerySchema,
-} from "../validators/product.validator";
+} from '../validators/product.validator.js';
 
 const router = express.Router();
 

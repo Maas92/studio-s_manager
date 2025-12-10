@@ -8,7 +8,10 @@ import { logger } from "../utils/logger.js";
 
 // Get cookie domain (undefined for localhost to avoid issues)
 const getCookieDomain = () => {
-  return env.COOKIE_DOMAIN === "localhost" ? undefined : env.COOKIE_DOMAIN;
+  if (process.env.NODE_ENV !== "production") {
+    return undefined; // localhost / dev environment
+  }
+  return process.env.COOKIE_DOMAIN || undefined; // production domain from env
 };
 
 // Set access token cookie (for authentication)

@@ -1,4 +1,0 @@
-Code combined from: C:\Users\p01mansoorg\Documents\python\Studio-S_manager
-Pattern filter: Dockerfile
-================================================================================
-

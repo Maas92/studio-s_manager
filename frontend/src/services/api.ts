@@ -4,7 +4,36 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 
-const BASE = "http://localhost:4000"; //process.env.VITE_API_BASE_URL; // gateway
+declare global {
+  interface Window {
+    __ENV__?: {
+      VITE_API_BASE_URL?: string;
+      [key: string]: any;
+    };
+  }
+}
+
+// runtime value (set by env.js at container start)
+const runtimeBase =
+  typeof window !== "undefined" &&
+  window.__ENV__ &&
+  window.__ENV__.VITE_API_BASE_URL
+    ? window.__ENV__.VITE_API_BASE_URL
+    : undefined;
+
+// build-time fallback (Vite)
+const buildBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+
+// final base choice: runtime > build > sensible fallback
+const BASE = runtimeBase || buildBase || "http://localhost:4000";
+
+if (!runtimeBase && !buildBase) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[api] No API base provided (runtime/build) — using fallback",
+    BASE
+  );
+}
 
 // Create single shared axios instance
 const api: AxiosInstance = axios.create({

@@ -1,12 +1,12 @@
 import express from "express";
-import * as inventoryController from "../controllers/inventoryController";
-import { restrictTo } from "../middleware/userMiddleware";
-import { validate } from "../middleware/validation";
+import * as inventoryController from '../controllers/inventoryController.js';
+import { restrictTo } from '../middleware/userMiddleware.js';
+import { validate } from '../middleware/validation.js';
 import {
   adjustInventorySchema,
   transferStockSchema,
   inventoryLevelsQuerySchema,
-} from "../validators/inventory.validator";
+} from '../validators/inventory.validator.js';
 
 const router = express.Router();
 

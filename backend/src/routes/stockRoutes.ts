@@ -6,9 +6,9 @@ import {
   updateStockItem,
   deleteStockItem,
   transferStock,
-} from "../controllers/stockController";
-import { restrictTo } from "../middleware/userMiddleware";
-import { validateUUID } from "../middleware/validation";
+} from '../controllers/stockController.js';
+import { restrictTo } from '../middleware/userMiddleware.js';
+import { validateUUID } from '../middleware/validation.js';
 
 const router = Router();
 

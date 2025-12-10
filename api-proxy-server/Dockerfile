@@ -18,6 +18,10 @@ RUN npm run build
 # Production stage
 FROM node:25-alpine
 
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
 WORKDIR /app
 
 # Copy package files
@@ -30,11 +34,7 @@ RUN npm ci
 COPY --from=builder /app/dist ./dist
 
 # Create logs directory
-RUN mkdir -p logs
-
-# Add non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app/logs
 
 # Change ownership
 RUN chown -R nodejs:nodejs /app

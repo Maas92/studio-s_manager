@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { transactionService } from "../services/transaction.service";
-import catchAsync from "../utils/catchAsync";
+import { transactionService } from '../services/transaction.service.js';
+import catchAsync from '../utils/catchAsync.js';
 
 export const getAllTransactions = catchAsync(
   async (req: Request, res: Response) => {

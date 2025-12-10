@@ -22,7 +22,16 @@ app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 
 // CORS
-app.use(cors({ origin: [/^http:\/\/localhost:\d+$/], credentials: true }));
+const isDev = process.env.NODE_ENV !== "production";
+
+const corsOptions = {
+  origin: isDev
+    ? [/^http:\/\/localhost:\d+$/] // Allow any localhost port in dev
+    : process.env.FRONTEND_URL,    // In prod, allow the deployed frontend URL
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(requestId);
 

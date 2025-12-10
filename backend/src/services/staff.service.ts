@@ -1,6 +1,6 @@
-import { pool } from "../config/database";
-import AppError from "../utils/appError";
-import { logger } from "../utils/logger";
+import { pool } from '../config/database.js';
+import AppError from '../utils/appError.js';
+import { logger } from '../utils/logger.js';
 
 interface CreateStaffData {
   name: string;

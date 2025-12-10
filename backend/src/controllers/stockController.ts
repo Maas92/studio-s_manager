@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { stockService } from "../services/stock.service";
-import catchAsync from "../utils/catchAsync";
+import { stockService } from '../services/stock.service.js';
+import catchAsync from '../utils/catchAsync.js';
 
 export const getAllStockItems = catchAsync(
   async (req: Request, res: Response) => {

@@ -6,9 +6,9 @@ import {
   updateStaff,
   deleteStaff,
   getStaffPerformance,
-} from "../controllers/staffController";
-import { restrictTo } from "../middleware/userMiddleware";
-import { validateUUID } from "../middleware/validation";
+} from '../controllers/staffController.js';
+import { restrictTo } from '../middleware/userMiddleware.js';
+import { validateUUID } from '../middleware/validation.js';
 
 const router = Router();
 

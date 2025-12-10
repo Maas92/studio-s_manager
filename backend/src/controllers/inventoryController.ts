@@ -1,9 +1,9 @@
 import { Response, NextFunction } from "express";
-import { pool, getClient } from "../config/database";
-import catchAsync from "../utils/catchAsync";
-import AppError from "../utils/appError";
-import { UserRequest } from "../middleware/userMiddleware";
-import { logger } from "../utils/logger";
+import { pool, getClient } from '../config/database.js';
+import catchAsync from '../utils/catchAsync.js';
+import AppError from '../utils/appError.js';
+import { UserRequest } from '../middleware/userMiddleware.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Get inventory levels with optional filtering

@@ -1,10 +1,10 @@
 import { Response, NextFunction } from "express";
-import { UserRequest } from "../middleware/userMiddleware";
-import { appointmentService } from "../services/appointment.service";
-import catchAsync from "../utils/catchAsync";
-import AppError from "../utils/appError";
-import { logger } from "../utils/logger";
-import { toCamelCase } from "../utils/fieldMapper";
+import { UserRequest } from '../middleware/userMiddleware.js';
+import { appointmentService } from '../services/appointment.service.js';
+import catchAsync from '../utils/catchAsync.js';
+import AppError from '../utils/appError.js';
+import { logger } from '../utils/logger.js';
+import { toCamelCase } from '../utils/fieldMapper.js';
 
 /**
  * Get all appointments with filtering

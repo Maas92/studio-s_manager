@@ -1,7 +1,7 @@
 import express from "express";
-import * as appointmentController from "../controllers/appointmentsController";
-import { restrictTo } from "../middleware/userMiddleware";
-import { validate, validateUUID } from "../middleware/validation";
+import * as appointmentController from '../controllers/appointmentsController.js';
+import { restrictTo } from '../middleware/userMiddleware.js';
+import { validate, validateUUID } from '../middleware/validation.js';
 import {
   createAppointmentSchema,
   updateAppointmentSchema,
@@ -9,7 +9,7 @@ import {
   availabilityQuerySchema,
   calendarQuerySchema,
   completeAppointmentSchema,
-} from "../validators/appointment.validator";
+} from '../validators/appointment.validator.js';
 
 const router = express.Router();
 

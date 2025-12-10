@@ -20,6 +20,7 @@ RUN npm prune --production
 # Production image
 FROM node:25-alpine
 
+
 WORKDIR /app
 
 # Copy dependencies and built files
@@ -30,6 +31,12 @@ COPY --from=builder /app/package*.json ./
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
+
+# Create logs directory
+RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app/logs
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 

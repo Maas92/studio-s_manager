@@ -1,7 +1,7 @@
 import http from "http";
-import app from "./app";
-import { env } from "./config/env";
-import { testConnection, closePool } from "./config/database";
+import app from "./app.js";
+import { env } from "./config/env.js";
+import { testConnection, closePool } from "./config/database.js";
 import { logger } from "./utils/logger.js";
 
 const port = env.PORT;
@@ -21,11 +21,13 @@ const server = app.listen(port, async () => {
     }
 
     // Start HTTP server
+    const host =
+      process.env.NODE_ENV === "production" ? "gateway" : "localhost";
 
     logger.info(`🚀 Backend Service running on port ${port}`);
     logger.info(`📝 Environment: ${env.NODE_ENV}`);
-    logger.info(`🔗 API: http://localhost:${port}/api/v1`);
-    logger.info(`❤️ Health: http://localhost:${port}/health`);
+    logger.info(`🔗 API: http://${host}:${port}/api/v1`);
+    logger.info(`❤️ Health: http://${host}:${port}/health`);
   } catch (error) {
     logger.error("Failed to start server:", error);
     process.exit(1);

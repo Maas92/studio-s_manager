@@ -1,11 +1,11 @@
 import { Pool, PoolConfig, QueryResultRow } from "pg";
-import { env } from "./env";
+import { env } from './env.js';
 import {
   logger,
   logStartup,
   logShutdown,
   logDatabaseConnection,
-} from "../utils/logger";
+} from '../utils/logger.js';
 
 // Database configuration
 const config: PoolConfig = {

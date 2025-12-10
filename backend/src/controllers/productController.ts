@@ -1,8 +1,8 @@
 import { Response, NextFunction } from "express";
-import { UserRequest } from "../middleware/userMiddleware";
-import { productService } from "../services/product.service";
-import catchAsync from "../utils/catchAsync";
-import { logger } from "../utils/logger";
+import { UserRequest } from '../middleware/userMiddleware.js';
+import { productService } from '../services/product.service.js';
+import catchAsync from '../utils/catchAsync.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Get all products with filtering and pagination

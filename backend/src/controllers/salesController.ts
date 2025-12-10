@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { getClient } from "../config/database";
-import AppError from "../utils/appError";
-import catchAsync from "../utils/catchAsync";
-import { createSaleSchema } from "../validators/sale.validator";
+import { getClient } from '../config/database.js';
+import AppError from '../utils/appError.js';
+import catchAsync from '../utils/catchAsync.js';
+import { createSaleSchema } from '../validators/sale.validator.js';
 
 export const createSale = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {

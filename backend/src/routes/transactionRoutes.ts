@@ -5,9 +5,9 @@ import {
   getTransaction,
   updateTransaction,
   sendReceipt,
-} from "../controllers/transactionController";
-import { restrictTo } from "../middleware/userMiddleware";
-import { validateUUID } from "../middleware/validation";
+} from '../controllers/transactionController.js';
+import { restrictTo } from '../middleware/userMiddleware.js';
+import { validateUUID } from '../middleware/validation.js';
 
 const router = Router();
 

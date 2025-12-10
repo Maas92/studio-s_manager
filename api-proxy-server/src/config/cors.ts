@@ -1,14 +1,21 @@
 import { CorsOptions } from "cors";
 import { env } from "./env.js";
 
+// env.FRONTEND_URLS could be "http://localhost:5173,http://frontend:5173"
+const allowedOrigins = (env.FRONTEND_URL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = [env.FRONTEND_URL];
+    // allow non-browser tools (Postman, native apps) which send no origin
+    if (!origin) return callback(null, true);
 
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn("Blocked CORS origin:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -16,5 +23,5 @@ export const corsOptions: CorsOptions = {
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
   exposedHeaders: ["X-Request-ID", "Set-Cookie"],
-  maxAge: 86400, // 24 hours
+  maxAge: 86400,
 };
