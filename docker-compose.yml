@@ -7,7 +7,7 @@ services:
     container_name: studio-s-auth
     environment:
       - NODE_ENV=production
-      - LOG_LEVEL=warn  # Only warnings and errors
+      - LOG_LEVEL=warn
       - SERVICE_NAME=auth-service
       - PORT=5002
       - MONGODB_URI=mongodb+srv://mansoorghumra92_db_user:Mansoor92@cluster0.3m4i0vw.mongodb.net/?appName=Cluster0
@@ -19,17 +19,26 @@ services:
       - COOKIE_SECURE=false
       - COOKIE_SAMESITE=lax
       - TRUST_PROXY=loopback
-      - CORS_ORIGIN=http://frontend:5173
+      # Only allow requests from gateway (internal network only)
+      - CORS_ORIGIN=http://gateway:4000
       - SELF_JWKS_URL=http://auth:5002/.well-known/jwks.json
-    ports:
-      - "5002:5002"
-    # Limit logging
+    # NO external port exposure - only accessible via Docker network
+    expose:
+      - "5002"
+    networks:
+      - studio-s-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Backend Service
   backend:
@@ -39,25 +48,33 @@ services:
     container_name: studio-s-backend
     environment:
       - NODE_ENV=production
-      - LOG_LEVEL=warn  # Only warnings and errors
-      - DB_POOL_LOGGING=false  # Disable pool logging
+      - LOG_LEVEL=warn
+      - DB_POOL_LOGGING=false
       - SERVICE_NAME=backend-service
       - PORT=5003
       - DB_SSL=true
       - DATABASE_URL=postgresql://postgres.zwoirifwzsfvkqanjefh:0BCq7HCmU1diACQ8@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production-min-32-chars
-      - AUTH_SERVICE_URL=http://auth:4002
+      - AUTH_SERVICE_URL=http://auth:5002
       - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
-    ports:
-      - "5003:5003"
-    # Limit logging
+    # NO external port exposure - only accessible via Docker network
+    expose:
+      - "5003"
+    networks:
+      - studio-s-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # API Gateway
   gateway:
@@ -72,7 +89,9 @@ services:
       - PORT=4000
       - AUTH_SERVICE_URL=http://auth:5002
       - INVENTORY_SERVICE_URL=http://backend:5003
+      # Allow both nginx internal requests AND browser origin
       - FRONTEND_URL=http://localhost:5173
+      - FRONTEND_URLS=http://localhost:5173,http://frontend:80
       - JWKS_URL=http://auth:5002/.well-known/jwks.json
       - JWT_ISSUER=studio-s-auth
       - JWT_AUDIENCE=studio-s-clients
@@ -82,19 +101,30 @@ services:
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - JWT_EXPIRES_IN=90d
       - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
-    ports:
-      - "4000:4000"
+    # NO external port exposure - only accessible via Docker network
+    expose:
+      - "4000"
+    networks:
+      - studio-s-network
     depends_on:
-      - auth
-      - backend
+      auth:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Frontend
+  # Frontend (Nginx)
   frontend:
     build:
       context: ./frontend
@@ -102,17 +132,51 @@ services:
     container_name: studio-s-frontend
     environment:
       - NODE_ENV=production
-      - VITE_API_BASE_URL=http://gateway:4000
+      # IMPORTANT: This is used by docker-entrypoint.sh to generate env.js at runtime
+      - VITE_API_BASE_URL=/api
     ports:
+      # Only expose frontend to host
       - "5173:80"
+    networks:
+      - studio-s-network
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Redis (if you don't have it already)
+  redis:
+    image: redis:7-alpine
+    container_name: studio-s-redis
+    expose:
+      - "6379"
+    networks:
+      - studio-s-network
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
-  default:
+  studio-s-network:
+    driver: bridge
     name: studio-s-network
+
+volumes:
+  redis-data:
+    name: studio-s-redis-data

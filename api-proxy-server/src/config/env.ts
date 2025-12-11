@@ -11,6 +11,11 @@ const envSchema = z.object({
   AUTH_SERVICE_URL: z.string().url(),
   INVENTORY_SERVICE_URL: z.string().url(),
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
+
+  // allow a comma-separated list of origins; transform into string[]
+  // Example .env: FRONTEND_URLS=http://localhost:5173,http://frontend:5173
+  FRONTEND_URLS: z.string().optional(),
+
   JWT_ISSUER: z.string().default("studio-s-auth"),
   JWT_AUDIENCE: z.string().default("studio-s-clients"),
   GATEWAY_SECRET: z

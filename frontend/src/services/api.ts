@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-// runtime value (set by env.js at container start)
+// runtime value (set by env.js at container start)VITE_API_BASE_URL
 const runtimeBase =
   typeof window !== "undefined" &&
   window.__ENV__ &&

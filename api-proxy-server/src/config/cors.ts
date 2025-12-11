@@ -1,27 +1,82 @@
 import { CorsOptions } from "cors";
 import { env } from "./env.js";
+import logger from "../utils/logger.js";
 
-// env.FRONTEND_URLS could be "http://localhost:5173,http://frontend:5173"
-const allowedOrigins = (env.FRONTEND_URL || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+// Parse FRONTEND_URLS from environment
+// Handles: string with commas, array, or single URL
+function parseAllowedOrigins(): string[] {
+  const urls = env.FRONTEND_URLS || env.FRONTEND_URL;
+
+  if (!urls) {
+    logger.warn("[CORS] No FRONTEND_URLS or FRONTEND_URL configured!");
+    return [];
+  }
+
+  // If it's already an array, return it
+  if (Array.isArray(urls)) {
+    return urls;
+  }
+
+  // If it's a string, split by comma
+  if (typeof urls === "string") {
+    return urls
+      .split(",")
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+  }
+
+  logger.warn("[CORS] FRONTEND_URLS has unexpected type:", typeof urls);
+  return [];
+}
+
+const allowedOrigins = parseAllowedOrigins();
+
+// Log configuration on startup
+logger.info("[CORS] Configuration loaded");
+logger.info("[CORS] Allowed origins:", allowedOrigins);
+logger.info("[CORS] Node environment:", env.NODE_ENV);
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    // allow non-browser tools (Postman, native apps) which send no origin
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn("Blocked CORS origin:", origin);
-      callback(new Error("Not allowed by CORS"));
+    // Allow requests with no origin (server-to-server, mobile apps, Postman)
+    if (!origin) {
+      logger.info("[CORS] Allowing request with no origin");
+      return callback(null, true);
     }
+
+    // Development mode: allow any localhost
+    if (env.NODE_ENV === "development") {
+      const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
+      if (isLocalhost) {
+        logger.info("[CORS] Allowing localhost origin (dev mode):", origin);
+        return callback(null, true);
+      }
+    }
+
+    // Check if origin is in allowed list
+    const isAllowed = allowedOrigins.includes(origin);
+    if (isAllowed) {
+      logger.info("[CORS] Allowing whitelisted origin:", origin);
+      return callback(null, true);
+    }
+
+    // Block all other origins
+    logger.warn("[CORS] BLOCKED origin:", origin);
+    logger.warn("[CORS] Allowed origins are:", allowedOrigins);
+    const error = new Error(`Origin ${origin} not allowed by CORS policy`);
+    return callback(error);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Request-ID"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Request-ID",
+    "X-Forwarded-For",
+    "X-Forwarded-Proto",
+    "X-Real-IP",
+  ],
   exposedHeaders: ["X-Request-ID", "Set-Cookie"],
-  maxAge: 86400,
+  maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 204,
 };

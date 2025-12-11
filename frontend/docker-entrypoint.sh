@@ -1,17 +1,25 @@
 #!/bin/sh
-# Writes runtime env into /usr/share/nginx/html/env.js so the built static app can read it.
 
-# Default fallback (if not provided)
-: "${RUNTIME_API_URL:=}"
+# docker-entrypoint.sh
+# This script generates env.js at container runtime with environment variables
 
+set -e
+
+# Default value if not provided
+API_BASE_URL="${VITE_API_BASE_URL:-/api}"
+
+echo "[entrypoint] Generating env.js with runtime configuration..."
+echo "[entrypoint] VITE_API_BASE_URL=${API_BASE_URL}"
+
+# Write the env.js file
 cat > /usr/share/nginx/html/env.js <<EOF
 window.__ENV__ = {
-  VITE_API_BASE_URL: "${RUNTIME_API_URL}"
+  VITE_API_BASE_URL: "${API_BASE_URL}"
 };
 EOF
 
-# Print for debugging
-echo "[entrypoint] Wrote /usr/share/nginx/html/env.js with VITE_API_BASE_URL=${RUNTIME_API_URL}"
+echo "[entrypoint] env.js created successfully:"
+cat /usr/share/nginx/html/env.js
 
-# Exec the container's CMD
+# Execute the CMD from Dockerfile (start nginx)
 exec "$@"

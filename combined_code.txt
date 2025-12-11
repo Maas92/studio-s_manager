@@ -1,0 +1,2831 @@
+================================================================================
+FILE: ./frontend/src/ui/components\ActionButton.tsx
+================================================================================
+
+// components/ui/ActionButton.tsx
+import React from "react";
+import Button, { type ButtonVariation, type ButtonSize } from "./Button";
+
+export type ActionButtonProps =
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    variation?: ButtonVariation;
+    size?: ButtonSize;
+    icon?: React.ComponentType<{ size?: number }>;
+    children?: React.ReactNode;
+  };
+
+const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
+  function ActionButton(
+    {
+      icon: Icon,
+      variation = "secondary",
+      size = "medium",
+      children,
+      ...btnProps
+    },
+    ref
+  ) {
+    return (
+      <Button ref={ref} variation={variation} size={size} {...btnProps}>
+        {Icon ? <Icon size={18} /> : null}
+        <span>{children}</span>
+      </Button>
+    );
+  }
+);
+
+export default ActionButton;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Badge.tsx
+================================================================================
+
+import styled from "styled-components";
+
+export type BadgeVariant =
+  | "default"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"
+  | "active"
+  | "inactive"
+  | "on_leave"
+  | "retail"
+  | "treatment"
+  | "storage"
+  | "confirmed"
+  | "pending"
+  | "cancelled"
+  | "completed";
+
+interface BadgeProps {
+  $variant?: BadgeVariant;
+}
+
+const variantStyles: Record<BadgeVariant, { bg: string; color: string }> = {
+  default: { bg: "#f3f4f6", color: "#374151" },
+  success: { bg: "#dcfce7", color: "#15803d" },
+  warning: { bg: "#fef3c7", color: "#a16207" },
+  danger: { bg: "#fee2e2", color: "#b91c1c" },
+  info: { bg: "#dbeafe", color: "#1d4ed8" },
+  active: { bg: "#dcfce7", color: "#15803d" },
+  inactive: { bg: "#f3f4f6", color: "#374151" },
+  on_leave: { bg: "#fef3c7", color: "#a16207" },
+  retail: { bg: "#dbeafe", color: "#1d4ed8" },
+  treatment: { bg: "#dcfce7", color: "#15803d" },
+  storage: { bg: "#fef3c7", color: "#a16207" },
+  confirmed: { bg: "#dcfce7", color: "#15803d" },
+  pending: { bg: "#fef3c7", color: "#a16207" },
+  cancelled: { bg: "#fee2e2", color: "#b91c1c" },
+  completed: { bg: "#dbeafe", color: "#1d4ed8" },
+};
+
+export const Badge = styled.span<BadgeProps>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+  background: ${({ $variant = "default" }) => variantStyles[$variant].bg};
+  color: ${({ $variant = "default" }) => variantStyles[$variant].color};
+`;
+
+export default Badge;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Button.tsx
+================================================================================
+
+import React from "react";
+import styled, { css } from "styled-components";
+
+export type ButtonVariation = "primary" | "secondary" | "danger";
+export type ButtonSize = "small" | "medium" | "large";
+
+type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variation?: ButtonVariation;
+  size?: ButtonSize;
+};
+
+const variations = {
+  primary: css`
+    background: ${({ theme }) => theme.color.brand600};
+    color: white;
+    border: 1px solid ${({ theme }) => theme.color.brand600};
+    &:hover {
+      background: ${({ theme }) => theme.color.brand700};
+    }
+  `,
+  secondary: css`
+    background: ${({ theme }) => theme.color.grey100};
+    color: ${({ theme }) => theme.color.text};
+    border: 1px solid ${({ theme }) => theme.color.border};
+    &:hover {
+      background: ${({ theme }) => theme.color.grey200};
+    }
+  `,
+  danger: css`
+    background: ${({ theme }) => theme.color.red600};
+    color: white;
+    border: 1px solid ${({ theme }) => theme.color.red600};
+    &:hover {
+      background: ${({ theme }) => theme.color.red500};
+    }
+  `,
+};
+
+const sizes = {
+  small: css`
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  `,
+  medium: css`
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+  `,
+  large: css`
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 16px;
+  `,
+} as const;
+
+const Btn = styled.button<Props>`
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  ${(p) => variations[p.variation ?? "primary"]}
+  ${(p) => sizes[p.size ?? "medium"]}
+`;
+
+const Button = React.forwardRef<HTMLButtonElement, Props>(function Button(
+  { variation = "primary", size = "medium", ...rest },
+  ref
+) {
+  return <Btn ref={ref} variation={variation} size={size} {...rest} />;
+});
+
+Button.displayName = "Button";
+
+export default Button;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Calendar.tsx
+================================================================================
+
+import React, { useMemo, useState } from "react";
+import styled from "styled-components";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Button from "./Button";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  startTime: Date;
+  endTime?: Date;
+  color?: string;
+  onClick?: () => void;
+}
+
+interface CalendarProps {
+  events: CalendarEvent[];
+  onDateClick?: (date: Date) => void;
+  onEventClick?: (event: CalendarEvent) => void;
+  initialDate?: Date;
+}
+
+const CalendarWrapper = styled.div`
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  overflow: hidden;
+  min-height: 600px;
+`;
+
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.color.border};
+  background: ${({ theme }) => theme.color.panel};
+`;
+
+const HeaderTitle = styled.h3`
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+`;
+
+const TodayButton = styled(Button)`
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+`;
+
+const WeekdayHeader = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid ${({ theme }) => theme.color.border};
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+`;
+
+const WeekdayCell = styled.div`
+  padding: 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+`;
+
+const DaysGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: minmax(100px, auto);
+  background: ${({ theme }) => theme.color.panel};
+
+  @media (max-width: 768px) {
+    grid-auto-rows: minmax(80px, auto);
+  }
+`;
+
+const DayCell = styled.div<{
+  $isToday?: boolean;
+  $isCurrentMonth?: boolean;
+  $isSelected?: boolean;
+}>`
+  min-height: 100px;
+  padding: 0.5rem;
+  border: 1px solid ${({ theme }) => theme.color.border};
+  background: ${({ $isCurrentMonth, theme }) =>
+    $isCurrentMonth ? theme.color.panel : theme.color.grey50 || "#f9fafb"};
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    background: ${({ theme }) => theme.color.brand50 || "#eff6ff"};
+  }
+
+  ${({ $isSelected, theme }) =>
+    $isSelected &&
+    `
+    background: ${theme.color.brand100 || "#dbeafe"};
+    border-color: ${theme.color.brand600 || "#2563eb"};
+  `}
+
+  @media (max-width: 768px) {
+    min-height: 80px;
+    padding: 0.25rem;
+  }
+`;
+
+const DayNumber = styled.div<{ $isToday?: boolean }>`
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${({ theme }) => theme.color.text};
+  margin-bottom: 0.25rem;
+
+  ${({ $isToday, theme }) =>
+    $isToday &&
+    `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: ${theme.color.brand600 || "#2563eb"};
+    color: white;
+    font-weight: 600;
+  `}
+`;
+
+const EventsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+`;
+
+const EventBadge = styled.button<{ $color?: string }>`
+  display: block;
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  background: ${({ $color }) => $color || "#3b82f6"};
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.65rem;
+    padding: 1px 3px;
+  }
+`;
+
+const MoreEvents = styled.div`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  margin-top: 2px;
+  font-weight: 500;
+`;
+
+// Helper functions
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function startOfWeek(date: Date): Date {
+  const day = date.getDay();
+  const diff = date.getDate() - day;
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+}
+
+function endOfWeek(date: Date): Date {
+  const day = date.getDay();
+  const diff = date.getDate() + (6 - day);
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+}
+
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
+function getCalendarDays(currentDate: Date): Date[] {
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart);
+  const calendarEnd = endOfWeek(monthEnd);
+
+  const days: Date[] = [];
+  const day = new Date(calendarStart);
+
+  while (day <= calendarEnd) {
+    days.push(new Date(day));
+    day.setDate(day.getDate() + 1);
+  }
+
+  return days;
+}
+
+export default function Calendar({
+  events,
+  onDateClick,
+  onEventClick,
+  initialDate = new Date(),
+}: CalendarProps) {
+  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const today = new Date();
+
+  const calendarDays = useMemo(
+    () => getCalendarDays(currentDate),
+    [currentDate]
+  );
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((event) => {
+      const dateKey = `${event.startTime.getFullYear()}-${event.startTime.getMonth()}-${event.startTime.getDate()}`;
+      if (!map.has(dateKey)) {
+        map.set(dateKey, []);
+      }
+      map.get(dateKey)!.push(event);
+    });
+    return map;
+  }, [events]);
+
+  const getEventsForDay = (date: Date): CalendarEvent[] => {
+    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    return eventsByDate.get(dateKey) || [];
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    );
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+    );
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+    setSelectedDate(new Date());
+  };
+
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    onDateClick?.(date);
+  };
+
+  const handleEventClick = (event: CalendarEvent, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEventClick?.(event);
+    event.onClick?.();
+  };
+
+  const monthYear = currentDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <CalendarWrapper>
+      <Header>
+        <HeaderTitle>{monthYear}</HeaderTitle>
+        <HeaderActions>
+          <TodayButton variation="secondary" size="small" onClick={handleToday}>
+            Today
+          </TodayButton>
+          <Button
+            variation="secondary"
+            size="small"
+            onClick={handlePrevMonth}
+            aria-label="Previous month"
+          >
+            <ChevronLeft size={18} />
+          </Button>
+          <Button
+            variation="secondary"
+            size="small"
+            onClick={handleNextMonth}
+            aria-label="Next month"
+          >
+            <ChevronRight size={18} />
+          </Button>
+        </HeaderActions>
+      </Header>
+
+      <WeekdayHeader>
+        {weekdays.map((day) => (
+          <WeekdayCell key={day}>{day}</WeekdayCell>
+        ))}
+      </WeekdayHeader>
+
+      <DaysGrid>
+        {calendarDays.map((day, index) => {
+          const dayEvents = getEventsForDay(day);
+          const isToday = isSameDay(day, today);
+          const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+          const isSelected = selectedDate
+            ? isSameDay(day, selectedDate)
+            : false;
+          const maxVisibleEvents = 3;
+          const hasMoreEvents = dayEvents.length > maxVisibleEvents;
+
+          return (
+            <DayCell
+              key={index}
+              $isToday={isToday}
+              $isCurrentMonth={isCurrentMonth}
+              $isSelected={isSelected}
+              onClick={() => handleDayClick(day)}
+            >
+              <DayNumber $isToday={isToday}>{day.getDate()}</DayNumber>
+              <EventsContainer>
+                {dayEvents.slice(0, maxVisibleEvents).map((event) => (
+                  <EventBadge
+                    key={event.id}
+                    $color={event.color}
+                    onClick={(e) => handleEventClick(event, e)}
+                    title={event.title}
+                  >
+                    {event.startTime.toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}{" "}
+                    {event.title}
+                  </EventBadge>
+                ))}
+                {hasMoreEvents && (
+                  <MoreEvents>
+                    +{dayEvents.length - maxVisibleEvents} more
+                  </MoreEvents>
+                )}
+              </EventsContainer>
+            </DayCell>
+          );
+        })}
+      </DaysGrid>
+    </CalendarWrapper>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Card.tsx
+================================================================================
+
+import React from "react";
+import styled, { useTheme } from "styled-components";
+
+type Props = React.HTMLAttributes<HTMLDivElement> & {
+  children: React.ReactNode;
+};
+
+const Wrapper = styled.div`
+  border-radius: ${({ theme }) => theme.radii.lg};
+  padding: 20px;
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const Card = React.forwardRef<HTMLDivElement, Props>(function Card(
+  { children, className, style, ...rest },
+  ref
+) {
+  // ensure theme usage so styled-components' theming type-checks correctly
+  const theme = useTheme();
+  void theme;
+
+  return (
+    <Wrapper ref={ref} className={className} style={style} {...rest}>
+      {children}
+    </Wrapper>
+  );
+});
+
+Card.displayName = "Card";
+
+export default Card;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\EmptyState.tsx
+================================================================================
+
+import React from "react";
+import styled from "styled-components";
+import { type LucideIcon } from "lucide-react";
+
+interface EmptyStateProps {
+  icon?: LucideIcon;
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+}
+
+const Container = styled.div`
+  text-align: center;
+  padding: 3rem 1rem;
+  color: ${({ theme }) => theme.color.mutedText};
+`;
+
+const IconWrapper = styled.div`
+  margin: 0 auto 1rem;
+  opacity: 0.5;
+`;
+
+const Title = styled.p`
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+`;
+
+const Description = styled.p`
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+`;
+
+export default function EmptyState({
+  icon: Icon,
+  title = "No items found",
+  description,
+  action,
+}: EmptyStateProps) {
+  return (
+    <Container>
+      {Icon && (
+        <IconWrapper>
+          <Icon size={48} />
+        </IconWrapper>
+      )}
+      <Title>{title}</Title>
+      {description && <Description>{description}</Description>}
+      {action}
+    </Container>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\FilterBar.tsx
+================================================================================
+
+import React from "react";
+import styled from "styled-components";
+
+interface FilterBarProps {
+  filters: Array<{ value: string; label: string; count?: number }>;
+  activeFilter: string;
+  onFilterChange: (value: string) => void;
+  className?: string;
+}
+
+const Container = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const FilterButton = styled.button<{ $active?: boolean }>`
+  padding: 0.5rem 1rem;
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid
+    ${({ theme, $active }) =>
+      $active ? theme.color.brand600 : theme.color.border};
+  background: ${({ theme, $active }) =>
+    $active ? theme.color.brand50 : theme.color.panel};
+  color: ${({ theme, $active }) =>
+    $active ? theme.color.brand700 : theme.color.text};
+  font-weight: ${({ $active }) => ($active ? "600" : "500")};
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+
+  &:hover {
+    border-color: ${({ theme }) => theme.color.brand600};
+    background: ${({ theme }) => theme.color.brand50};
+  }
+`;
+
+export default function FilterBar({
+  filters,
+  activeFilter,
+  onFilterChange,
+  className,
+}: FilterBarProps) {
+  return (
+    <Container className={className}>
+      {filters.map((filter) => (
+        <FilterButton
+          key={filter.value}
+          $active={activeFilter === filter.value}
+          onClick={() => onFilterChange(filter.value)}
+        >
+          {filter.label}
+          {filter.count !== undefined && ` (${filter.count})`}
+        </FilterButton>
+      ))}
+    </Container>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Form.tsx
+================================================================================
+
+import styled from "styled-components";
+
+export const Form = styled.form`
+  display: grid;
+  gap: 1.25rem;
+`;
+
+export const FormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+export const Label = styled.label`
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+`;
+
+export const RequiredIndicator = styled.span`
+  color: ${({ theme }) => theme.color.red500 || "#ef4444"};
+  margin-left: 4px;
+`;
+
+export const ReadOnlyField = styled.div`
+  padding: 0.8rem 1.2rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  color: ${({ theme }) => theme.color.text};
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+export const TextArea = styled.textarea`
+  width: 100%;
+  min-height: 100px;
+  padding: 0.8rem 1.2rem;
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  background-color: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    border-color: ${({ theme }) => theme.color.brand600};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
+  }
+`;
+
+export const Select = styled.select`
+  width: 100%;
+  min-height: 46px;
+  padding: 0.8rem 1.2rem;
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  background-color: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    border-color: ${({ theme }) => theme.color.brand600};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
+  }
+`;
+
+export const FormGrid = styled.div<{ $columns?: number }>`
+  display: grid;
+  grid-template-columns: repeat(${({ $columns = 2 }) => $columns}, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const Actions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+export const SplitActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+export const LeftActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+export const RightActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Heading.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const sizes = { h1: "28px", h2: "22px", h3: "18px" } as const;
+type Level = keyof typeof sizes;
+
+type Props = React.HTMLAttributes<HTMLHeadingElement> & {
+  level?: Level;
+  as?: Level; // allow <H as="h3" /> usage
+};
+
+const StyledHeading = styled.h2<{ $level: Level }>`
+  font-size: ${({ $level }) => sizes[$level]};
+  font-weight: 800;
+  color: ${({ theme }) => theme.color.grey900};
+  margin-bottom: 12px;
+`;
+
+export default function Heading({ level, as, children, ...rest }: Props) {
+  const resolved: Level = (level ?? as ?? "h2") as Level;
+  return (
+    <StyledHeading as={as ?? resolved} $level={resolved} {...rest}>
+      {children}
+    </StyledHeading>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\InfoGrid.tsx
+================================================================================
+
+import React from "react";
+import styled from "styled-components";
+
+interface InfoGridProps {
+  children: React.ReactNode;
+  columns?: number;
+  className?: string;
+}
+
+export const InfoGrid = styled.div<{ $columns?: number }>`
+  display: grid;
+  grid-template-columns: repeat(${({ $columns = 2 }) => $columns}, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const InfoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+export const InfoLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+export const InfoValue = styled.div`
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+export default InfoGrid;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Input.tsx
+================================================================================
+
+import styled from "styled-components";
+import React, { forwardRef, useRef, useEffect } from "react";
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  hasError?: boolean;
+  fullWidth?: boolean;
+}
+
+const InputWrapper = styled.div<{ $fullWidth?: boolean }>`
+  position: relative;
+  width: ${({ $fullWidth }) => ($fullWidth ? "100%" : "auto")};
+  display: inline-block;
+`;
+
+const StyledInput = styled.input<{ $hasError?: boolean; $fullWidth?: boolean }>`
+  width: 100%;
+  height: 46px; /* match the Select height used elsewhere */
+  border: 1px solid
+    ${({ theme, $hasError }) =>
+      $hasError ? theme.color.red500 || "#ef4444" : theme.color.border};
+  background-color: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  padding: 0.8rem 1.2rem;
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease,
+    background-color 0.12s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    border-color: ${({ theme }) => theme.color.brand600};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.color.mutedText};
+    opacity: 0.7;
+  }
+
+  &:hover:not(:disabled):not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400 || "#9ca3af"};
+  }
+
+  /* Date input specific styles */
+  &[type="date"] {
+    cursor: pointer;
+    /* ensure the browser calendar icon is visible in dark mode */
+    color-scheme: light dark;
+  }
+
+  /* Force the calendar icon to remain visible (webkit browsers) */
+  /* We invert it so it is visible on dark backgrounds; harmless on light */
+  &[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 1;
+    cursor: pointer;
+    -webkit-appearance: none;
+    filter: invert(1) brightness(1.05);
+    width: auto;
+    height: auto;
+  }
+`;
+
+const Input = forwardRef<HTMLInputElement, InputProps>(
+  ({ hasError, fullWidth = true, type, ...props }, forwardedRef) => {
+    // Local ref so we can call focus/showPicker reliably.
+    const localRef = useRef<HTMLInputElement | null>(null);
+
+    // Mirror the localRef into forwardedRef so parent refs still work.
+    useEffect(() => {
+      if (!forwardedRef) return;
+      if (typeof forwardedRef === "function") {
+        forwardedRef(localRef.current);
+      } else {
+        try {
+          (
+            forwardedRef as React.MutableRefObject<HTMLInputElement | null>
+          ).current = localRef.current;
+        } catch {
+          // ignore
+        }
+      }
+    }, [forwardedRef]);
+
+    // If it's a date input we wrap it to allow clicking anywhere on the wrapper
+    // to open the native date picker.
+    const handleWrapperClick = () => {
+      const el = localRef.current;
+      if (!el) return;
+      // Prefer showPicker() if available (newer browsers).
+      // Fallback to focus() which will also show the picker on many browsers.
+      try {
+        const anyEl = el;
+        if (typeof anyEl.showPicker === "function") {
+          anyEl.showPicker();
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      el.focus();
+    };
+
+    if (type === "date") {
+      return (
+        <InputWrapper $fullWidth={fullWidth} onClick={handleWrapperClick}>
+          <StyledInput
+            ref={localRef}
+            type="date"
+            $hasError={hasError}
+            $fullWidth={fullWidth}
+            {...props}
+          />
+        </InputWrapper>
+      );
+    }
+
+    return (
+      <StyledInput
+        ref={localRef}
+        type={type}
+        $hasError={hasError}
+        $fullWidth={fullWidth}
+        {...props}
+      />
+    );
+  }
+);
+
+Input.displayName = "Input";
+
+export default Input;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Label.tsx
+================================================================================
+
+import React from "react";
+import clsx from "clsx";
+
+interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+  className?: string;
+  children: React.ReactNode;
+}
+
+export default function Label({ className, children, ...props }: LabelProps) {
+  return (
+    <label
+      className={clsx(
+        "block text-sm font-medium text-[var(--text-secondary)] mb-1",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </label>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\LinkButton.tsx
+================================================================================
+
+// components/ui/LinkButton.tsx
+import React from "react";
+import { NavLink, type NavLinkProps } from "react-router-dom";
+import Button, { type ButtonVariation, type ButtonSize } from "./Button";
+
+/**
+ * Visual button that is actually a NavLink for routing semantics.
+ * It forwards refs to the underlying anchor.
+ */
+export type LinkButtonProps = Omit<NavLinkProps, "className"> & {
+  variation?: ButtonVariation;
+  size?: ButtonSize;
+  icon?: React.ComponentType<{ size?: number }>;
+  children?: React.ReactNode;
+};
+
+const LinkButton = React.forwardRef<HTMLAnchorElement, LinkButtonProps>(
+  function LinkButton(
+    {
+      to,
+      icon: Icon,
+      variation = "secondary",
+      size = "medium",
+      children,
+      ...navLinkProps
+    },
+    ref
+  ) {
+    // We render the styled Btn as NavLink so visual style is kept and NavLink handles active/className.
+    return (
+      <Button
+        as={NavLink}
+        to={to}
+        ref={ref}
+        variation={variation}
+        size={size}
+        // NavLink will set `.active` class automatically — you can style .active from outside.
+        {...(navLinkProps as NavLinkProps)}
+      >
+        {Icon ? <Icon size={18} /> : null}
+        <span>{children}</span>
+      </Button>
+    );
+  }
+);
+
+export default LinkButton;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Modal.tsx
+================================================================================
+
+// ui/components/Modal.tsx
+import React, { useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
+import styled from "styled-components";
+
+export type ModalSize = "sm" | "md" | "lg";
+
+export interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: React.ReactNode;
+  children?: React.ReactNode;
+  closeOnBackdrop?: boolean;
+  className?: string;
+  size?: ModalSize;
+  ariaLabel?: string;
+}
+
+const Overlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.6rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  box-sizing: border-box;
+`;
+
+const Content = styled.div<{ size: ModalSize }>`
+  position: relative;
+  width: 100%;
+  max-width: ${(p) =>
+    p.size === "sm" ? "520px" : p.size === "lg" ? "1100px" : "760px"};
+  max-width: clamp(
+    320px,
+    90vw,
+    ${(p) => (p.size === "sm" ? "520px" : p.size === "lg" ? "1100px" : "760px")}
+  );
+  box-sizing: border-box;
+  background: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  border-radius: ${({ theme }) => theme.radii.lg};
+  box-shadow: ${({ theme }) => theme.shadowLg};
+  padding: 1.6rem;
+  outline: none;
+  border: 1px solid ${({ theme }) => theme.color.border};
+  max-height: 90vh;
+  overflow: auto;
+  flex: 0 0 auto;
+`;
+
+const Header = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+`;
+
+const Title = styled.h2`
+  margin: 0;
+  font-size: 2.125rem;
+  font-weight: 700;
+`;
+
+const CloseButton = styled.button`
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 6px;
+  color: ${({ theme }) => theme.color.mutedText};
+
+  &:hover {
+    color: ${({ theme }) => theme.color.text};
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
+  }
+`;
+
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  closeOnBackdrop = true,
+  className = "",
+  size = "md",
+  ariaLabel,
+}: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  // Always call hooks (SSR-safe)
+  const isBrowser = typeof window !== "undefined";
+
+  useEffect(() => {
+    if (!isBrowser || !isOpen) return;
+
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusTimeout = window.setTimeout(() => {
+      const root = dialogRef.current;
+      if (!root) return;
+
+      const selector =
+        'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+      const focusable = Array.from(
+        root.querySelectorAll<HTMLElement>(selector)
+      );
+
+      if (focusable.length > 0) focusable[0].focus();
+      else root.focus();
+    }, 0);
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        const root = dialogRef.current;
+        if (!root) return;
+
+        const selector =
+          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+        const focusable = Array.from(
+          root.querySelectorAll<HTMLElement>(selector)
+        );
+
+        if (focusable.length === 0) {
+          e.preventDefault();
+          root.focus();
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKey);
+
+    return () => {
+      window.clearTimeout(focusTimeout);
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [isBrowser, isOpen, onClose]);
+
+  if (!isBrowser || !isOpen) return null;
+
+  const modal = (
+    <Overlay
+      role="presentation"
+      onMouseDown={() => {
+        if (closeOnBackdrop) onClose();
+      }}
+    >
+      <Content
+        role="dialog"
+        aria-modal="true"
+        aria-label={
+          ariaLabel ?? (typeof title === "string" ? title : "Modal dialog")
+        }
+        size={size}
+        className={className}
+        ref={dialogRef}
+        tabIndex={-1}
+        onMouseDown={(e) => {
+          // Stops the backdrop from closing when clicking inside
+          e.stopPropagation();
+        }}
+      >
+        {title ? (
+          <Header>
+            <Title>{title}</Title>
+            <CloseButton aria-label="Close modal" onClick={onClose}>
+              ✕
+            </CloseButton>
+          </Header>
+        ) : (
+          <CloseButton
+            style={{ position: "absolute", right: 12, top: 12 }}
+            aria-label="Close modal"
+            onClick={onClose}
+          >
+            ✕
+          </CloseButton>
+        )}
+
+        <div>{children}</div>
+      </Content>
+    </Overlay>
+  );
+
+  return ReactDOM.createPortal(modal, document.body);
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\PageHeader.tsx
+================================================================================
+
+import React from "react";
+import styled from "styled-components";
+
+interface PageHeaderProps {
+  title: string;
+  children?: React.ReactNode;
+  className?: string;
+}
+
+const HeaderRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const PageTitle = styled.h2`
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.color.text};
+`;
+
+export default function PageHeader({
+  title,
+  children,
+  className,
+}: PageHeaderProps) {
+  return (
+    <HeaderRow className={className}>
+      <PageTitle>{title}</PageTitle>
+      {children}
+    </HeaderRow>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Row.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const Row = styled.div`
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 380px;
+`;
+export default Row;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\SearchableSelect.tsx
+================================================================================
+
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import styled from "styled-components";
+import Input from "./Input.js";
+
+export interface SimpleOption {
+  id: string;
+  label: string;
+}
+
+export interface SearchableSelectProps {
+  options: SimpleOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  allowFreeInput?: boolean;
+  debounceMs?: number;
+  id?: string;
+  ariaLabel?: string;
+  labelRenderer?: (option: SimpleOption) => React.ReactNode;
+  disabled?: boolean;
+  hasError?: boolean;
+  required?: boolean;
+}
+
+const Wrapper = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const Dropdown = styled.ul<{ $visible: boolean }>`
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 6px 0 0 0;
+  padding: 6px;
+  max-height: 220px;
+  overflow: auto;
+  list-style: none;
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.md};
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  z-index: 9999;
+  display: ${({ $visible }) => ($visible ? "block" : "none")};
+`;
+
+const Option = styled.li<{ $active?: boolean }>`
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+  background: ${({ $active, theme }) =>
+    $active ? theme.color.brand50 : "transparent"};
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.color.brand50};
+  }
+`;
+
+const Empty = styled.div`
+  padding: 8px 10px;
+  color: ${({ theme }) => theme.color.mutedText};
+  font-size: 0.95rem;
+`;
+
+const SearchableSelect = React.forwardRef<
+  HTMLInputElement,
+  SearchableSelectProps
+>(
+  (
+    {
+      options,
+      value,
+      onChange,
+      placeholder = "Search...",
+      allowFreeInput = false,
+      debounceMs = 150,
+      id,
+      ariaLabel,
+      labelRenderer,
+      disabled = false,
+      hasError = false,
+      required = false,
+    },
+    forwardedRef
+  ) => {
+    const internalRef = useRef<HTMLInputElement>(null);
+    const inputRef = (forwardedRef ||
+      internalRef) as React.RefObject<HTMLInputElement>;
+    const listRef = useRef<HTMLUListElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState<string>("");
+    const [highlightIndex, setHighlightIndex] = useState(0);
+    const [filtered, setFiltered] = useState<SimpleOption[]>(options);
+
+    // Initialize query from value
+    useEffect(() => {
+      const found = options.find((o) => o.id === value);
+      setQuery(found ? found.label : value || "");
+    }, [value, options]);
+
+    // Debounced filtering
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) {
+          setFiltered(options);
+          setHighlightIndex(0);
+          return;
+        }
+        const newFiltered = options.filter(
+          (o) =>
+            o.label.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
+        );
+        setFiltered(newFiltered);
+        setHighlightIndex(0);
+      }, debounceMs);
+
+      return () => clearTimeout(timer);
+    }, [query, options, debounceMs]);
+
+    const openDropdown = useCallback(() => {
+      if (disabled) return;
+      setOpen(true);
+      setFiltered(options);
+      setHighlightIndex(0);
+    }, [disabled, options]);
+
+    const closeDropdown = useCallback(() => {
+      setOpen(false);
+    }, []);
+
+    const selectOption = useCallback(
+      (opt: SimpleOption) => {
+        onChange(opt.id);
+        setQuery(opt.label);
+        closeDropdown();
+      },
+      [onChange, closeDropdown]
+    );
+
+    const scrollIntoView = useCallback((index: number) => {
+      const list = listRef.current;
+      if (!list) return;
+      const el = list.children[index] as HTMLElement | undefined;
+      el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, []);
+
+    const onKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!open && ["ArrowDown", "ArrowUp"].includes(e.key)) {
+          e.preventDefault();
+          openDropdown();
+          return;
+        }
+
+        if (!open) return;
+
+        switch (e.key) {
+          case "Escape":
+            e.preventDefault();
+            closeDropdown();
+            break;
+          case "ArrowDown":
+            e.preventDefault();
+            setHighlightIndex((i) => Math.min(i + 1, filtered.length - 1));
+            scrollIntoView(Math.min(highlightIndex + 1, filtered.length - 1));
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            setHighlightIndex((i) => Math.max(0, i - 1));
+            scrollIntoView(Math.max(0, highlightIndex - 1));
+            break;
+          case "Home":
+            e.preventDefault();
+            setHighlightIndex(0);
+            scrollIntoView(0);
+            break;
+          case "End":
+            e.preventDefault();
+            setHighlightIndex(filtered.length - 1);
+            scrollIntoView(filtered.length - 1);
+            break;
+          case "Enter": {
+            e.preventDefault();
+            const opt = filtered[highlightIndex];
+            if (opt) {
+              selectOption(opt);
+            } else if (allowFreeInput && query.trim()) {
+              onChange(query.trim());
+              closeDropdown();
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      },
+      [
+        open,
+        filtered,
+        highlightIndex,
+        allowFreeInput,
+        query,
+        openDropdown,
+        closeDropdown,
+        selectOption,
+        onChange,
+        scrollIntoView,
+      ]
+    );
+
+    // Click outside handler - CRITICAL FIX: Use capture phase to intercept before Modal
+    useEffect(() => {
+      if (!open) return;
+
+      const handleClickOutside = (e: MouseEvent) => {
+        const target = e.target as Node;
+        // If clicking inside wrapper, don't close
+        if (wrapperRef.current?.contains(target)) {
+          return;
+        }
+        // Clicking outside, close the dropdown
+        closeDropdown();
+      };
+
+      // IMPORTANT: Use capture phase (true) to catch event before Modal's handler
+      document.addEventListener("mousedown", handleClickOutside, true);
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside, true);
+      };
+    }, [open, closeDropdown]);
+
+    // Memoized dropdown items
+    const listItems = useMemo(() => {
+      if (filtered.length === 0) {
+        return (
+          <Empty key="empty" role="option" aria-selected={false}>
+            No results found
+          </Empty>
+        );
+      }
+      return filtered.map((opt, idx) => (
+        <Option
+          role="option"
+          id={`${id || "search-select"}-opt-${opt.id}`}
+          aria-selected={idx === highlightIndex}
+          key={opt.id}
+          $active={idx === highlightIndex}
+          onMouseEnter={() => setHighlightIndex(idx)}
+          onClick={(e) => {
+            e.stopPropagation();
+            selectOption(opt);
+          }}
+        >
+          {labelRenderer ? labelRenderer(opt) : opt.label}
+        </Option>
+      ));
+    }, [filtered, highlightIndex, id, labelRenderer, selectOption]);
+
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        setQuery(e.target.value);
+        if (!allowFreeInput) {
+          onChange("");
+        }
+      },
+      [allowFreeInput, onChange]
+    );
+
+    return (
+      <Wrapper ref={wrapperRef}>
+        <Input
+          ref={inputRef}
+          id={id}
+          value={query}
+          placeholder={placeholder}
+          aria-label={ariaLabel || placeholder}
+          aria-expanded={open}
+          aria-controls={`${id || "search-select"}-listbox`}
+          aria-autocomplete="list"
+          role="combobox"
+          onFocus={openDropdown}
+          onChange={handleChange}
+          onKeyDown={onKeyDown}
+          autoComplete="off"
+          disabled={disabled}
+          hasError={hasError}
+          required={required}
+        />
+
+        <Dropdown
+          id={`${id || "search-select"}-listbox`}
+          role="listbox"
+          aria-label={ariaLabel || placeholder}
+          $visible={open}
+          ref={listRef}
+        >
+          {listItems}
+        </Dropdown>
+      </Wrapper>
+    );
+  }
+);
+
+SearchableSelect.displayName = "SearchableSelect";
+
+export default SearchableSelect;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\SearchBar.tsx
+================================================================================
+
+import styled from "styled-components";
+import Input from "./Input";
+import { Search } from "lucide-react";
+
+interface SearchBarProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+const Container = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+`;
+
+const SearchIcon = styled.div`
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: ${({ theme }) => theme.color.mutedText};
+  pointer-events: none;
+`;
+
+const SearchInput = styled(Input)`
+  padding-left: 3.75rem;
+`;
+
+export default function SearchBar({
+  value,
+  onChange,
+  placeholder = "Search...",
+  className,
+}: SearchBarProps) {
+  return (
+    <Container className={className}>
+      <SearchIcon>
+        <Search size={20} />
+      </SearchIcon>
+      <SearchInput
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </Container>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Spinner.tsx
+================================================================================
+
+import styled, { keyframes } from "styled-components";
+
+const rotate = keyframes`
+  to {
+    transform: rotate(1turn)
+  }
+`;
+
+const Spinner = styled.div`
+  margin: 4.8rem auto;
+
+  width: 6.4rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(farthest-side, var(--color-brand-600) 94%, #0000)
+      top/10px 10px no-repeat,
+    conic-gradient(#0000 30%, var(--color-brand-600));
+  -webkit-mask: radial-gradient(farthest-side, #0000 calc(100% - 10px), #000 0);
+  animation: ${rotate} 1.5s infinite linear;
+`;
+
+export default Spinner;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Table.tsx
+================================================================================
+
+import styled from "styled-components";
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  background: ${({ theme }) => theme.color.grey100};
+  border: 1px solid ${({ theme }) => theme.color.grey200};
+  border-radius: 12px;
+  overflow: auto;
+  thead {
+    background: ${({ theme }) => theme.color.grey100};
+  }
+  th,
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid ${({ theme }) => theme.color.grey200};
+    text-align: left;
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+`;
+export default Table;
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\ThemeSwitch.tsx
+================================================================================
+
+import styled from "styled-components";
+import { useTheme } from "../../contexts/ThemeContext.js";
+
+const Label = styled.label`
+  --w: 52px;
+  --h: 30px;
+  --k: 22px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+`;
+
+const HiddenCheckbox = styled.input.attrs({ type: "checkbox" })`
+  position: absolute !important;
+  opacity: 0;
+  pointer-events: none;
+`;
+
+const Track = styled.span<{ $checked: boolean }>`
+  width: var(--w);
+  height: var(--h);
+  border-radius: calc(var(--h) / 2);
+  display: inline-block;
+  padding: 3px;
+  box-sizing: border-box;
+  border: 1px solid ${(p) => p.theme.color.border};
+  background: ${(p) =>
+    p.$checked ? p.theme.color.grey500 : p.theme.color.border};
+  position: relative;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+`;
+
+const Knob = styled.span<{ $checked: boolean }>`
+  width: var(--k);
+  height: var(--k);
+  border-radius: 50%;
+  background: ${(p) => p.theme.color.panel};
+  display: grid;
+  place-items: center;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transform: translateX(${(p) => (p.$checked ? "22px" : "0")});
+  transition: transform 200ms cubic-bezier(0.3, 0.8, 0.3, 1),
+    box-shadow 200ms ease;
+  box-shadow: ${(p) =>
+    p.$checked
+      ? "0 6px 18px rgba(212, 184, 106, 0.18)" // dark mode glow
+      : "0 1px 3px rgba(0,0,0,0.08)"};
+`;
+
+const LabelText = styled.span`
+  font-size: 14px;
+  color: ${(p) => p.theme.color.text};
+  opacity: 0.9;
+  padding-left: 4px;
+  padding-right: 20px;
+`;
+
+const IconShell = styled.span`
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  height: var(--k);
+`;
+
+function SunIcon() {
+  return (
+    <IconShell aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5 3.5 3.5M20.5 20.5 19 19M19 5l1.5-1.5M4 20l1.5-1.5" />
+      </svg>
+    </IconShell>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <IconShell aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
+      </svg>
+    </IconShell>
+  );
+}
+
+export default function ThemeSwitch() {
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <Label title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+      <HiddenCheckbox checked={isDark} onChange={toggleTheme} />
+
+      <Track $checked={isDark}>
+        <Knob $checked={isDark}>{isDark ? <MoonIcon /> : <SunIcon />}</Knob>
+      </Track>
+
+      <LabelText>{isDark ? "Dark" : "Light"}</LabelText>
+    </Label>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\Toast.tsx
+================================================================================
+
+// react hot toast is being used but I'm leaving this here
+import React, { useEffect } from "react";
+import ReactDOM from "react-dom";
+import styled, { keyframes } from "styled-components";
+import { CheckCircle, XCircle, AlertCircle, Info, X } from "lucide-react";
+
+export type ToastType = "success" | "error" | "warning" | "info";
+
+export interface Toast {
+  id: string;
+  type: ToastType;
+  message: string;
+  description?: string;
+  duration?: number;
+}
+
+interface ToastItemProps {
+  toast: Toast;
+  onClose: (id: string) => void;
+}
+
+const slideIn = keyframes`
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+`;
+
+const slideOut = keyframes`
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+`;
+
+const ToastContainer = styled.div`
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 420px;
+  pointer-events: none;
+
+  @media (max-width: 640px) {
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+`;
+
+const ToastItem = styled.div<{ $type: ToastType; $closing?: boolean }>`
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.md};
+  box-shadow: ${({ theme }) => theme.shadowLg};
+  border-left: 4px solid
+    ${({ $type, theme }) => {
+      switch ($type) {
+        case "success":
+          return theme.color.green500 || "#16a34a";
+        case "error":
+          return theme.color.red600 || "#dc2626";
+        case "warning":
+          return theme.color.yellow100 || "#ca8a04";
+        case "info":
+          return theme.color.blue500 || "#2563eb";
+        default:
+          return theme.color.grey600 || "#4b5563";
+      }
+    }};
+  animation: ${({ $closing }) => ($closing ? slideOut : slideIn)} 0.3s ease;
+  pointer-events: auto;
+`;
+
+const IconWrapper = styled.div<{ $type: ToastType }>`
+  flex-shrink: 0;
+  color: ${({ $type, theme }) => {
+    switch ($type) {
+      case "success":
+        return theme.color.green500 || "#16a34a";
+      case "error":
+        return theme.color.red600 || "#dc2626";
+      case "warning":
+        return theme.color.yellow700 || "#ca8a04";
+      case "info":
+        return theme.color.blue500 || "#2563eb";
+      default:
+        return theme.color.grey600 || "#4b5563";
+    }
+  }};
+`;
+
+const Content = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const Message = styled.div`
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+  line-height: 1.4;
+`;
+
+const Description = styled.div`
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  line-height: 1.4;
+`;
+
+const CloseButton = styled.button`
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
+    color: ${({ theme }) => theme.color.text};
+  }
+`;
+
+const ProgressBar = styled.div<{ $duration: number; $type: ToastType }>`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: ${({ $type, theme }) => {
+    switch ($type) {
+      case "success":
+        return theme.color.green500 || "#16a34a";
+      case "error":
+        return theme.color.red600 || "#dc2626";
+      case "warning":
+        return theme.color.yellow100 || "#ca8a04";
+      case "info":
+        return theme.color.blue500 || "#2563eb";
+      default:
+        return theme.color.grey600 || "#4b5563";
+    }
+  }};
+  animation: shrink ${({ $duration }) => $duration}ms linear;
+
+  @keyframes shrink {
+    from {
+      width: 100%;
+    }
+    to {
+      width: 0%;
+    }
+  }
+`;
+
+function getIcon(type: ToastType) {
+  const size = 20;
+  switch (type) {
+    case "success":
+      return <CheckCircle size={size} />;
+    case "error":
+      return <XCircle size={size} />;
+    case "warning":
+      return <AlertCircle size={size} />;
+    case "info":
+      return <Info size={size} />;
+    default:
+      return <Info size={size} />;
+  }
+}
+
+function ToastItemComponent({ toast, onClose }: ToastItemProps) {
+  const [closing, setClosing] = React.useState(false);
+  const duration = toast.duration || 5000;
+
+  useEffect(() => {
+    if (duration === Infinity) return;
+
+    const timer = setTimeout(() => {
+      setClosing(true);
+      setTimeout(() => onClose(toast.id), 300); // Match animation duration
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [toast.id, duration, onClose]);
+
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(() => onClose(toast.id), 300);
+  };
+
+  return (
+    <ToastItem $type={toast.type} $closing={closing}>
+      <IconWrapper $type={toast.type}>{getIcon(toast.type)}</IconWrapper>
+      <Content>
+        <Message>{toast.message}</Message>
+        {toast.description && <Description>{toast.description}</Description>}
+      </Content>
+      <CloseButton onClick={handleClose} aria-label="Close notification">
+        <X size={16} />
+      </CloseButton>
+      {duration !== Infinity && (
+        <ProgressBar $duration={duration} $type={toast.type} />
+      )}
+    </ToastItem>
+  );
+}
+
+interface ToastContainerComponentProps {
+  toasts: Toast[];
+  onClose: (id: string) => void;
+}
+
+export function ToastContainerComponent({
+  toasts,
+  onClose,
+}: ToastContainerComponentProps) {
+  if (typeof window === "undefined") return null;
+
+  if (toasts.length === 0) return null;
+
+  return ReactDOM.createPortal(
+    <ToastContainer>
+      {toasts.map((toast) => (
+        <ToastItemComponent key={toast.id} toast={toast} onClose={onClose} />
+      ))}
+    </ToastContainer>,
+    document.body
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\ToastContext.tsx
+================================================================================
+
+// react hot toast is being used but I'm leaving this here
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { ToastContainerComponent, type Toast, type ToastType } from "./Toast";
+
+interface ToastContextValue {
+  toasts: Toast[];
+  showToast: (
+    type: ToastType,
+    message: string,
+    description?: string,
+    duration?: number
+  ) => void;
+  success: (message: string, description?: string, duration?: number) => void;
+  error: (message: string, description?: string, duration?: number) => void;
+  warning: (message: string, description?: string, duration?: number) => void;
+  info: (message: string, description?: string, duration?: number) => void;
+  removeToast: (id: string) => void;
+  clearAll: () => void;
+}
+
+const ToastContext = createContext<ToastContextValue | undefined>(undefined);
+
+export function useToast() {
+  const context = useContext(ToastContext);
+  if (!context) {
+    throw new Error("useToast must be used within a ToastProvider");
+  }
+  return context;
+}
+
+interface ToastProviderProps {
+  children: React.ReactNode;
+  maxToasts?: number;
+}
+
+export function ToastProvider({ children, maxToasts = 5 }: ToastProviderProps) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  const showToast = useCallback(
+    (
+      type: ToastType,
+      message: string,
+      description?: string,
+      duration: number = 5000
+    ) => {
+      const id = `toast-${Date.now()}-${Math.random()}`;
+      const newToast: Toast = {
+        id,
+        type,
+        message,
+        description,
+        duration,
+      };
+
+      setToasts((prev) => {
+        const updated = [...prev, newToast];
+        // Keep only the most recent toasts up to maxToasts
+        if (updated.length > maxToasts) {
+          return updated.slice(-maxToasts);
+        }
+        return updated;
+      });
+    },
+    [maxToasts]
+  );
+
+  const success = useCallback(
+    (message: string, description?: string, duration?: number) => {
+      showToast("success", message, description, duration);
+    },
+    [showToast]
+  );
+
+  const error = useCallback(
+    (message: string, description?: string, duration?: number) => {
+      showToast("error", message, description, duration);
+    },
+    [showToast]
+  );
+
+  const warning = useCallback(
+    (message: string, description?: string, duration?: number) => {
+      showToast("warning", message, description, duration);
+    },
+    [showToast]
+  );
+
+  const info = useCallback(
+    (message: string, description?: string, duration?: number) => {
+      showToast("info", message, description, duration);
+    },
+    [showToast]
+  );
+
+  const clearAll = useCallback(() => {
+    setToasts([]);
+  }, []);
+
+  const value: ToastContextValue = {
+    toasts,
+    showToast,
+    success,
+    error,
+    warning,
+    info,
+    removeToast,
+    clearAll,
+  };
+
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+      <ToastContainerComponent toasts={toasts} onClose={removeToast} />
+    </ToastContext.Provider>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/ui/components\WeekCalendar.tsx
+================================================================================
+
+import React, { useMemo, useState } from "react";
+import styled from "styled-components";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Button from "./Button";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  startTime: Date;
+  endTime?: Date;
+  color?: string;
+  data?: unknown;
+}
+
+interface WeekCalendarProps {
+  events: CalendarEvent[];
+  onEventClick?: (event: CalendarEvent) => void;
+  initialDate?: Date;
+}
+
+const CalendarWrapper = styled.div`
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  box-shadow: ${({ theme }) => theme.shadowMd};
+  overflow: hidden;
+  min-height: 600px;
+`;
+
+const Header = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.color.border};
+  background: ${({ theme }) => theme.color.panel};
+`;
+
+const HeaderTitle = styled.h3`
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+`;
+
+const WeekGrid = styled.div`
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  background: ${({ theme }) => theme.color.panel};
+  overflow-x: auto;
+`;
+
+const TimeColumn = styled.div`
+  border-right: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const TimeSlot = styled.div<{ $isFirstRow?: boolean }>`
+  height: 60px;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-align: right;
+  border-top: ${({ $isFirstRow }) => ($isFirstRow ? "none" : "1px solid")};
+  border-color: ${({ theme }) => theme.color.border};
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+`;
+
+const DayColumn = styled.div`
+  position: relative;
+  border-right: 1px solid ${({ theme }) => theme.color.border};
+  min-width: 80px;
+
+  &:last-child {
+    border-right: none;
+  }
+`;
+
+const DayHeader = styled.div<{ $isToday?: boolean }>`
+  height: 60px;
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 2px solid ${({ theme }) => theme.color.border};
+  background: ${({ $isToday, theme }) =>
+    $isToday
+      ? theme.color.brand50 || "#eff6ff"
+      : theme.color.grey50 || "#f9fafb"};
+`;
+
+const DayName = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+`;
+
+const DayNumber = styled.div<{ $isToday?: boolean }>`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+
+  ${({ $isToday, theme }) =>
+    $isToday &&
+    `
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: ${theme.color.brand600 || "#2563eb"};
+    color: white;
+  `}
+`;
+
+const DayContent = styled.div`
+  position: relative;
+  height: calc(60px * 9);
+`;
+
+const HourSlot = styled.div<{ $isFirstRow?: boolean }>`
+  height: 60px;
+  border-top: ${({ $isFirstRow }) => ($isFirstRow ? "none" : "1px solid")};
+  border-color: ${({ theme }) => theme.color.border};
+  position: relative;
+`;
+
+const EventBlock = styled.button<{
+  $color?: string;
+  $top: number;
+  $height: number;
+}>`
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: ${({ $top }) => $top}px;
+  height: ${({ $height }) => $height}px;
+  background: ${({ $color }) => $color || "#3b82f6"};
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 1;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const EventTime = styled.div`
+  font-weight: 600;
+  margin-bottom: 2px;
+`;
+
+const EventTitle = styled.div`
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const CurrentTimeLine = styled.div<{ $position: number }>`
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: ${({ $position }) => $position}px;
+  height: 2px;
+  background: ${({ theme }) => theme.color.red600 || "#dc2626"};
+  z-index: 3;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${({ theme }) => theme.color.red600 || "#dc2626"};
+  }
+`;
+
+// Helper functions
+function startOfWeek(date: Date): Date {
+  const day = date.getDay();
+  const diff = date.getDate() - day;
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+}
+
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
+function getWeekDays(currentDate: Date): Date[] {
+  const weekStart = startOfWeek(currentDate);
+  const days: Date[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(weekStart);
+    day.setDate(weekStart.getDate() + i);
+    days.push(day);
+  }
+
+  return days;
+}
+
+function getTimePosition(date: Date): number {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  return hours * 60 + minutes;
+}
+
+function getCurrentTimePosition(): number {
+  const now = new Date();
+  return getTimePosition(now);
+}
+
+export default function WeekCalendar({
+  events,
+  onEventClick,
+  initialDate = new Date(),
+}: WeekCalendarProps) {
+  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [currentTime, setCurrentTime] = useState(getCurrentTimePosition());
+  const today = new Date();
+
+  // Update current time every minute
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(getCurrentTimePosition());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
+
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((event) => {
+      const dateKey = `${event.startTime.getFullYear()}-${event.startTime.getMonth()}-${event.startTime.getDate()}`;
+      if (!map.has(dateKey)) {
+        map.set(dateKey, []);
+      }
+      map.get(dateKey)!.push(event);
+    });
+    return map;
+  }, [events]);
+
+  const getEventsForDay = (date: Date): CalendarEvent[] => {
+    const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    return eventsByDay.get(dateKey) || [];
+  };
+
+  const handlePrevWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    onEventClick?.(event);
+  };
+
+  const weekRange = `${weekDays[0].toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })} - ${weekDays[6].toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+
+  // Business hours: 9 AM to 5 PM
+  const businessHours = Array.from({ length: 9 }, (_, i) => i + 9); // 9, 10, 11, ..., 17
+  const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <CalendarWrapper>
+      <Header>
+        <HeaderTitle>{weekRange}</HeaderTitle>
+        <HeaderActions>
+          <Button variation="secondary" size="small" onClick={handleToday}>
+            Today
+          </Button>
+          <Button
+            variation="secondary"
+            size="small"
+            onClick={handlePrevWeek}
+            aria-label="Previous week"
+          >
+            <ChevronLeft size={18} />
+          </Button>
+          <Button
+            variation="secondary"
+            size="small"
+            onClick={handleNextWeek}
+            aria-label="Next week"
+          >
+            <ChevronRight size={18} />
+          </Button>
+        </HeaderActions>
+      </Header>
+
+      <WeekGrid>
+        {/* Time column header (empty cell) */}
+        <div
+          style={{
+            height: "60px",
+            borderBottom: "2px solid",
+            borderColor: "inherit",
+          }}
+        />
+
+        {/* Day headers */}
+        {weekDays.map((day, index) => {
+          const isToday = isSameDay(day, today);
+          return (
+            <DayHeader key={`header-${index}`} $isToday={isToday}>
+              <DayName>{weekdayNames[index]}</DayName>
+              <DayNumber $isToday={isToday}>{day.getDate()}</DayNumber>
+            </DayHeader>
+          );
+        })}
+
+        {/* Time column */}
+        <TimeColumn>
+          {businessHours.map((hour, index) => (
+            <TimeSlot key={hour} $isFirstRow={index === 0}>
+              {hour === 12
+                ? "12 PM"
+                : hour > 12
+                ? `${hour - 12} PM`
+                : `${hour} AM`}
+            </TimeSlot>
+          ))}
+        </TimeColumn>
+
+        {/* Day columns */}
+        {weekDays.map((day, dayIndex) => {
+          const dayEvents = getEventsForDay(day);
+          const isToday = isSameDay(day, today);
+
+          return (
+            <DayColumn key={`day-${dayIndex}`}>
+              <DayContent>
+                {/* Hour slots */}
+                {businessHours.map((hour, index) => (
+                  <HourSlot key={`hour-${hour}`} $isFirstRow={index === 0} />
+                ))}
+
+                {/* Events - adjust position relative to 9 AM start */}
+                {dayEvents.map((event) => {
+                  const startPos = getTimePosition(event.startTime) - 9 * 60; // Subtract 9 hours
+                  const endTime =
+                    event.endTime ||
+                    new Date(event.startTime.getTime() + 60 * 60 * 1000);
+                  const endPos = getTimePosition(endTime) - 9 * 60;
+                  const duration = endPos - startPos;
+                  const height = Math.max(duration, 30); // Minimum 30px height
+
+                  // Only show events within business hours
+                  if (startPos >= 0 && startPos < 9 * 60) {
+                    return (
+                      <EventBlock
+                        key={event.id}
+                        $color={event.color}
+                        $top={startPos}
+                        $height={height}
+                        onClick={() => handleEventClick(event)}
+                        title={event.title}
+                      >
+                        <EventTime>
+                          {event.startTime.toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </EventTime>
+                        <EventTitle>{event.title}</EventTitle>
+                      </EventBlock>
+                    );
+                  }
+                  return null;
+                })}
+
+                {/* Current time indicator - adjust for 9 AM start */}
+                {isToday && currentTime >= 9 * 60 && currentTime <= 17 * 60 && (
+                  <CurrentTimeLine $position={currentTime - 9 * 60} />
+                )}
+              </DayContent>
+            </DayColumn>
+          );
+        })}
+      </WeekGrid>
+    </CalendarWrapper>
+  );
+}
