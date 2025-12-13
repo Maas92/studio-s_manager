@@ -12,8 +12,13 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import { env } from "./config/env.js";
 import { queryParser } from "./middleware/queryParser.js";
 import bodyParser from "body-parser";
+import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
 const app: Application = express();
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
 
 // Trust proxy
 app.set("trust proxy", 1);

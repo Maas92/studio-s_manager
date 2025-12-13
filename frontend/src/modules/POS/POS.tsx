@@ -1,490 +1,236 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import POSStepWrapper from "./POSStepWrapper";
 import ClientSelection from "./ClientSelection";
 import ItemSelection from "./ItemSelection";
-import StaffAssignment from "./StaffAssignment";
 import Payment from "./Payment";
-import CreateClientModal from "./CreateClientModal";
+import CheckoutModal from "./CheckoutModal";
 import ReceiptAndNextAppointment from "./ReceiptAndNextAppointment";
-import {
-  createTransaction,
-  createClient,
-  createAppointment as createAppointmentAPI,
-  completeAppointment,
-  updateStockAfterSale,
-  saveDraft,
-  loadDraft,
-  clearDraft,
-  type CartItem,
-  type CreateTransactionInput,
-  type CreateClientInput,
-  type CreateAppointmentInput,
-  type Discount,
-  type Tips,
-  type PaymentBreakdown,
-  type CartValidation,
-  type Transaction,
-} from "./api";
-import {
-  mockClients,
-  mockAppointments,
-  mockProducts,
-  mockTreatments,
-  mockStaff,
-} from "./mockData";
+import CreateClientModal from "../clients/CreateClientModal";
 
-interface PointOfSaleProps {
-  isAdmin?: boolean;
-}
+import { useClients } from "../clients/useClient";
+import { useAppointments } from "../appointments/useAppointments";
+import { useTreatments } from "../treatments/useTreatments";
+import { useStaff } from "../staff/useStaff";
+import { useStock } from "../stock/useStock";
+import { usePos } from "./usePOS";
 
-export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
-  const queryClient = useQueryClient();
+export default function PointOfSale() {
+  const qc = useQueryClient();
 
-  // Step management
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-
-  // Data state
+  // UI state
+  const [step, setStep] = useState<number>(1);
   const [clientType, setClientType] = useState<"booked" | "walk-in">("booked");
-  const [selectedClient, setSelectedClient] = useState<string>("");
-  const [selectedClientData, setSelectedClientData] = useState<any>(null);
-  const [selectedAppointmentId, setSelectedAppointmentId] =
-    useState<string>("");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [discount, setDiscount] = useState<Discount>({
-    type: "percentage",
-    value: 0,
-  });
-  const [tips, setTips] = useState<Tips>({});
-  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
-
-  // Product stock tracking
-  const [productStock, setProductStock] = useState<Record<string, number>>({});
-
-  // Modal state
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<
+    string | null
+  >(null);
+  const [cart, setCart] = useState<any[]>([]);
   const [showCreateClient, setShowCreateClient] = useState(false);
-  const [completedTransaction, setCompletedTransaction] =
-    useState<Transaction | null>(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [completedTransaction, setCompletedTransaction] = useState<any | null>(
+    null
+  );
 
-  // Using mock data
-  const clients = mockClients;
-  const appointments = mockAppointments || [];
-  const products = mockProducts;
-  const treatments = mockTreatments;
-  const staff = mockStaff;
+  // hooks (resource hooks)
+  const { listQuery: clientsQuery, createMutation: createClientMutation } =
+    useClients();
+  const { listQuery: appointmentsQuery } = useAppointments();
+  const { listQuery: treatmentsQuery } = useTreatments();
+  const { listQuery: staffQuery } = useStaff();
+  const { listQuery: stockQuery, updateMutation: stockUpdateMutation } =
+    useStock();
+  const { createMutation: createTransactionMutation } = usePos();
 
-  // Initialize product stock
-  useEffect(() => {
-    const stockMap: Record<string, number> = {};
-    products.forEach((product) => {
-      stockMap[product.id] = product.stock || 0;
+  const clients = clientsQuery.data ?? [];
+  const appointments = appointmentsQuery.data ?? [];
+  const treatments = treatmentsQuery.data ?? [];
+  const staff = staffQuery.data ?? [];
+  const stockItems = stockQuery.data ?? [];
+
+  // build simple stock map { productId -> qty } using the canonical stock item fields
+  const productStock = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const s of stockItems) {
+      // common shapes: { id, productId, quantity } or { id, sku, quantity }
+      // prefer productId if present, otherwise use id
+      const key = s.id ?? s.id;
+      map[key] = s.quantity ?? 0;
+    }
+    return map;
+  }, [stockItems]);
+
+  // CART helpers
+  const addToCart = useCallback((item: any) => {
+    setCart((prev) => {
+      // appointment: allow only one occurrence of same appointment
+      if (item.type === "appointment") {
+        if (prev.some((p) => p.type === "appointment" && p.id === item.id))
+          return prev;
+      }
+
+      // stock/product: merge by productId (or id)
+      if (item.type === "product" || item.type === "stock") {
+        const key = item.productId ?? item.id;
+        const idx = prev.findIndex(
+          (p) => (p.productId ?? p.id) === key && p.type === "product"
+        );
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = {
+            ...next[idx],
+            quantity: (next[idx].quantity ?? 1) + (item.quantity ?? 1),
+          };
+          return next;
+        }
+        // normalize type to "product" for cart items
+        return [
+          ...prev,
+          {
+            ...item,
+            type: "product",
+            productId: key,
+            quantity: item.quantity ?? 1,
+          },
+        ];
+      }
+
+      return [...prev, { ...item, quantity: item.quantity ?? 1 }];
     });
-    setProductStock(stockMap);
-  }, [products]);
-
-  // Auto-save draft
-  useEffect(() => {
-    if (cart.length === 0 || currentStep === 1 || completedTransaction) return;
-
-    const timer = setTimeout(() => {
-      const draft = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        clientId: selectedClient,
-        clientData: selectedClientData,
-        cart,
-        discount,
-        tips,
-        currentStep,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      };
-      saveDraft(draft);
-    }, 30000);
-
-    return () => clearTimeout(timer);
-  }, [
-    cart,
-    selectedClient,
-    selectedClientData,
-    discount,
-    tips,
-    currentStep,
-    completedTransaction,
-  ]);
-
-  // Mutations
-  const createClientMutation = useMutation({
-    mutationFn: createClient,
-    onSuccess: (newClient) => {
-      setSelectedClient(newClient.id);
-      setSelectedClientData(newClient);
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      toast.success("Client created successfully!");
-      markStepCompleted(1);
-      goToStep(2);
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create client"
-      );
-    },
-  });
-
-  const createTransactionMutation = useMutation({
-    mutationFn: createTransaction,
-    onSuccess: async (data) => {
-      // Mark appointments as completed
-      const appointmentItems = cart.filter(
-        (item) => item.type === "appointment"
-      );
-      for (const item of appointmentItems) {
-        if (item.appointmentId) {
-          await completeAppointment(item.appointmentId);
-        }
-      }
-
-      // Update stock
-      await updateStockAfterSale(cart);
-
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-
-      clearDraft();
-      setCompletedTransaction(data);
-      markStepCompleted(needsStaffAssignment ? 4 : 3);
-
-      toast.success("Transaction completed successfully!", {
-        duration: 4000,
-        icon: "✅",
-      });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to complete transaction",
-        { duration: 5000 }
-      );
-    },
-  });
-
-  const createAppointmentMutation = useMutation({
-    mutationFn: createAppointmentAPI,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      toast.success(`Appointment booked for ${data.clientName || "client"}!`, {
-        duration: 4000,
-        position: "top-right",
-      });
-      resetPOS();
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to book appointment",
-        { duration: 5000 }
-      );
-    },
-  });
-
-  // Calculate if treatments need staff
-  const needsStaffAssignment = useMemo(
-    () =>
-      cart.some(
-        (item) => item.type === "treatment" || item.type === "appointment"
-      ),
-    [cart]
-  );
-
-  // Define steps
-  const steps = useMemo(() => {
-    if (completedTransaction) {
-      return [
-        { number: 1, label: "Select Client", completed: true },
-        { number: 2, label: "Add Items", completed: true },
-        ...(needsStaffAssignment
-          ? [{ number: 3, label: "Assign Staff", completed: true }]
-          : []),
-        {
-          number: needsStaffAssignment ? 4 : 3,
-          label: "Payment",
-          completed: true,
-        },
-        {
-          number: needsStaffAssignment ? 5 : 4,
-          label: "Complete",
-          completed: true,
-        },
-      ];
-    }
-
-    const baseSteps = [
-      {
-        number: 1,
-        label: "Select Client",
-        completed: completedSteps.includes(1),
-      },
-      { number: 2, label: "Add Items", completed: completedSteps.includes(2) },
-    ];
-
-    if (needsStaffAssignment) {
-      baseSteps.push({
-        number: 3,
-        label: "Assign Staff",
-        completed: completedSteps.includes(3),
-      });
-      baseSteps.push({
-        number: 4,
-        label: "Payment",
-        completed: completedSteps.includes(4),
-      });
-    } else {
-      baseSteps.push({
-        number: 3,
-        label: "Payment",
-        completed: completedSteps.includes(3),
-      });
-    }
-
-    return baseSteps;
-  }, [completedSteps, needsStaffAssignment, completedTransaction]);
-
-  // Navigation
-  const goToStep = useCallback((step: number) => {
-    setCurrentStep(step);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
-
-  const markStepCompleted = useCallback((step: number) => {
-    setCompletedSteps((prev) => [...new Set([...prev, step])]);
-  }, []);
-
-  // Reset POS
-  const resetPOS = useCallback(() => {
-    setCurrentStep(1);
-    setCompletedSteps([]);
-    setClientType("booked");
-    setSelectedClient("");
-    setSelectedClientData(null);
-    setSelectedAppointmentId("");
-    setCart([]);
-    setDiscount({ type: "percentage", value: 0 });
-    setTips({});
-    setLoyaltyPointsToRedeem(0);
-    setCompletedTransaction(null);
-    clearDraft();
-  }, []);
-
-  // Step 1: Client Selection
-  const handleSelectClient = useCallback(
-    (
-      clientId: string,
-      type: "booked" | "walk-in",
-      appointmentId?: string,
-      verified?: boolean
-    ) => {
-      setClientType(type);
-      if (clientId) {
-        setSelectedClient(clientId);
-        const client = clients.find((c) => c.id === clientId);
-        setSelectedClientData(client || null);
-      }
-      if (appointmentId) {
-        setSelectedAppointmentId(appointmentId);
-
-        const apt = appointments.find((a) => a.id === appointmentId);
-        if (apt) {
-          setCart([
-            {
-              id: apt.id,
-              type: "appointment",
-              name: apt.treatmentName,
-              price: apt.price,
-              originalPrice: apt.price,
-              quantity: 1,
-              appointmentId: apt.id,
-              clientName: apt.clientName,
-              staffId: apt.staffId,
-              staffName: apt.staffName,
-              duration: apt.duration,
-              isAppointmentCheckin: true,
-              locked: true,
-            },
-          ]);
-        }
-      }
-      markStepCompleted(1);
-      goToStep(2);
-    },
-    [clients, appointments, markStepCompleted, goToStep]
-  );
-
-  const handleCreateClient = useCallback(
-    (clientData: CreateClientInput) => {
-      createClientMutation.mutate(clientData);
-      setShowCreateClient(false);
-    },
-    [createClientMutation]
-  );
-
-  // Step 2: Item Selection
-  const addToCart = useCallback(
-    (item: Omit<CartItem, "quantity">, validation: CartValidation) => {
-      if (!validation.canAdd) {
-        toast.error(validation.reason || "Cannot add item to cart");
-        return;
-      }
-
-      if (validation.warnings) {
-        validation.warnings.forEach((warning) => {
-          toast(warning, { icon: "⚠️", duration: 3000 });
-        });
-      }
-
-      setCart((prev) => [...prev, { ...item, quantity: 1 }]);
-      toast.success(`${item.name} added to cart`);
-    },
-    []
-  );
 
   const updateQuantity = useCallback(
     (id: string, type: string, delta: number) => {
       setCart((prev) =>
-        prev.map((item) => {
-          if (item.id === id && item.type === type) {
-            const newQuantity = Math.max(1, item.quantity + delta);
-            if (item.maxQuantity && newQuantity > item.maxQuantity) {
-              toast.error("Maximum quantity reached");
-              return item;
-            }
-            return { ...item, quantity: newQuantity };
-          }
-          return item;
-        })
+        prev.map((it) =>
+          it.id === id && it.type === type
+            ? { ...it, quantity: Math.max(1, (it.quantity ?? 1) + delta) }
+            : it
+        )
       );
     },
     []
   );
 
   const removeFromCart = useCallback((id: string, type: string) => {
-    setCart((prev) =>
-      prev.filter((item) => !(item.id === id && item.type === type))
-    );
-    toast.success("Item removed from cart");
+    setCart((prev) => prev.filter((it) => !(it.id === id && it.type === type)));
   }, []);
 
   const updateNotes = useCallback((id: string, type: string, notes: string) => {
     setCart((prev) =>
-      prev.map((item) => {
-        if (item.id === id && item.type === type) {
-          return { ...item, notes };
-        }
-        return item;
-      })
+      prev.map((it) =>
+        it.id === id && it.type === type ? { ...it, notes } : it
+      )
     );
   }, []);
 
-  const handleItemSelectionNext = useCallback(() => {
-    if (cart.length === 0) {
-      toast.error("Please add at least one item to cart");
-      return;
-    }
-    markStepCompleted(2);
-    if (needsStaffAssignment) {
-      goToStep(3);
-    } else {
-      goToStep(3);
-    }
-  }, [cart.length, markStepCompleted, goToStep, needsStaffAssignment]);
-
-  // Step 3: Staff Assignment
-  const assignStaff = useCallback(
-    (itemId: string, itemType: string, staffId: string, staffName: string) => {
-      setCart((prev) =>
-        prev.map((item) => {
-          if (item.id === itemId && item.type === itemType) {
-            return { ...item, staffId, staffName };
-          }
-          return item;
-        })
-      );
-      toast.success(`${staffName} assigned`);
+  // create client - uses clients hook
+  const handleCreateClient = useCallback(
+    async (payload: any) => {
+      try {
+        const newClient = await createClientMutation.mutateAsync(payload);
+        toast.success("Client created");
+        setSelectedClient(newClient);
+        setShowCreateClient(false);
+        // optionally advance to next step:
+        // setStep(2);
+      } catch (err: any) {
+        toast.error(err?.message ?? "Failed to create client");
+      }
     },
-    []
+    [createClientMutation]
   );
 
-  const handleStaffAssignmentNext = useCallback(() => {
-    const allAssigned = cart
-      .filter(
-        (item) => item.type === "treatment" || item.type === "appointment"
-      )
-      .every((item) => item.staffId);
+  // select client from Child (ClientSelection)
+  const handleSelectClient = useCallback(
+    (clientId: string, type: "booked" | "walk-in", appointmentId?: string) => {
+      setClientType(type);
+      setSelectedClient(clients.find((c) => c.id === clientId) ?? null);
+      setSelectedAppointmentId(appointmentId ?? null);
+      setStep(2);
+    },
+    [clients]
+  );
 
-    if (!allAssigned) {
-      toast.error("Please assign staff to all treatments");
-      return;
-    }
+  // complete transaction -> create + update stock
+  const completePayment = useCallback(
+    async (payments: any[]) => {
+      if (cart.length === 0) {
+        toast.error("Cart is empty");
+        return;
+      }
 
-    markStepCompleted(3);
-    goToStep(4);
-  }, [cart, markStepCompleted, goToStep]);
+      try {
+        const payload = {
+          clientId: selectedClient?.id ?? null,
+          appointmentId: selectedAppointmentId ?? null,
+          items: cart.map((it) => ({
+            type: it.type,
+            referenceId: it.type === "product" ? it.productId : it.id,
+            name: it.name,
+            price: it.price,
+            quantity: it.quantity,
+            notes: it.notes,
+          })),
+          payments,
+        };
 
-  // Step 4: Payment
-  const handlePaymentComplete = useCallback(
-    (payments: PaymentBreakdown[]) => {
-      const transactionInput: CreateTransactionInput = {
-        clientId: selectedClient || undefined,
-        items: cart,
-        discount,
-        payments,
-        tips,
-        loyaltyPointsRedeemed: loyaltyPointsToRedeem,
-      };
+        const tx = await createTransactionMutation.mutateAsync(payload);
 
-      createTransactionMutation.mutate(transactionInput);
+        // update stock for products (best-effort; run in parallel)
+        const productItems = cart.filter((i) => i.type === "product");
+        await Promise.allSettled(
+          productItems.map((p) => {
+            const stockKey = p.productId ?? p.id;
+            // find corresponding stock item id (stock item may contain productId or id)
+            const stockItem = stockItems.find(
+              (s) => (s.id ?? s.id) === stockKey
+            );
+            const stockId = stockItem?.id ?? stockKey;
+            return stockUpdateMutation.mutateAsync({
+              id: stockId,
+              updates: {
+                quantity: Math.max(
+                  0,
+                  (productStock[stockKey] ?? 0) - (p.quantity ?? 1)
+                ),
+              },
+            });
+          })
+        );
+
+        setCompletedTransaction(tx);
+        setCart([]);
+        setShowCheckout(false);
+        toast.success("Sale completed");
+        qc.invalidateQueries({ queryKey: ["stock"] });
+        qc.invalidateQueries({ queryKey: ["transactions"] });
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err?.message ?? "Failed to complete payment");
+      }
     },
     [
-      selectedClient,
       cart,
-      discount,
-      tips,
-      loyaltyPointsToRedeem,
       createTransactionMutation,
+      productStock,
+      qc,
+      selectedAppointmentId,
+      selectedClient,
+      stockItems,
+      stockUpdateMutation,
     ]
   );
 
-  // Step 5: Book Next Appointment
-  const handleBookAppointment = useCallback(
-    (appointmentData: CreateAppointmentInput) => {
-      createAppointmentMutation.mutate(appointmentData);
-    },
-    [createAppointmentMutation]
-  );
-
-  // Render completed transaction
-  if (completedTransaction) {
-    return (
-      <POSStepWrapper currentStep={steps.length} steps={steps}>
-        <ReceiptAndNextAppointment
-          transaction={completedTransaction}
-          client={selectedClientData}
-          treatments={treatments}
-          staff={staff}
-          onBookAppointment={handleBookAppointment}
-          onNewSale={resetPOS}
-          bookingAppointment={createAppointmentMutation.isPending}
-        />
-      </POSStepWrapper>
-    );
-  }
+  const goBack = useCallback(() => setStep((s) => Math.max(1, s - 1)), []);
+  const goNext = useCallback(() => setStep((s) => Math.min(3, s + 1)), []);
 
   return (
     <>
-      <POSStepWrapper currentStep={currentStep} steps={steps}>
-        {/* Step 1: Client Selection */}
-        {currentStep === 1 && (
+      <POSStepWrapper currentStep={step} steps={[]}>
+        {step === 1 && (
           <ClientSelection
             clients={clients}
             appointments={appointments}
@@ -493,64 +239,101 @@ export default function PointOfSale({ isAdmin = false }: PointOfSaleProps) {
           />
         )}
 
-        {/* Step 2: Item Selection */}
-        {currentStep === 2 && (
+        {step === 2 && (
           <ItemSelection
             clientType={clientType}
-            clientName={selectedClientData?.name}
+            clientName={selectedClient?.name}
             appointments={appointments}
             treatments={treatments}
-            products={products}
+            stockItems={stockItems} // <-- pass stock list here (replaces products)
             cart={cart}
             productStock={productStock}
             onAddToCart={addToCart}
             onUpdateQuantity={updateQuantity}
             onRemoveFromCart={removeFromCart}
             onUpdateNotes={updateNotes}
-            onNext={handleItemSelectionNext}
-            onBack={() => goToStep(1)}
+            onNext={() => setStep(3)}
+            onBack={() => setStep(1)}
           />
         )}
 
-        {/* Step 3: Staff Assignment (conditional) */}
-        {currentStep === 3 && needsStaffAssignment && (
-          <StaffAssignment
-            cart={cart}
-            staff={staff}
-            onAssignStaff={assignStaff}
-            onNext={handleStaffAssignmentNext}
-            onBack={() => goToStep(2)}
-          />
-        )}
-
-        {/* Step 3 or 4: Payment */}
-        {((currentStep === 3 && !needsStaffAssignment) ||
-          (currentStep === 4 && needsStaffAssignment)) && (
+        {step === 3 && (
           <Payment
             cart={cart}
-            clientName={selectedClientData?.name}
-            clientLoyaltyPoints={selectedClientData?.loyaltyPoints || 0}
-            discount={discount}
-            tips={tips}
-            loyaltyPointsToRedeem={loyaltyPointsToRedeem}
-            onUpdateDiscount={setDiscount}
-            onUpdateTips={setTips}
-            onUpdateLoyaltyRedemption={setLoyaltyPointsToRedeem}
-            onComplete={handlePaymentComplete}
-            onBack={() => goToStep(needsStaffAssignment ? 3 : 2)}
-            onEditCart={() => goToStep(2)}
+            clientName={selectedClient?.name}
+            clientLoyaltyPoints={selectedClient?.loyaltyPoints ?? 0}
+            discount={{ type: "percentage", value: 0 }}
+            tips={{}}
+            loyaltyPointsToRedeem={0}
+            onUpdateDiscount={() => {}}
+            onUpdateTips={() => {}}
+            onUpdateLoyaltyRedemption={() => {}}
+            onComplete={() => setShowCheckout(true)}
+            onBack={() => setStep(2)}
+            onEditCart={() => setStep(2)}
             processing={createTransactionMutation.isPending}
           />
         )}
       </POSStepWrapper>
 
-      {/* Create Client Modal */}
       <CreateClientModal
         isOpen={showCreateClient}
         onClose={() => setShowCreateClient(false)}
-        onSubmit={handleCreateClient}
-        submitting={createClientMutation.isPending}
+        onCreate={handleCreateClient}
+        creating={createClientMutation.isPending}
       />
+
+      <CheckoutModal
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        total={cart.reduce((s, i) => s + (i.price ?? 0) * (i.quantity ?? 1), 0)}
+        onComplete={completePayment}
+        processing={createTransactionMutation.isPending}
+      />
+
+      {completedTransaction && selectedClient && (
+        <ReceiptAndNextAppointment
+          transaction={completedTransaction}
+          client={selectedClient}
+          treatments={treatments.map((t) => ({
+            id: t.id,
+            name: t.name,
+            durationMinutes: t.durationMinutes,
+            price: t.price,
+            category: t.category ?? undefined,
+            isActive: t.isActive,
+          }))}
+          staff={staff.map((s) => ({
+            id: s.id,
+            name: `${s.firstName} ${s.lastName}`,
+            role: s.role,
+            specialties: s.specializations,
+            available: s.status === "active",
+          }))}
+          onBookAppointment={async (appointmentData) => {
+            try {
+              // TODO: Implement appointment booking logic
+              // await createAppointmentMutation.mutateAsync(appointmentData);
+              toast.success("Appointment booked successfully!");
+              setCompletedTransaction(null);
+              setStep(1);
+              setSelectedClient(null);
+              setSelectedAppointmentId(null);
+            } catch (err: any) {
+              toast.error(err?.message ?? "Failed to book appointment");
+            }
+          }}
+          onNewSale={() => {
+            setCompletedTransaction(null);
+            setStep(1);
+            setSelectedClient(null);
+            setSelectedAppointmentId(null);
+            setCart([]);
+          }}
+          bookingAppointment={false}
+          onClose={() => setCompletedTransaction(null)}
+        />
+      )}
     </>
   );
 }

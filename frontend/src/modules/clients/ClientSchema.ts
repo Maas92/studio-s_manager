@@ -4,22 +4,22 @@ import { z } from "zod";
 export const ClientSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  notes: z.string().optional(),
-  createdAt: z.string().optional(),
-  loyaltyPoints: z.number().optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
+  loyaltyPoints: z.number().nullable().optional(),
 });
 
 export const CreateClientSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Valid email is required").optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  notes: z.string().optional(),
+  email: z.string().email("Valid email is required").nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  dateOfBirth: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 // Types

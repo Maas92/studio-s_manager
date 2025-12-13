@@ -8,8 +8,13 @@ import { extractUser } from "./middleware/userMiddleware.js";
 import api from "./routes/index.js";
 import { requestId } from "./middleware/requestId.js";
 import verifyGateway from "./middleware/verifyGateway.js";
+import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
 const app: Application = express();
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get('/metrics', metricsEndpoint);
 
 // 1) GLOBAL MIDDLEWARES
 app.use(helmet());
@@ -27,7 +32,7 @@ const isDev = process.env.NODE_ENV !== "production";
 const corsOptions = {
   origin: isDev
     ? [/^http:\/\/localhost:\d+$/] // Allow any localhost port in dev
-    : process.env.FRONTEND_URL,    // In prod, allow the deployed frontend URL
+    : process.env.FRONTEND_URL, // In prod, allow the deployed frontend URL
   credentials: true,
 };
 

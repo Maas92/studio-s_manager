@@ -16,7 +16,8 @@ export const StaffPerformanceSchema = z.object({
 
 export const StaffMemberSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
   email: z.string().email().optional(),
   phone: z.string().optional(),
   role: z.string(),
@@ -31,7 +32,8 @@ export const StaffMemberSchema = z.object({
 });
 
 export const CreateStaffMemberSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  firstName: z.string().min(1, "Name is required"),
+  lastName: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email is required").optional(),
   phone: z.string().optional(),
   role: z.string().min(1, "Role is required"),

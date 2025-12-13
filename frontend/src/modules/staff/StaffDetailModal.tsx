@@ -246,7 +246,8 @@ export default function StaffDetailModal({
 }: StaffDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState<CreateStaffMemberInput>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     role: "",
@@ -260,7 +261,8 @@ export default function StaffDetailModal({
   useEffect(() => {
     if (member) {
       setFormValues({
-        name: member.name,
+        firstName: member.firstName,
+        lastName: member.lastName,
         email: member.email || "",
         phone: member.phone || "",
         role: member.role,
@@ -294,7 +296,8 @@ export default function StaffDetailModal({
   const handleCancel = useCallback(() => {
     if (member) {
       setFormValues({
-        name: member.name,
+        firstName: member.firstName,
+        lastName: member.lastName,
         email: member.email || "",
         phone: member.phone || "",
         role: member.role,
@@ -418,7 +421,7 @@ export default function StaffDetailModal({
           {isEditing ? (
             <Input
               id="staff-name"
-              value={formValues.name}
+              value={formValues.firstName}
               onChange={(e) =>
                 setFormValues((prev) => ({ ...prev, name: e.target.value }))
               }
@@ -427,7 +430,7 @@ export default function StaffDetailModal({
           ) : (
             <ReadOnlyField>
               <UserIcon size={16} />
-              {member.name}
+              {member.firstName}
             </ReadOnlyField>
           )}
         </FormField>
@@ -607,7 +610,7 @@ export default function StaffDetailModal({
                   variation="primary"
                   type="button"
                   onClick={handleSave}
-                  disabled={updating || !formValues.name || !formValues.role}
+                  disabled={updating || !formValues.firstName || !formValues.role}
                 >
                   <Save size={16} />
                   {updating ? "Saving..." : "Save Changes"}

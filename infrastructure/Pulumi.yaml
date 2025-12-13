@@ -1,0 +1,84 @@
+# infrastructure/Pulumi.yaml
+name: studio-s-infrastructure
+runtime: nodejs
+description: Studio S infrastructure as code with Pulumi
+
+---
+
+# infrastructure/Pulumi.dev.yaml
+config:
+  aws:region: us-east-1
+  studio-s-infrastructure:domain: dev.yourdomain.com
+  studio-s-infrastructure:dbPassword:
+    secure: YOUR_ENCRYPTED_PASSWORD_HERE
+  studio-s-infrastructure:sshPublicKey: "ssh-rsa AAAAB3... your-public-key"
+
+---
+
+# infrastructure/Pulumi.staging.yaml
+config:
+  aws:region: us-east-1
+  studio-s-infrastructure:domain: staging.yourdomain.com
+  studio-s-infrastructure:dbPassword:
+    secure: YOUR_ENCRYPTED_PASSWORD_HERE
+  studio-s-infrastructure:sshPublicKey: "ssh-rsa AAAAB3... your-public-key"
+
+---
+
+# infrastructure/Pulumi.production.yaml
+config:
+  aws:region: us-east-1
+  studio-s-infrastructure:domain: yourdomain.com
+  studio-s-infrastructure:dbPassword:
+    secure: YOUR_ENCRYPTED_PASSWORD_HERE
+  studio-s-infrastructure:sshPublicKey: "ssh-rsa AAAAB3... your-public-key"
+
+---
+
+# infrastructure/package.json
+{
+  "name": "studio-s-infrastructure",
+  "version": "1.0.0",
+  "description": "Infrastructure as Code for Studio S",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "pulumi up --stack dev",
+    "staging": "pulumi up --stack staging",
+    "production": "pulumi up --stack production",
+    "destroy:dev": "pulumi destroy --stack dev",
+    "preview": "pulumi preview"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.100.0",
+    "@pulumi/aws": "^6.15.0",
+    "@pulumi/cloudflare": "^5.15.0",
+    "@pulumi/digitalocean": "^4.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}
+
+---
+
+# infrastructure/tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": true,
+    "outDir": "./bin",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

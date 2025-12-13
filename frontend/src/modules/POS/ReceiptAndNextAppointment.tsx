@@ -14,7 +14,7 @@ import Button from "../../ui/components/Button";
 import Modal from "../../ui/components/Modal";
 import Input from "../../ui/components/Input";
 import toast from "react-hot-toast";
-import type { Client, Treatment, Staff } from "./api";
+import type { Client, Treatment, Staff } from "./POSSchema";
 
 interface Transaction {
   id: string;
@@ -46,6 +46,7 @@ interface ReceiptAndNextAppointmentProps {
   }) => void;
   onNewSale: () => void;
   bookingAppointment?: boolean;
+  onClose: () => void;
 }
 
 // Styled Components
@@ -341,6 +342,7 @@ export default function ReceiptAndNextAppointment({
   onBookAppointment,
   onNewSale,
   bookingAppointment = false,
+  onClose,
 }: ReceiptAndNextAppointmentProps) {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointmentData, setAppointmentData] = useState({

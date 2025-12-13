@@ -19,10 +19,10 @@ export function unwrapResponse<T = any>(raw: unknown): T | T[] | null {
       : maybeAxios;
 
   const candidateKeys = [
+    "data",
     "items",
     "results",
     "records",
-    "data",
     "payload",
     "treatments",
     "treatment",
@@ -113,7 +113,29 @@ export function unwrapAndValidate<T>(
     }
   } catch (err) {
     if (err instanceof ZodError) {
-      console.error("[unwrapAndValidate] validation failed:", err.issues);
+      console.error(
+        "[unwrapAndValidate] Validation failed with detailed errors:"
+      );
+      console.error("Schema type:", isArraySchema ? "Array" : "Object");
+      console.error("Received data:", unwrapped);
+      console.error("Validation issues:");
+      err.issues.forEach((issue, index) => {
+        console.error(
+          `  ${index + 1}. Path: ${issue.path.join(".")} | Code: ${
+            issue.code
+          } | Message: ${issue.message}`
+        );
+        if (issue.code === "invalid_type") {
+          console.error(
+            `     Expected: ${(issue as any).expected}, Received: ${
+              (issue as any).received
+            }`
+          );
+        }
+        if ((issue as any).validation) {
+          console.error(`     Validation type: ${(issue as any).validation}`);
+        }
+      });
       throw err;
     }
     throw err;

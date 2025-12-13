@@ -4,60 +4,17 @@ import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import styled from "styled-components";
 import { UserPlus, AlertCircle } from "lucide-react";
-import type { CreateClientInput } from "./api";
-
-interface CreateClientModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (client: CreateClientInput) => void;
-  submitting?: boolean;
-}
 
 const Content = styled.div`
   display: grid;
-  gap: 1.25rem;
+  gap: 1rem;
 `;
-
-const FormField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.color.text};
-`;
-
-const Required = styled.span`
-  color: ${({ theme }) => theme.color.red500};
-  margin-left: 0.25rem;
-`;
-
-const ErrorMessage = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-  color: ${({ theme }) => theme.color.red500};
-  margin-top: 0.25rem;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  padding-top: 0.5rem;
-`;
-
-const InfoText = styled.div`
-  font-size: 0.8125rem;
+const Info = styled.div`
+  font-size: 0.9rem;
   color: ${({ theme }) => theme.color.mutedText};
-  padding: 1rem;
   background: ${({ theme }) => theme.color.brand50};
+  padding: 0.75rem;
   border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.brand200};
 `;
 
 export default function CreateClientModal({
@@ -65,150 +22,115 @@ export default function CreateClientModal({
   onClose,
   onSubmit,
   submitting = false,
-}: CreateClientModalProps) {
-  const [formData, setFormData] = useState<CreateClientInput>({
-    name: "",
-    phone: "",
-    email: "",
-    loyaltyPoints: 0,
-  });
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (payload: { name: string; phone?: string; email?: string }) => void;
+  submitting?: boolean;
+}) {
+  const [form, setForm] = useState({ name: "", phone: "", email: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateForm = useCallback((): boolean => {
-    const newErrors: Record<string, string> = {};
+  const validate = useCallback(() => {
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = "Name required";
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      e.email = "Invalid email";
+    if (form.phone && !/^[\d+\-\s()]+$/.test(form.phone))
+      e.phone = "Invalid phone";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }, [form]);
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (formData.phone && !/^[\d\s\-\+\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = "Please enter a valid phone number";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData]);
-
-  const handleSubmit = useCallback(() => {
-    if (!validateForm()) return;
-    onSubmit(formData);
-  }, [formData, validateForm, onSubmit]);
-
-  const handleClose = useCallback(() => {
-    setFormData({
-      name: "",
-      phone: "",
-      email: "",
-      loyaltyPoints: 0,
-    });
-    setErrors({});
-    onClose();
-  }, [onClose]);
+  const submit = useCallback(() => {
+    if (!validate()) return;
+    onSubmit(form);
+  }, [validate, onSubmit, form]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Create New Client"
-      size="md"
-      ariaLabel="Create new client"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title="Create Client" size="md">
       <Content>
-        <InfoText>
-          Create a new client profile to track their appointments, purchases,
-          and loyalty points.
-        </InfoText>
+        <Info>
+          Create a client profile to track appointments, purchases and loyalty.
+        </Info>
 
-        {/* Name */}
-        <FormField>
-          <Label htmlFor="client-name">
-            Full Name
-            <Required>*</Required>
-          </Label>
+        <div>
+          <label style={{ fontWeight: 700 }}>Full name</label>
           <Input
-            id="client-name"
-            value={formData.name}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, name: e.target.value }));
-              if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
-            }}
-            placeholder="e.g., Sarah Johnson"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             autoFocus
           />
           {errors.name && (
-            <ErrorMessage>
-              <AlertCircle size={14} />
+            <div
+              style={{
+                color: "var(--red500)",
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <AlertCircle />
               {errors.name}
-            </ErrorMessage>
+            </div>
           )}
-        </FormField>
+        </div>
 
-        {/* Phone */}
-        <FormField>
-          <Label htmlFor="client-phone">Phone Number</Label>
+        <div>
+          <label style={{ fontWeight: 700 }}>Phone</label>
           <Input
-            id="client-phone"
-            type="tel"
-            value={formData.phone}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, phone: e.target.value }));
-              if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
-            }}
-            placeholder="e.g., 555-0101"
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           />
           {errors.phone && (
-            <ErrorMessage>
-              <AlertCircle size={14} />
+            <div
+              style={{
+                color: "var(--red500)",
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <AlertCircle />
               {errors.phone}
-            </ErrorMessage>
+            </div>
           )}
-        </FormField>
+        </div>
 
-        {/* Email */}
-        <FormField>
-          <Label htmlFor="client-email">Email Address</Label>
+        <div>
+          <label style={{ fontWeight: 700 }}>Email</label>
           <Input
-            id="client-email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, email: e.target.value }));
-              if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
-            }}
-            placeholder="e.g., sarah@email.com"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
           />
           {errors.email && (
-            <ErrorMessage>
-              <AlertCircle size={14} />
+            <div
+              style={{
+                color: "var(--red500)",
+                display: "flex",
+                gap: 6,
+                alignItems: "center",
+              }}
+            >
+              <AlertCircle />
               {errors.email}
-            </ErrorMessage>
+            </div>
           )}
-        </FormField>
+        </div>
 
-        {/* Actions */}
-        <Actions>
-          <Button
-            variation="secondary"
-            onClick={handleClose}
-            disabled={submitting}
-            style={{ flex: 1, justifyContent: "center" }}
-          >
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button variation="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button
             variation="primary"
-            onClick={handleSubmit}
-            disabled={submitting || !formData.name.trim()}
-            icon={<UserPlus size={18} />}
-            style={{ flex: 1, justifyContent: "center" }}
+            onClick={submit}
+            disabled={submitting || !form.name.trim()}
           >
-            {submitting ? "Creating..." : "Create Client"}
+            <UserPlus size={18} style={{ marginRight: 8 }} />
+            {submitting ? "Creating..." : "Create client"}
           </Button>
-        </Actions>
+        </div>
       </Content>
     </Modal>
   );

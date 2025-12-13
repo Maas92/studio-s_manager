@@ -1,0 +1,312 @@
+services:
+  # Traefik - Reverse Proxy with Automatic SSL
+  traefik:
+    image: traefik:v2.10
+    container_name: studio-s-traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - studio-s-network
+    ports:
+      - "80:80"     # HTTP
+      - "443:443"   # HTTPS
+      - "8080:8080" # Traefik Dashboard (disable in production)
+    environment:
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}  # If using Cloudflare DNS
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+      - ./traefik/config.yml:/config.yml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.yourdomain.com`)"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$..." # htpasswd
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.yourdomain.com`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+  # Auth Service
+  auth:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: studio-s-auth
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - SERVICE_NAME=auth-service
+      - PORT=5002
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_ISSUER=studio-s-auth
+      - JWT_AUDIENCE=studio-s-clients
+      - JWT_KID=studio-s-auth-1
+      - ACCESS_TOKEN_TTL_SEC=172800
+      - REFRESH_TOKEN_TTL_SEC=1209600
+      - COOKIE_SECURE=true  # Enable for HTTPS
+      - COOKIE_SAMESITE=lax
+      - TRUST_PROXY=true    # Trust Traefik proxy
+      - CORS_ORIGIN=https://yourdomain.com
+      - SELF_JWKS_URL=http://auth:5002/.well-known/jwks.json
+    expose:
+      - "5002"
+    networks:
+      - studio-s-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: studio-s-backend
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - DB_POOL_LOGGING=false
+      - SERVICE_NAME=backend-service
+      - PORT=5003
+      - DB_SSL=true
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_SERVICE_URL=http://auth:5002
+      - GATEWAY_SECRET=${GATEWAY_SECRET}
+    expose:
+      - "5003"
+    networks:
+      - studio-s-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # API Gateway
+  gateway:
+    build:
+      context: ./api-proxy-server
+      dockerfile: Dockerfile
+    container_name: studio-s-gateway
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - SERVICE_NAME=api-gateway
+      - PORT=4000
+      - AUTH_SERVICE_URL=http://auth:5002
+      - INVENTORY_SERVICE_URL=http://backend:5003
+      - FRONTEND_URL=https://yourdomain.com
+      - FRONTEND_URLS=https://yourdomain.com,https://www.yourdomain.com
+      - JWKS_URL=http://auth:5002/.well-known/jwks.json
+      - JWT_ISSUER=studio-s-auth
+      - JWT_AUDIENCE=studio-s-clients
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - RATE_LIMIT_WINDOW_MS=900000
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=90d
+      - GATEWAY_SECRET=${GATEWAY_SECRET}
+    expose:
+      - "4000"
+    networks:
+      - studio-s-network
+    depends_on:
+      auth:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend with Traefik Labels
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: studio-s-frontend
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=/api
+    networks:
+      - studio-s-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router
+      - "traefik.http.routers.frontend.entrypoints=http"
+      - "traefik.http.routers.frontend.rule=Host(`yourdomain.com`) || Host(`www.yourdomain.com`)"
+      - "traefik.http.middlewares.frontend-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.frontend.middlewares=frontend-https-redirect"
+      # HTTPS Router
+      - "traefik.http.routers.frontend-secure.entrypoints=https"
+      - "traefik.http.routers.frontend-secure.rule=Host(`yourdomain.com`) || Host(`www.yourdomain.com`)"
+      - "traefik.http.routers.frontend-secure.tls=true"
+      - "traefik.http.routers.frontend-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.frontend-secure.service=frontend"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Security Headers
+      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.routers.frontend-secure.middlewares=security-headers"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: studio-s-redis
+    expose:
+      - "6379"
+    networks:
+      - studio-s-network
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: studio-s-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    expose:
+      - "9090"
+    networks:
+      - studio-s-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.yourdomain.com`)"
+      - "traefik.http.routers.prometheus.entrypoints=https"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.routers.prometheus.tls.certresolver=cloudflare"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  # Grafana - Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: studio-s-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    expose:
+      - "3000"
+    networks:
+      - studio-s-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.yourdomain.com`)"
+      - "traefik.http.routers.grafana.entrypoints=https"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=cloudflare"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: studio-s-loki
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    expose:
+      - "3100"
+    networks:
+      - studio-s-network
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Promtail - Log Shipper
+  promtail:
+    image: grafana/promtail:latest
+    container_name: studio-s-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - studio-s-network
+    command: -config.file=/etc/promtail/config.yml
+
+networks:
+  studio-s-network:
+    driver: bridge
+    name: studio-s-network
+
+volumes:
+  redis-data:
+    name: studio-s-redis-data
+  prometheus-data:
+    name: studio-s-prometheus-data
+  grafana-data:
+    name: studio-s-grafana-data
+  loki-data:
+    name: studio-s-loki-data

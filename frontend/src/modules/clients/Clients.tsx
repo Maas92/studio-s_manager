@@ -1,235 +1,230 @@
+import React, { useCallback, useState } from "react";
 import styled from "styled-components";
-import { clientsApi } from "./api";
-import type { Client, CreateClientInput } from "./api";
-import { listAppointments, type Appointment } from "../appointments/api";
-import Card from "../../ui/components/Card";
+import {
+  Plus,
+  Phone,
+  Calendar as CalendarIcon,
+  Clock as ClockIcon,
+  User as UserIcon,
+} from "lucide-react";
+import toast from "react-hot-toast";
+
+import PageHeader from "../../ui/components/PageHeader";
 import Button from "../../ui/components/Button";
 import Spinner from "../../ui/components/Spinner";
-import ClientDetailModal from "./ClientDetailModal";
-import CreateClientModal from "./CreateClientModal";
-import { Plus, Phone, Calendar, Clock, User } from "lucide-react";
-import { useCallback, useMemo } from "react";
-import { useResource } from "../../hooks/useResource";
-import { useListFilter } from "../../hooks/useListFilter";
-import { useModalState } from "../../hooks/useModalState";
-import PageHeader from "../../ui/components/PageHeader";
 import SearchBar from "../../ui/components/SearchBar";
 import EmptyState from "../../ui/components/EmptyState";
-import { useQuery } from "@tanstack/react-query";
+import Card from "../../ui/components/Card";
+import Modal from "../../ui/components/Modal";
+
+import { useClients } from "./useClient";
+import { useAppointments } from "../appointments/useAppointments";
+import { useListFilter } from "../../hooks/useListFilter";
+import { useModalState } from "../../hooks/useModalState";
+
+import type { Client } from "./ClientSchema";
 
 const PageWrapper = styled.div`
   padding: 2rem;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
-`;
-
-const StickyHeader = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: ${({ theme }) => theme.color.bg};
-  padding-bottom: 1.5rem;
 `;
 
 const Grid = styled.div`
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
-const ClientCard = styled(Card)`
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${({ theme }) => theme.shadowLg};
-  }
-`;
-
-const ClientHeader = styled.div`
+const Row = styled.div`
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 12px;
+  align-items: center;
 `;
 
-const ClientAvatar = styled.div`
+const Avatar = styled.div`
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.color.brand100 || "#dbeafe"};
-  color: ${({ theme }) => theme.color.brand700 || "#1d4ed8"};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1.25rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: ${({ theme }) => theme.color.brand100};
+  color: ${({ theme }) => theme.color.brand700};
+  font-weight: 700;
+  font-size: 1rem;
   flex-shrink: 0;
 `;
 
-const ClientInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const ClientName = styled.h3`
-  margin: 0 0 4px 0;
-  font-size: 1.125rem;
+const Name = styled.h3`
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.text};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 `;
 
-const ClientMeta = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: ${({ theme }) => theme.color.grey700};
-  font-size: 0.875rem;
+const Meta = styled.div`
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.color.mutedText};
 `;
 
-const MetaRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
-
-const UpcomingAppointment = styled.div`
-  padding: 0.75rem;
-  background: ${({ theme }) => theme.color.brand50 || "#eff6ff"};
-  border-radius: ${({ theme }) => theme.radii.sm};
-  border-left: 3px solid ${({ theme }) => theme.color.brand600 || "#2563eb"};
-  margin-top: 0.75rem;
-`;
-
-const AppointmentLabel = styled.div`
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.brand700 || "#1d4ed8"};
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const AppointmentDetails = styled.div`
+const FormField = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 0.875rem;
+`;
+
+const Label = styled.label`
+  font-weight: 600;
+  font-size: 0.9rem;
   color: ${({ theme }) => theme.color.text};
 `;
 
-const ErrorMessage = styled.div`
-  padding: 1rem;
-  background: ${({ theme }) => theme.color.red500 || "#fef2f2"};
-  color: ${({ theme }) => theme.color.red500 || "#b91c1c"};
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.red600 || "#fecaca"};
+const Input = styled.input`
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid ${({ theme }) => theme.color.border};
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    border-color: ${({ theme }) => theme.color.brand600};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.color.mutedText};
+  }
 `;
 
-function getInitials(name: string): string {
+function getInitials(name = "") {
   return name
-    .split(" ")
-    .map((n) => n[0])
+    .trim()
+    .split(/\s+/)
+    .map((p) => (p[0] ?? "").toUpperCase())
     .join("")
-    .toUpperCase()
     .slice(0, 2);
 }
 
-export default function Clients() {
-  // Modal states using custom hook
-  const detailModal = useModalState<Client>();
-  const createModal = useModalState();
+export default function ClientsPage() {
+  const { listQuery, createMutation, updateMutation, deleteMutation } =
+    useClients();
+  const { listQuery: apptQuery } = useAppointments();
 
-  // Use your generic resource hook
-  const {
-    listQuery: { data: clients = [], isLoading, isError, error },
-    createMutation,
-    updateMutation,
-    deleteMutation,
-  } = useResource({
-    resourceKey: "clients",
-    client: clientsApi,
-    toastMessages: {
-      create: "Client created successfully",
-      update: "Client updated successfully",
-      delete: "Client deleted successfully",
-    },
-  });
+  const clients = listQuery.data ?? [];
+  const appointments = apptQuery.data ?? [];
+  const isLoading = listQuery.isLoading;
+  const isError = listQuery.isError;
+  const error = listQuery.error;
 
-  const { data: appointments = [] } = useQuery({
-    queryKey: ["appointments"],
-    queryFn: listAppointments,
-    staleTime: 30000,
-  });
-
-  // Filtering using custom hook
-  const { filteredItems, searchQuery, setSearchQuery } = useListFilter(
+  const { filteredItems, searchQuery, setSearchQuery } = useListFilter<Client>(
     clients,
     {
       searchFields: ["name", "email", "phone"],
     }
   );
 
-  // Callbacks
+  const detailModal = useModalState<Client>();
+  const createModal = useModalState();
+
+  // Form state for create modal
+  const [createFormData, setCreateFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+  });
+
   const handleCreate = useCallback(
-    (input: CreateClientInput) => {
-      createMutation.mutate(input, {
-        onSuccess: () => createModal.close(),
+    (payload: Partial<Client>) => {
+      createMutation.mutate(payload as any, {
+        onSuccess: () => {
+          createModal.close();
+          setCreateFormData({ name: "", phone: "", email: "" });
+          toast.success("Client created successfully");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message ?? "Failed to create client");
+        },
       });
     },
     [createMutation, createModal]
   );
 
   const handleUpdate = useCallback(
-    (id: string, updates: Partial<CreateClientInput>) => {
-      updateMutation.mutate(
-        { id, updates },
-        {
-          onSuccess: () => detailModal.close(),
-        }
-      );
+    (id: string, updates: Partial<Client>) => {
+      updateMutation.mutate({ id, updates } as any, {
+        onSuccess: () => {
+          detailModal.close();
+          toast.success("Client updated successfully");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message ?? "Failed to update client");
+        },
+      });
     },
     [updateMutation, detailModal]
   );
 
   const handleDelete = useCallback(
-    (id: string, confirmMessage?: string) => {
-      const message =
-        confirmMessage || `Are you sure you want to delete this client?`;
-      if (window.confirm(message)) {
-        deleteMutation.mutate(id, {
-          onSuccess: () => detailModal.close(),
-        });
-      }
+    (id: string) => {
+      if (!window.confirm("Delete this client?")) return;
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          detailModal.close();
+          toast.success("Client deleted successfully");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message ?? "Failed to delete client");
+        },
+      });
     },
     [deleteMutation, detailModal]
   );
 
-  const getUpcomingAppointment = useCallback(
-    (clientId: string): Appointment | null => {
-      const now = new Date();
-      const clientAppointments = appointments
+  const getNextAppointmentFor = useCallback(
+    (clientId: string) => {
+      const now = Date.now();
+      const next = (appointments ?? [])
         .filter(
-          (apt) => apt.clientId === clientId && new Date(apt.datetimeISO) >= now
+          (a) =>
+            a.clientId === clientId && new Date(a.datetimeISO).getTime() >= now
         )
         .sort(
           (a, b) =>
             new Date(a.datetimeISO).getTime() -
             new Date(b.datetimeISO).getTime()
-        );
-
-      return clientAppointments[0] || null;
+        )[0];
+      return next ?? null;
     },
     [appointments]
   );
+
+  const handleCreateSubmit = useCallback(() => {
+    if (!createFormData.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
+    const payload: any = {
+      name: createFormData.name.trim(),
+    };
+
+    // Only include optional fields if they have values
+    if (createFormData.phone.trim()) {
+      payload.phone = createFormData.phone.trim();
+    }
+    if (createFormData.email.trim()) {
+      payload.email = createFormData.email.trim();
+    }
+
+    handleCreate(payload);
+  }, [createFormData, handleCreate]);
+
+  const handleCloseCreateModal = useCallback(() => {
+    createModal.close();
+    setCreateFormData({ name: "", phone: "", email: "" });
+  }, [createModal]);
 
   if (isLoading) {
     return (
@@ -244,134 +239,255 @@ export default function Clients() {
     return (
       <PageWrapper>
         <PageHeader title="Clients" />
-        <ErrorMessage>
-          {error instanceof Error ? error.message : "Error loading clients"}
-        </ErrorMessage>
+        <div style={{ padding: 12 }}>
+          {error instanceof Error ? error.message : "Failed to load clients"}
+        </div>
       </PageWrapper>
     );
   }
 
   return (
     <PageWrapper>
-      <StickyHeader>
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          background: "transparent",
+          zIndex: 5,
+          paddingBottom: 12,
+        }}
+      >
         <PageHeader title="Clients">
-          <Button
-            onClick={() => createModal.open()}
-            variation="primary"
-            size="medium"
-          >
-            <Plus size={18} />
-            New Client
+          <Button variation="primary" onClick={() => createModal.open()}>
+            <Plus size={16} /> New Client
           </Button>
         </PageHeader>
 
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search clients by name, email, or phone..."
+          placeholder="Search clients by name, email or phone..."
         />
-      </StickyHeader>
+      </div>
 
       {filteredItems.length === 0 ? (
         <EmptyState
-          icon={User}
+          icon={UserIcon}
           title={searchQuery ? "No clients found" : "No clients yet"}
-          description={
-            !searchQuery
-              ? 'Click "New Client" to add your first client.'
-              : undefined
-          }
-        />
+        >
+          {!searchQuery && <p>Click "New Client" to add your first client.</p>}
+        </EmptyState>
       ) : (
         <Grid>
-          {filteredItems.map((client) => {
-            const upcomingApt = getUpcomingAppointment(client.id);
-
+          {filteredItems.map((c) => {
+            const next = getNextAppointmentFor(c.id);
             return (
-              <ClientCard
-                key={client.id}
-                onClick={() => detailModal.open(client)}
+              <Card
+                key={c.id}
+                onClick={() => detailModal.open(c)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") detailModal.open(c);
+                }}
+                style={{ cursor: "pointer" }}
               >
-                <ClientHeader>
-                  <ClientAvatar>{getInitials(client.name)}</ClientAvatar>
-                  <ClientInfo>
-                    <ClientName>{client.name}</ClientName>
-                    <ClientMeta>
-                      {client.phone && (
-                        <MetaRow>
-                          <Phone size={14} />
-                          <span>{client.phone}</span>
-                        </MetaRow>
+                <Row>
+                  <Avatar>{getInitials(c.name)}</Avatar>
+                  <div style={{ flex: 1 }}>
+                    <Name>{c.name}</Name>
+                    <Meta>
+                      {c.phone && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <Phone size={14} /> {c.phone}
+                        </span>
                       )}
-                    </ClientMeta>
-                  </ClientInfo>
-                </ClientHeader>
+                      {c.email && (
+                        <span style={{ marginLeft: 10 }}>{c.email}</span>
+                      )}
+                    </Meta>
+                  </div>
+                </Row>
 
-                {upcomingApt ? (
-                  <UpcomingAppointment>
-                    <AppointmentLabel>Next Appointment</AppointmentLabel>
-                    <AppointmentDetails>
-                      <MetaRow>
-                        <Calendar size={14} />
+                {next ? (
+                  <div style={{ marginTop: 12, background: "transparent" }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--brand700)",
+                      }}
+                    >
+                      Next appointment
+                    </div>
+                    <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <CalendarIcon size={14} />
                         <span>
-                          {new Date(upcomingApt.datetimeISO).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            }
-                          )}
+                          {new Date(next.datetimeISO).toLocaleDateString()}
                         </span>
-                      </MetaRow>
-                      <MetaRow>
-                        <Clock size={14} />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <ClockIcon size={14} />
                         <span>
-                          {new Date(upcomingApt.datetimeISO).toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true,
-                            }
-                          )}
+                          {new Date(next.datetimeISO).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
                         </span>
-                      </MetaRow>
-                    </AppointmentDetails>
-                  </UpcomingAppointment>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <div
-                    style={{
-                      color: "#9ca3af",
-                      fontSize: "0.875rem",
-                      marginTop: "0.5rem",
-                    }}
-                  >
+                  <div style={{ marginTop: 12, color: "var(--muted)" }}>
                     No upcoming appointments
                   </div>
                 )}
-              </ClientCard>
+              </Card>
             );
           })}
         </Grid>
       )}
 
-      <ClientDetailModal
+      {/* Detail modal */}
+      <Modal
         isOpen={detailModal.isOpen}
         onClose={detailModal.close}
-        client={detailModal.selectedItem}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        updating={updateMutation.isPending}
-        deleting={deleteMutation.isPending}
-      />
+        title={detailModal.selectedItem?.name ?? "Client"}
+        size="md"
+      >
+        {detailModal.selectedItem ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            <div>
+              <strong>Name:</strong> {detailModal.selectedItem.name}
+            </div>
+            <div>
+              <strong>Phone:</strong> {detailModal.selectedItem.phone ?? "—"}
+            </div>
+            <div>
+              <strong>Email:</strong> {detailModal.selectedItem.email ?? "—"}
+            </div>
 
-      <CreateClientModal
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <Button
+                variation="primary"
+                onClick={() =>
+                  detailModal.selectedItem &&
+                  handleUpdate(
+                    detailModal.selectedItem.id,
+                    detailModal.selectedItem
+                  )
+                }
+                disabled={updateMutation.isPending}
+              >
+                Save
+              </Button>
+              <Button
+                variation="danger"
+                onClick={() =>
+                  detailModal.selectedItem &&
+                  handleDelete(detailModal.selectedItem.id)
+                }
+                disabled={deleteMutation.isPending}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div>Loading…</div>
+        )}
+      </Modal>
+
+      {/* Create modal */}
+      <Modal
         isOpen={createModal.isOpen}
-        onClose={createModal.close}
-        onCreate={handleCreate}
-        creating={createMutation.isPending}
-      />
+        onClose={handleCloseCreateModal}
+        title="Create Client"
+        size="md"
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <FormField>
+            <Label htmlFor="create-client-name">
+              Name <span style={{ color: "#ef4444" }}>*</span>
+            </Label>
+            <Input
+              id="create-client-name"
+              type="text"
+              placeholder="Enter client name"
+              value={createFormData.name}
+              onChange={(e) =>
+                setCreateFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
+              autoFocus
+            />
+          </FormField>
+
+          <FormField>
+            <Label htmlFor="create-client-phone">Phone</Label>
+            <Input
+              id="create-client-phone"
+              type="tel"
+              placeholder="Enter phone number"
+              value={createFormData.phone}
+              onChange={(e) =>
+                setCreateFormData((prev) => ({
+                  ...prev,
+                  phone: e.target.value,
+                }))
+              }
+            />
+          </FormField>
+
+          <FormField>
+            <Label htmlFor="create-client-email">Email</Label>
+            <Input
+              id="create-client-email"
+              type="email"
+              placeholder="Enter email address"
+              value={createFormData.email}
+              onChange={(e) =>
+                setCreateFormData((prev) => ({
+                  ...prev,
+                  email: e.target.value,
+                }))
+              }
+            />
+          </FormField>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <Button
+              variation="primary"
+              onClick={handleCreateSubmit}
+              disabled={createMutation.isPending}
+              style={{ flex: 1 }}
+            >
+              {createMutation.isPending ? "Creating..." : "Create Client"}
+            </Button>
+            <Button onClick={handleCloseCreateModal} style={{ flex: 1 }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </PageWrapper>
   );
 }

@@ -3,139 +3,40 @@ import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import styled from "styled-components";
-import { CreditCard, Check, AlertCircle, X } from "lucide-react";
-import type { CartItem } from "./api";
-
-type PaymentMethod = "cash" | "card" | "split";
-
-interface CheckoutModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  total: number;
-  onComplete: (paymentMethod: PaymentMethod, cashReceived?: number) => void;
-  processing?: boolean;
-}
+import { Check, AlertCircle } from "lucide-react";
 
 const Content = styled.div`
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
 `;
-
 const TotalDisplay = styled.div`
   background: ${({ theme }) => theme.color.brand50};
+  padding: 1rem;
   border-radius: ${({ theme }) => theme.radii.md};
-  padding: 1.5rem;
   text-align: center;
   border: 1px solid ${({ theme }) => theme.color.brand200};
 `;
-
-const TotalLabel = styled.div`
-  font-size: 0.8125rem;
-  color: ${({ theme }) => theme.color.mutedText};
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-`;
-
 const TotalAmount = styled.div`
-  font-size: 3rem;
+  font-size: 2rem;
   font-weight: 800;
   color: ${({ theme }) => theme.color.brand600};
-  line-height: 1;
 `;
-
-const Section = styled.div`
-  display: grid;
-  gap: 0.75rem;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.text};
-  margin-bottom: 0.5rem;
-`;
-
-const PaymentMethodGrid = styled.div`
+const PaymentGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
 `;
-
-const PaymentMethodButton = styled.button<{ $active: boolean }>`
-  padding: 1rem;
-  background: ${({ $active, theme }) =>
-    $active ? theme.color.brand500 : theme.color.grey100};
-  color: ${({ $active, theme }) => ($active ? "#ffffff" : theme.color.text)};
+const MethodBtn = styled.button<{ $active?: boolean }>`
+  padding: 0.75rem;
+  border-radius: ${({ theme }) => theme.radii.md};
   border: 2px solid
     ${({ $active, theme }) =>
       $active ? theme.color.brand600 : theme.color.border};
-  border-radius: ${({ theme }) => theme.radii.md};
-  font-size: 0.875rem;
-  font-weight: 700;
+  background: ${({ $active, theme }) =>
+    $active ? theme.color.brand500 : theme.color.panel};
+  color: ${({ $active }) => ($active ? "#fff" : "inherit")};
   cursor: pointer;
-  transition: all 0.2s;
-  text-transform: capitalize;
-
-  &:hover {
-    border-color: ${({ theme }) => theme.color.brand500};
-  }
 `;
-
-const QuickAmountGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.5rem;
-`;
-
-const QuickAmountButton = styled.button`
-  padding: 0.75rem;
-  background: ${({ theme }) => theme.color.grey100};
-  border: 1px solid ${({ theme }) => theme.color.border};
-  border-radius: ${({ theme }) => theme.radii.sm};
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: ${({ theme }) => theme.color.text};
-  transition: all 0.2s;
-
-  &:hover {
-    background: ${({ theme }) => theme.color.grey200};
-    border-color: ${({ theme }) => theme.color.brand500};
-  }
-`;
-
-const ChangeDisplay = styled.div`
-  padding: 1rem;
-  background: ${({ theme }) => theme.color.green500}20;
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.green500}40;
-`;
-
-const ChangeLabel = styled.div`
-  font-size: 0.8125rem;
-  color: ${({ theme }) => theme.color.mutedText};
-  margin-bottom: 0.25rem;
-`;
-
-const ChangeAmount = styled.div`
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: ${({ theme }) => theme.color.green500};
-`;
-
-const ErrorMessage = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-  color: ${({ theme }) => theme.color.red500};
-  margin-top: 0.75rem;
-`;
-
-const SUGGESTED_AMOUNTS = [50, 80, 100, 110, 150];
 
 export default function CheckoutModal({
   isOpen,
@@ -143,40 +44,36 @@ export default function CheckoutModal({
   total,
   onComplete,
   processing = false,
-}: CheckoutModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
-  const [cashAmount, setCashAmount] = useState("");
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  total: number;
+  onComplete: (payments: any[]) => void;
+  processing?: boolean;
+}) {
+  const [method, setMethod] = useState<"card" | "cash" | "split">("card");
+  const [cash, setCash] = useState("");
 
-  const change = useMemo(() => {
-    const cash = parseFloat(cashAmount) || 0;
-    return Math.max(0, cash - total);
-  }, [cashAmount, total]);
-
-  const isInsufficientCash = useMemo(() => {
-    if (paymentMethod !== "cash") return false;
-    const cash = parseFloat(cashAmount) || 0;
-    return cash > 0 && cash < total;
-  }, [paymentMethod, cashAmount, total]);
-
-  const canComplete = useMemo(() => {
-    if (paymentMethod === "cash") {
-      const cash = parseFloat(cashAmount) || 0;
-      return cash >= total;
-    }
-    return true;
-  }, [paymentMethod, cashAmount, total]);
+  const change = useMemo(
+    () => Math.max(0, (parseFloat(cash || "0") || 0) - total),
+    [cash, total]
+  );
+  const canComplete = useMemo(
+    () => (method === "cash" ? (parseFloat(cash || "0") || 0) >= total : true),
+    [method, cash, total]
+  );
+  const insufficient = useMemo(
+    () =>
+      method === "cash" &&
+      (parseFloat(cash || "0") || 0) > 0 &&
+      (parseFloat(cash || "0") || 0) < total,
+    [method, cash, total]
+  );
 
   const handleComplete = useCallback(() => {
     if (!canComplete || processing) return;
-
-    const cashReceived =
-      paymentMethod === "cash" ? parseFloat(cashAmount) : undefined;
-    onComplete(paymentMethod, cashReceived);
-  }, [canComplete, processing, paymentMethod, cashAmount, total, onComplete]);
-
-  const handleQuickAmount = useCallback((amount: number) => {
-    setCashAmount(amount.toString());
-  }, []);
+    onComplete([{ method, amount: total }]);
+  }, [canComplete, processing, method, total, onComplete]);
 
   return (
     <Modal
@@ -184,115 +81,93 @@ export default function CheckoutModal({
       onClose={onClose}
       title="Checkout"
       size="md"
-      ariaLabel="Checkout payment"
+      ariaLabel="Checkout"
     >
       <Content>
-        {/* Total Display */}
         <TotalDisplay>
-          <TotalLabel>Total Amount</TotalLabel>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--muted)",
+              textTransform: "uppercase",
+              fontWeight: 700,
+            }}
+          >
+            Total
+          </div>
           <TotalAmount>${total.toFixed(2)}</TotalAmount>
         </TotalDisplay>
 
-        {/* Payment Method Selection */}
-        <Section>
-          <Label>Payment Method</Label>
-          <PaymentMethodGrid>
-            <PaymentMethodButton
-              type="button"
-              $active={paymentMethod === "card"}
-              onClick={() => setPaymentMethod("card")}
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Payment Method</div>
+          <PaymentGrid>
+            <MethodBtn
+              $active={method === "card"}
+              onClick={() => setMethod("card")}
             >
               Card
-            </PaymentMethodButton>
-            <PaymentMethodButton
-              type="button"
-              $active={paymentMethod === "cash"}
-              onClick={() => setPaymentMethod("cash")}
+            </MethodBtn>
+            <MethodBtn
+              $active={method === "cash"}
+              onClick={() => setMethod("cash")}
             >
               Cash
-            </PaymentMethodButton>
-            <PaymentMethodButton
-              type="button"
-              $active={paymentMethod === "split"}
-              onClick={() => setPaymentMethod("split")}
+            </MethodBtn>
+            <MethodBtn
+              $active={method === "split"}
+              onClick={() => setMethod("split")}
             >
               Split
-            </PaymentMethodButton>
-          </PaymentMethodGrid>
-        </Section>
+            </MethodBtn>
+          </PaymentGrid>
 
-        {/* Cash Payment Fields */}
-        {paymentMethod === "cash" && (
-          <Section>
-            <Label htmlFor="cash-received">Cash Received</Label>
-            <Input
-              id="cash-received"
-              type="number"
-              step="0.01"
-              min="0"
-              value={cashAmount}
-              onChange={(e) => setCashAmount(e.target.value)}
-              placeholder="0.00"
-              style={{ fontSize: "1.125rem" }}
-              autoFocus
-            />
-
-            {/* Quick Amount Buttons */}
-            <QuickAmountGrid>
-              {SUGGESTED_AMOUNTS.map((amount) => (
-                <QuickAmountButton
-                  key={amount}
-                  type="button"
-                  onClick={() => handleQuickAmount(amount)}
+          {method === "cash" && (
+            <div style={{ marginTop: 8 }}>
+              <Input
+                type="number"
+                value={cash}
+                onChange={(e) => setCash(e.target.value)}
+                placeholder="Cash received"
+              />
+              {parseFloat(cash || "0") >= total && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 8,
+                    background: "rgba(16,185,129,0.06)",
+                    border: `1px solid rgba(16,185,129,0.12)`,
+                    borderRadius: 6,
+                  }}
                 >
-                  ${amount}
-                </QuickAmountButton>
-              ))}
-            </QuickAmountGrid>
-
-            {/* Change Display */}
-            {cashAmount && parseFloat(cashAmount) >= total && (
-              <ChangeDisplay>
-                <ChangeLabel>Change Due</ChangeLabel>
-                <ChangeAmount>${change.toFixed(2)}</ChangeAmount>
-              </ChangeDisplay>
-            )}
-          </Section>
-        )}
-
-        {/* Complete Payment Button */}
-        <Button
-          type="button"
-          onClick={handleComplete}
-          disabled={!canComplete || processing}
-          variation="primary"
-          style={{
-            width: "100%",
-            padding: "1rem",
-            fontSize: "1rem",
-            justifyContent: "center",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
-        >
-          {processing ? (
-            "Processing..."
-          ) : (
-            <>
-              <Check size={20} />
-              Complete Payment
-            </>
+                  <strong>Change:</strong> ${change.toFixed(2)}
+                </div>
+              )}
+            </div>
           )}
-        </Button>
+        </div>
 
-        {/* Error Message */}
-        {isInsufficientCash && (
-          <ErrorMessage>
-            <AlertCircle size={16} />
-            Insufficient cash amount
-          </ErrorMessage>
-        )}
+        <div style={{ display: "grid", gap: 8 }}>
+          <Button
+            variation="primary"
+            onClick={handleComplete}
+            disabled={!canComplete || processing}
+          >
+            <Check size={18} style={{ marginRight: 8 }} />
+            {processing ? "Processing..." : "Complete Payment"}
+          </Button>
+          {insufficient && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                color: "var(--red500)",
+              }}
+            >
+              <AlertCircle /> Insufficient cash
+            </div>
+          )}
+        </div>
       </Content>
     </Modal>
   );

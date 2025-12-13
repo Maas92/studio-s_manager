@@ -16,8 +16,13 @@ import globalErrorHandler from "./controllers/errorController.js";
 import { globalLimiter } from "./middleware/rateLimiter.js";
 import { logger } from "./utils/logger.js";
 import { mongoSanitize } from "./middleware/sanitize.js";
+import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
 const app: Application = express();
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
 
 // Trust proxy (for rate limiting and IP detection)
 app.set("trust proxy", env.TRUST_PROXY);

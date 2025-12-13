@@ -4,6 +4,7 @@
  *
  * Uses existing `api` axios instance and `unwrapResponse`/`unwrapAndValidate`.
  */
+import { z } from "zod";
 import api from "../services/api";
 import { unwrapResponse, unwrapAndValidate } from "../utils/unwrapResponse";
 import type { ZodType } from "zod";
@@ -26,9 +27,14 @@ export function createResourceClient<T, CreateInput = Partial<T>>(opts: {
   async function list(): Promise<T[]> {
     const raw = await api.get(basePath);
     try {
-      const validated = unwrapAndValidate(raw, schema.array());
+      // FIX: Use z.array(schema) instead of schema.array()
+      const validated = unwrapAndValidate(raw, z.array(schema));
       return Array.isArray(validated) ? validated : [validated];
-    } catch {
+    } catch (err) {
+      console.error(
+        "Validation failed in list(), falling back to manual parsing:",
+        err
+      );
       const unwrapped = unwrapResponse<T>(raw);
       const arr = Array.isArray(unwrapped)
         ? unwrapped
@@ -44,7 +50,11 @@ export function createResourceClient<T, CreateInput = Partial<T>>(opts: {
     try {
       const validated = unwrapAndValidate(raw, schema);
       return validated as T;
-    } catch {
+    } catch (err) {
+      console.error(
+        "Validation failed in get(), falling back to manual parsing:",
+        err
+      );
       const unwrapped = unwrapResponse<T>(raw);
       const item = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
       return schema.parse(item);
@@ -57,7 +67,11 @@ export function createResourceClient<T, CreateInput = Partial<T>>(opts: {
     try {
       const validated = unwrapAndValidate(raw, schema);
       return Array.isArray(validated) ? validated[0] : validated;
-    } catch {
+    } catch (err) {
+      console.error(
+        "Validation failed in create(), falling back to manual parsing:",
+        err
+      );
       const unwrapped = unwrapResponse<T>(raw);
       const item = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
       return schema.parse(item);
@@ -69,7 +83,11 @@ export function createResourceClient<T, CreateInput = Partial<T>>(opts: {
     try {
       const validated = unwrapAndValidate(raw, schema);
       return Array.isArray(validated) ? validated[0] : validated;
-    } catch {
+    } catch (err) {
+      console.error(
+        "Validation failed in update(), falling back to manual parsing:",
+        err
+      );
       const unwrapped = unwrapResponse<T>(raw);
       const item = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
       return schema.parse(item);
