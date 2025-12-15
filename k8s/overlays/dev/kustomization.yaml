@@ -1,0 +1,171 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: studio-s
+
+bases:
+  - ../../base
+
+namePrefix: dev-
+
+replicas:
+  - name: auth
+    count: 1
+  - name: backend
+    count: 1
+  - name: gateway
+    count: 1
+  - name: frontend
+    count: 1
+
+images:
+  - name: YOUR_DOCKER_REGISTRY/studio-s-auth
+    newTag: dev-latest
+  - name: YOUR_DOCKER_REGISTRY/studio-s-backend
+    newTag: dev-latest
+  - name: YOUR_DOCKER_REGISTRY/studio-s-gateway
+    newTag: dev-latest
+  - name: YOUR_DOCKER_REGISTRY/studio-s-frontend
+    newTag: dev-latest
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "64Mi"
+    target:
+      kind: Deployment
+      name: auth
+
+---
+# k8s/overlays/staging/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: studio-s
+
+bases:
+  - ../../base
+
+namePrefix: staging-
+
+replicas:
+  - name: auth
+    count: 2
+  - name: backend
+    count: 2
+  - name: gateway
+    count: 2
+  - name: frontend
+    count: 2
+
+images:
+  - name: YOUR_DOCKER_REGISTRY/studio-s-auth
+    newTag: staging-latest
+  - name: YOUR_DOCKER_REGISTRY/studio-s-backend
+    newTag: staging-latest
+  - name: YOUR_DOCKER_REGISTRY/studio-s-gateway
+    newTag: staging-latest
+  - name: YOUR_DOCKER_REGISTRY/studio-s-frontend
+    newTag: staging-latest
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - NODE_ENV=staging
+      - LOG_LEVEL=info
+
+---
+# k8s/overlays/production/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: studio-s
+
+bases:
+  - ../../base
+
+replicas:
+  - name: auth
+    count: 3
+  - name: backend
+    count: 3
+  - name: gateway
+    count: 3
+  - name: frontend
+    count: 3
+
+images:
+  - name: YOUR_DOCKER_REGISTRY/studio-s-auth
+    newTag: v1.0.0 # Use semantic versioning in production
+  - name: YOUR_DOCKER_REGISTRY/studio-s-backend
+    newTag: v1.0.0
+  - name: YOUR_DOCKER_REGISTRY/studio-s-gateway
+    newTag: v1.0.0
+  - name: YOUR_DOCKER_REGISTRY/studio-s-frontend
+    newTag: v1.0.0
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+
+# Production-specific patches
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+      spec:
+        template:
+          spec:
+            containers:
+            - name: backend
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "400m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "800m"
+    target:
+      kind: Deployment
+      name: backend
+
+  # Add HPA (Horizontal Pod Autoscaler) for production
+  - patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: backend-hpa
+      spec:
+        scaleTargetRef:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: backend
+        minReplicas: 3
+        maxReplicas: 10
+        metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+        - type: Resource
+          resource:
+            name: memory
+            target:
+              type: Utilization
+              averageUtilization: 80

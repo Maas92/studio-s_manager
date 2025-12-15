@@ -1,4 +1,3 @@
-// pages/appointments/AppointmentDetailModal.tsx
 import React, { useMemo, useCallback, useState, useEffect } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
@@ -8,7 +7,7 @@ import SearchableSelect, {
 } from "../../ui/components/SearchableSelect";
 import styled from "styled-components";
 import type { Appointment, Client, Treatment, Staff } from "./api";
-import { Trash2, Edit2, Save, X } from "lucide-react";
+import { Trash2, Edit2, Save, X, User, Calendar, Clock } from "lucide-react";
 
 export interface AppointmentDetailFormValues {
   client: string;
@@ -30,12 +29,43 @@ interface AppointmentDetailModalProps {
   clients?: Client[];
   treatments?: Treatment[];
   staff?: Staff[];
+  canEdit?: boolean;
 }
 
-// Styled Components
-const Form = styled.form`
+const Content = styled.div`
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
+`;
+
+const InfoCard = styled.div`
+  padding: 1.25rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.md};
+  display: grid;
+  gap: 1rem;
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+
+  svg {
+    color: ${({ theme }) => theme.color.brand600};
+    flex-shrink: 0;
+  }
+`;
+
+const InfoLabel = styled.span`
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+  min-width: 80px;
+`;
+
+const InfoValue = styled.span`
+  color: ${({ theme }) => theme.color.mutedText};
 `;
 
 const FormField = styled.div`
@@ -49,15 +79,6 @@ const Label = styled.label`
   font-weight: 600;
   font-size: 0.95rem;
   color: ${({ theme }) => theme.color.text};
-`;
-
-const ReadOnlyField = styled.div`
-  padding: 0.8rem 1.2rem;
-  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
-  border: 1px solid ${({ theme }) => theme.color.border};
-  border-radius: ${({ theme }) => theme.radii.sm};
-  color: ${({ theme }) => theme.color.text};
-  font-size: 1rem;
 `;
 
 const DateTimeGrid = styled.div`
@@ -84,11 +105,15 @@ const Select = styled.select`
   line-height: 1.5;
   outline: none;
   cursor: pointer;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
 
+  &:hover:not(:disabled):not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400};
+  }
+
   &:focus {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
     border-color: ${({ theme }) => theme.color.brand600};
   }
 
@@ -113,11 +138,15 @@ const TextArea = styled.textarea`
   line-height: 1.5;
   outline: none;
   resize: vertical;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
 
+  &:hover:not(:disabled):not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400};
+  }
+
   &:focus {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
     border-color: ${({ theme }) => theme.color.brand600};
   }
 
@@ -126,14 +155,18 @@ const TextArea = styled.textarea`
     cursor: not-allowed;
     background-color: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
   }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.color.mutedText};
+    opacity: 0.7;
+  }
 `;
 
 const Actions = styled.div`
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
-  margin-top: 0.5rem;
-  padding-top: 1rem;
+  padding-top: 1.5rem;
   border-top: 1px solid ${({ theme }) => theme.color.border};
 `;
 
@@ -151,10 +184,11 @@ const Badge = styled.span<{
   $variant: "confirmed" | "pending" | "cancelled" | "completed";
 }>`
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: ${({ theme }) => theme.radii.round};
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+  border: 1px solid;
   background: ${({ $variant, theme }) => {
     switch ($variant) {
       case "confirmed":
@@ -164,7 +198,7 @@ const Badge = styled.span<{
       case "pending":
         return theme.color.yellow100 || "#fef3c7";
       case "cancelled":
-        return theme.color.red600 || "#fee2e2";
+        return theme.color.red100 || "#fee2e2";
       default:
         return theme.color.grey100 || "#f3f4f6";
     }
@@ -178,9 +212,23 @@ const Badge = styled.span<{
       case "pending":
         return theme.color.yellow700 || "#a16207";
       case "cancelled":
-        return theme.color.red500 || "#b91c1c";
+        return theme.color.red600 || "#b91c1c";
       default:
         return theme.color.grey700 || "#374151";
+    }
+  }};
+  border-color: ${({ $variant, theme }) => {
+    switch ($variant) {
+      case "confirmed":
+        return theme.color.green200 || "#bbf7d0";
+      case "completed":
+        return theme.color.blue100 || "#bfdbfe";
+      case "pending":
+        return theme.color.yellow200 || "#fef08a";
+      case "cancelled":
+        return theme.color.red200 || "#fecaca";
+      default:
+        return theme.color.grey200 || "#e5e7eb";
     }
   }};
 `;
@@ -248,7 +296,6 @@ function mapToSimpleOptions<T extends { id: string; name: string }>(
   }));
 }
 
-// Component
 export default function AppointmentDetailModal({
   isOpen,
   onClose,
@@ -260,6 +307,7 @@ export default function AppointmentDetailModal({
   clients = [],
   treatments = [],
   staff = [],
+  canEdit = true,
 }: AppointmentDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState<AppointmentDetailFormValues>({
@@ -279,7 +327,6 @@ export default function AppointmentDetailModal({
   );
   const staffOptions = useMemo(() => mapToSimpleOptions(staff), [staff]);
 
-  // Initialize form values when appointment changes
   useEffect(() => {
     if (appointment) {
       setFormValues({
@@ -328,7 +375,6 @@ export default function AppointmentDetailModal({
       notes: formValues.notes,
     };
 
-    // Only include if changed
     if (formValues.client !== appointment.clientId) {
       updates.client = formValues.client;
     }
@@ -375,7 +421,6 @@ export default function AppointmentDetailModal({
   const staffName =
     staff.find((s) => s.id === formValues.staff)?.name || appointment.staffName;
 
-  // Safely cast status to the Badge variant type
   const statusVariant = (
     ["confirmed", "pending", "cancelled", "completed"].includes(
       formValues.status
@@ -397,137 +442,147 @@ export default function AppointmentDetailModal({
       size="md"
       ariaLabel="Appointment details"
     >
-      <Form>
-        {/* Client Field */}
-        <FormField>
-          <Label htmlFor="detail-client">Client</Label>
-          {isEditing ? (
-            <SearchableSelect
-              id="detail-client"
-              options={clientOptions}
-              value={formValues.client}
-              onChange={(val) =>
-                setFormValues((prev) => ({ ...prev, client: val }))
-              }
-              placeholder="Search for a client..."
-              allowFreeInput={false}
-            />
-          ) : (
-            <ReadOnlyField>{clientName || appointment.clientId}</ReadOnlyField>
-          )}
-        </FormField>
-
-        {/* Treatment Field */}
-        <FormField>
-          <Label htmlFor="detail-treatment">Treatment</Label>
-          {isEditing ? (
-            <SearchableSelect
-              id="detail-treatment"
-              options={treatmentOptions}
-              value={formValues.treatment}
-              onChange={(val) =>
-                setFormValues((prev) => ({ ...prev, treatment: val }))
-              }
-              placeholder="Search for a treatment..."
-              allowFreeInput={false}
-            />
-          ) : (
-            <ReadOnlyField>
-              {treatmentName || appointment.treatmentId}
-            </ReadOnlyField>
-          )}
-        </FormField>
-
-        {/* Staff Field */}
-        <FormField>
-          <Label htmlFor="detail-staff">Staff</Label>
-          {isEditing ? (
-            <SearchableSelect
-              id="detail-staff"
-              options={staffOptions}
-              value={formValues.staff || ""}
-              onChange={(val) =>
-                setFormValues((prev) => ({ ...prev, staff: val }))
-              }
-              placeholder="Select staff member..."
-              allowFreeInput={false}
-            />
-          ) : (
-            <ReadOnlyField>{staffName || "Not assigned"}</ReadOnlyField>
-          )}
-        </FormField>
-
-        {/* Date & Time Fields */}
-        <DateTimeGrid>
-          <FormField>
-            <Label htmlFor="detail-date">Date</Label>
-            {isEditing ? (
-              <Input
-                id="detail-date"
-                type="date"
-                value={date}
-                onChange={handleDateChange}
-                min={new Date().toISOString().split("T")[0]}
-              />
-            ) : (
-              <ReadOnlyField>
+      <Content>
+        {!isEditing && (
+          <InfoCard>
+            <InfoRow>
+              <User size={18} />
+              <InfoLabel>Client:</InfoLabel>
+              <InfoValue>{clientName || appointment.clientId}</InfoValue>
+            </InfoRow>
+            <InfoRow>
+              <Calendar size={18} />
+              <InfoLabel>Date:</InfoLabel>
+              <InfoValue>
                 {new Date(appointment.datetimeISO).toLocaleDateString("en-US", {
                   weekday: "long",
                   year: "numeric",
                   month: "long",
                   day: "numeric",
                 })}
-              </ReadOnlyField>
-            )}
-          </FormField>
-
-          <FormField>
-            <Label htmlFor="detail-time">Time</Label>
-            {isEditing ? (
-              <Select id="detail-time" value={time} onChange={handleTimeChange}>
-                <option value="">Select time</option>
-                {timeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-            ) : (
-              <ReadOnlyField>
+              </InfoValue>
+            </InfoRow>
+            <InfoRow>
+              <Clock size={18} />
+              <InfoLabel>Time:</InfoLabel>
+              <InfoValue>
                 {new Date(appointment.datetimeISO).toLocaleTimeString("en-US", {
                   hour: "numeric",
                   minute: "2-digit",
                   hour12: true,
                 })}
-              </ReadOnlyField>
-            )}
-          </FormField>
-        </DateTimeGrid>
+              </InfoValue>
+            </InfoRow>
+          </InfoCard>
+        )}
 
-        {/* Status Field */}
-        <FormField>
-          <Label htmlFor="detail-status">Status</Label>
-          {isEditing ? (
-            <Select
-              id="detail-status"
-              value={formValues.status}
-              onChange={(e) =>
-                setFormValues((prev) => ({ ...prev, status: e.target.value }))
-              }
-            >
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </Select>
-          ) : (
-            <ReadOnlyField style={{ textTransform: "capitalize" }}>
-              {formValues.status}
-            </ReadOnlyField>
-          )}
-        </FormField>
+        {isEditing ? (
+          <>
+            <FormField>
+              <Label htmlFor="detail-client">Client</Label>
+              <SearchableSelect
+                id="detail-client"
+                options={clientOptions}
+                value={formValues.client}
+                onChange={(val) =>
+                  setFormValues((prev) => ({ ...prev, client: val }))
+                }
+                placeholder="Search for a client..."
+                allowFreeInput={false}
+              />
+            </FormField>
 
-        {/* Notes Field */}
+            <FormField>
+              <Label htmlFor="detail-treatment">Treatment</Label>
+              <SearchableSelect
+                id="detail-treatment"
+                options={treatmentOptions}
+                value={formValues.treatment}
+                onChange={(val) =>
+                  setFormValues((prev) => ({ ...prev, treatment: val }))
+                }
+                placeholder="Search for a treatment..."
+                allowFreeInput={false}
+              />
+            </FormField>
+
+            <FormField>
+              <Label htmlFor="detail-staff">Staff</Label>
+              <SearchableSelect
+                id="detail-staff"
+                options={staffOptions}
+                value={formValues.staff || ""}
+                onChange={(val) =>
+                  setFormValues((prev) => ({ ...prev, staff: val }))
+                }
+                placeholder="Select staff member..."
+                allowFreeInput={false}
+              />
+            </FormField>
+
+            <DateTimeGrid>
+              <FormField>
+                <Label htmlFor="detail-date">Date</Label>
+                <Input
+                  id="detail-date"
+                  type="date"
+                  value={date}
+                  onChange={handleDateChange}
+                  min={new Date().toISOString().split("T")[0]}
+                />
+              </FormField>
+
+              <FormField>
+                <Label htmlFor="detail-time">Time</Label>
+                <Select
+                  id="detail-time"
+                  value={time}
+                  onChange={handleTimeChange}
+                >
+                  <option value="">Select time</option>
+                  {timeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            </DateTimeGrid>
+
+            <FormField>
+              <Label htmlFor="detail-status">Status</Label>
+              <Select
+                id="detail-status"
+                value={formValues.status}
+                onChange={(e) =>
+                  setFormValues((prev) => ({ ...prev, status: e.target.value }))
+                }
+              >
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </Select>
+            </FormField>
+          </>
+        ) : (
+          <>
+            <FormField>
+              <Label>Treatment</Label>
+              <InfoValue style={{ fontSize: "1rem", padding: "0.5rem 0" }}>
+                {treatmentName || appointment.treatmentId}
+              </InfoValue>
+            </FormField>
+
+            <FormField>
+              <Label>Staff</Label>
+              <InfoValue style={{ fontSize: "1rem", padding: "0.5rem 0" }}>
+                {staffName || "Not assigned"}
+              </InfoValue>
+            </FormField>
+          </>
+        )}
+
         <FormField>
           <Label htmlFor="detail-notes">Notes</Label>
           {isEditing ? (
@@ -540,14 +595,15 @@ export default function AppointmentDetailModal({
               placeholder="Add notes about this appointment..."
             />
           ) : (
-            <ReadOnlyField>{formValues.notes || "No notes"}</ReadOnlyField>
+            <InfoValue style={{ fontSize: "1rem", padding: "0.5rem 0" }}>
+              {formValues.notes || "No notes"}
+            </InfoValue>
           )}
         </FormField>
 
-        {/* Actions */}
         <Actions>
           <LeftActions>
-            {!isEditing && (
+            {!isEditing && canEdit && (
               <Button
                 variation="danger"
                 type="button"
@@ -586,19 +642,21 @@ export default function AppointmentDetailModal({
                 <Button variation="secondary" type="button" onClick={onClose}>
                   Close
                 </Button>
-                <Button
-                  variation="primary"
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Edit2 size={16} />
-                  Edit
-                </Button>
+                {canEdit && (
+                  <Button
+                    variation="primary"
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Edit2 size={16} />
+                    Edit
+                  </Button>
+                )}
               </>
             )}
           </RightActions>
         </Actions>
-      </Form>
+      </Content>
     </Modal>
   );
 }

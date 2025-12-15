@@ -1,4 +1,3 @@
-// src/ui/theme.ts
 import { createGlobalStyle } from "styled-components";
 import "styled-components";
 
@@ -30,14 +29,18 @@ type Palette = {
     brand700: string;
     brand800: string;
     brand900: string;
+    red100: string;
+    red200: string;
     red500: string;
     red600: string;
+    green200: string;
     green500: string;
     blue100: string;
     blue500: string;
     green100: string;
     green700: string;
     yellow100: string;
+    yellow200: string;
     yellow700: string;
     bg: string;
     panel: string;
@@ -78,14 +81,18 @@ export const lightTheme: Palette = {
     brand800: "#8f6a2f",
     brand900: "#745422",
     // Semantics
+    red100: "#fee2e2",
+    red200: "#fecaca",
     red500: "#ef4444",
     red600: "#dc2626",
+    green200: "#bbf7d0",
     green500: "#22c55e",
     blue100: "#dbeafe",
     blue500: "#3b82f6",
     green100: "#dcfce7",
     green700: "#15803d",
     yellow100: "#fef9c3",
+    yellow200: "#fef08a",
     yellow700: "#a16207",
     // Surfaces
     bg: "#f9fafb",
@@ -127,14 +134,18 @@ export const darkTheme: Palette = {
     brand800: "#ead7b1",
     brand900: "#f4ead2",
     // Semantics
+    red100: "#fee2e2",
+    red200: "#fecaca",
     red500: "#ef4444",
     red600: "#dc2626",
     green500: "#34d399",
     blue100: "#dbeafe",
     blue500: "#60a5fa",
     green100: "#166534", // adapted dark variants if needed
+    green200: "#22c55e",
     green700: "#dcfce7",
     yellow100: "#854d0e",
+    yellow200: "#fef08a",
     yellow700: "#fef9c3",
     // Surfaces
     bg: "#0f1113",

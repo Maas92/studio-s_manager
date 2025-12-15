@@ -15,6 +15,13 @@ import {
   Award,
   Calendar,
   User as UserIcon,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Star,
+  Clock,
+  Users,
+  AlertCircle,
 } from "lucide-react";
 
 interface StaffDetailModalProps {
@@ -23,26 +30,35 @@ interface StaffDetailModalProps {
   member: StaffMember | null;
   onUpdate?: (id: string, values: Partial<CreateStaffMemberInput>) => void;
   onDelete?: (id: string) => void;
+  onBookStaff?: (staffId: string, staffName: string) => void;
   updating?: boolean;
   deleting?: boolean;
   isAdmin?: boolean;
 }
 
+const Content = styled.div`
+  display: grid;
+  gap: 1.5rem;
+`;
+
 const PerformanceSection = styled.div`
   padding: 1.5rem;
   background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
   border-radius: ${({ theme }) => theme.radii.md};
-  margin-bottom: 1rem;
+  border: 1px solid ${({ theme }) => theme.color.border};
 `;
 
 const PerformanceTitle = styled.h4`
-  margin: 0 0 1rem 0;
+  margin: 0 0 1.25rem 0;
   font-size: 1rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.text};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
-const PerformanceGrid = styled.div`
+const KPIGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
@@ -56,13 +72,40 @@ const PerformanceGrid = styled.div`
   }
 `;
 
-const PerformanceMetric = styled.div`
+const KPICard = styled.div<{
+  $variant?: "success" | "warning" | "danger" | "info";
+}>`
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-left: 3px solid
+    ${({ $variant, theme }) => {
+      switch ($variant) {
+        case "success":
+          return theme.color.green500;
+        case "warning":
+          return theme.color.yellow700;
+        case "danger":
+          return theme.color.red600;
+        case "info":
+          return theme.color.blue500;
+        default:
+          return theme.color.brand600;
+      }
+    }};
 `;
 
-const MetricLabel = styled.div`
+const KPIHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const KPILabel = styled.div`
   font-size: 0.75rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.mutedText};
@@ -70,16 +113,32 @@ const MetricLabel = styled.div`
   letter-spacing: 0.05em;
 `;
 
-const MetricValue = styled.div<{ $color?: string }>`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: ${({ $color, theme }) => $color || theme.color.text};
+const KPIIcon = styled.div<{ $color?: string }>`
+  color: ${({ $color, theme }) => $color || theme.color.brand600};
 `;
 
-const MetricSubtext = styled.div`
-  font-size: 0.7rem;
+const KPIValue = styled.div<{ $color?: string }>`
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: ${({ $color, theme }) => $color || theme.color.text};
+  line-height: 1;
+`;
+
+const KPISubtext = styled.div`
+  font-size: 0.75rem;
   color: ${({ theme }) => theme.color.mutedText};
-  margin-top: 0.125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const TrendIndicator = styled.span<{ $direction: "up" | "down" }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  color: ${({ $direction, theme }) =>
+    $direction === "up" ? theme.color.green700 : theme.color.red600};
+  font-weight: 600;
 `;
 
 const Form = styled.form`
@@ -126,11 +185,15 @@ const TextArea = styled.textarea`
   line-height: 1.5;
   outline: none;
   resize: vertical;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
 
+  &:hover:not(:disabled):not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400};
+  }
+
   &:focus {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
     border-color: ${({ theme }) => theme.color.brand600};
   }
 `;
@@ -139,8 +202,7 @@ const Actions = styled.div`
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
-  margin-top: 0.5rem;
-  padding-top: 1rem;
+  padding-top: 1.5rem;
   border-top: 1px solid ${({ theme }) => theme.color.border};
 `;
 
@@ -167,7 +229,7 @@ const InfoGrid = styled.div`
 const Badge = styled.span<{ $variant: "active" | "inactive" | "on_leave" }>`
   display: inline-flex;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: ${({ theme }) => theme.radii.round};
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
@@ -210,6 +272,7 @@ const Tag = styled.span`
   font-size: 0.75rem;
   background: ${({ theme }) => theme.color.brand100 || "#dbeafe"};
   color: ${({ theme }) => theme.color.brand700 || "#1d4ed8"};
+  border: 1px solid ${({ theme }) => theme.color.brand200 || "#bfdbfe"};
 `;
 
 const Select = styled.select`
@@ -226,10 +289,14 @@ const Select = styled.select`
   line-height: 1.5;
   outline: none;
   cursor: pointer;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover:not(:disabled):not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400};
+  }
 
   &:focus {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
     border-color: ${({ theme }) => theme.color.brand600};
   }
 `;
@@ -240,6 +307,7 @@ export default function StaffDetailModal({
   member,
   onUpdate,
   onDelete,
+  onBookStaff,
   updating = false,
   deleting = false,
   isAdmin = false,
@@ -286,7 +354,7 @@ export default function StaffDetailModal({
     if (!member || !isAdmin) return;
     if (
       window.confirm(
-        `Are you sure you want to remove ${member.name} from staff?`
+        `Are you sure you want to remove ${member.firstName} ${member.lastName} from staff?`
       )
     ) {
       onDelete?.(member.id);
@@ -311,6 +379,12 @@ export default function StaffDetailModal({
     setIsEditing(false);
   }, [member]);
 
+  const handleBookStaff = useCallback(() => {
+    if (!member) return;
+    onBookStaff?.(member.id, `${member.firstName} ${member.lastName}`);
+    onClose();
+  }, [member, onBookStaff, onClose]);
+
   if (!member) return null;
 
   const statusVariant = (
@@ -319,13 +393,17 @@ export default function StaffDetailModal({
       : "active"
   ) as "active" | "inactive" | "on_leave";
 
+  const perf = member.performance;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {isEditing ? "Edit Staff Member" : "Staff Member Details"}
+          {isEditing
+            ? "Edit Staff Member"
+            : `${member.firstName} ${member.lastName}`}
           {!isEditing && (
             <Badge $variant={statusVariant}>
               {formValues.status.replace("_", " ")}
@@ -333,309 +411,426 @@ export default function StaffDetailModal({
           )}
         </div>
       }
-      size="md"
+      size="lg"
       ariaLabel="Staff member details"
     >
-      <Form>
-        {/* Performance Metrics - Admin Only */}
-        {isAdmin && member.performance && !isEditing && (
+      <Content>
+        {/* Performance Metrics - Owner Only */}
+        {isAdmin && perf && !isEditing && (
           <PerformanceSection>
             <PerformanceTitle>
+              <TrendingUp size={18} />
               Performance Metrics - This Month
             </PerformanceTitle>
-            <PerformanceGrid>
-              <PerformanceMetric>
-                <MetricLabel>Revenue</MetricLabel>
-                <MetricValue $color="#15803d">
-                  ${member.performance.totalRevenue.toLocaleString()}
-                </MetricValue>
-                <MetricSubtext>
-                  {member.performance.appointmentsCompleted} completed
-                </MetricSubtext>
-              </PerformanceMetric>
+            <KPIGrid>
+              {/* Revenue */}
+              <KPICard $variant="success">
+                <KPIHeader>
+                  <KPILabel>Revenue</KPILabel>
+                  <KPIIcon $color="#15803d">
+                    <DollarSign size={18} />
+                  </KPIIcon>
+                </KPIHeader>
+                <KPIValue $color="#15803d">
+                  ${perf.totalRevenue.toLocaleString()}
+                </KPIValue>
+                <KPISubtext>{perf.appointmentsCompleted} completed</KPISubtext>
+              </KPICard>
 
-              <PerformanceMetric>
-                <MetricLabel>Utilization</MetricLabel>
-                <MetricValue
+              {/* Utilization Rate */}
+              <KPICard
+                $variant={
+                  (perf.utilizationRate || 0) >= 80
+                    ? "success"
+                    : (perf.utilizationRate || 0) >= 60
+                    ? "warning"
+                    : "danger"
+                }
+              >
+                <KPIHeader>
+                  <KPILabel>Utilization</KPILabel>
+                  <KPIIcon
+                    $color={
+                      (perf.utilizationRate || 0) >= 80
+                        ? "#15803d"
+                        : (perf.utilizationRate || 0) >= 60
+                        ? "#ca8a04"
+                        : "#dc2626"
+                    }
+                  >
+                    <Clock size={18} />
+                  </KPIIcon>
+                </KPIHeader>
+                <KPIValue
                   $color={
-                    (member.performance.utilizationRate || 0) >= 80
+                    (perf.utilizationRate || 0) >= 80
                       ? "#15803d"
-                      : (member.performance.utilizationRate || 0) >= 60
+                      : (perf.utilizationRate || 0) >= 60
                       ? "#ca8a04"
                       : "#dc2626"
                   }
                 >
-                  {member.performance.utilizationRate?.toFixed(0) || 0}%
-                </MetricValue>
-                <MetricSubtext>of available hours</MetricSubtext>
-              </PerformanceMetric>
+                  {perf.utilizationRate?.toFixed(0) || 0}%
+                </KPIValue>
+                <KPISubtext>
+                  {perf.totalHoursWorked?.toFixed(0) || 0}h worked
+                </KPISubtext>
+              </KPICard>
 
-              <PerformanceMetric>
-                <MetricLabel>Avg Rating</MetricLabel>
-                <MetricValue>
-                  {member.performance.averageRating?.toFixed(1) || "N/A"}
-                </MetricValue>
-                <MetricSubtext>⭐ client rating</MetricSubtext>
-              </PerformanceMetric>
+              {/* Average Rating */}
+              <KPICard $variant="info">
+                <KPIHeader>
+                  <KPILabel>Avg Rating</KPILabel>
+                  <KPIIcon $color="#2563eb">
+                    <Star size={18} />
+                  </KPIIcon>
+                </KPIHeader>
+                <KPIValue>{perf.averageRating?.toFixed(1) || "N/A"}</KPIValue>
+                <KPISubtext>⭐ client feedback</KPISubtext>
+              </KPICard>
 
-              <PerformanceMetric>
-                <MetricLabel>Retention</MetricLabel>
-                <MetricValue $color="#2563eb">
-                  {member.performance.clientRetentionRate?.toFixed(0) || 0}%
-                </MetricValue>
-                <MetricSubtext>returning clients</MetricSubtext>
-              </PerformanceMetric>
+              {/* Client Retention */}
+              <KPICard $variant="success">
+                <KPIHeader>
+                  <KPILabel>Retention</KPILabel>
+                  <KPIIcon $color="#15803d">
+                    <Users size={18} />
+                  </KPIIcon>
+                </KPIHeader>
+                <KPIValue $color="#15803d">
+                  {perf.clientRetentionRate?.toFixed(0) || 0}%
+                </KPIValue>
+                <KPISubtext>
+                  <TrendIndicator $direction="up">
+                    <TrendingUp size={12} />
+                    +5%
+                  </TrendIndicator>
+                  vs last month
+                </KPISubtext>
+              </KPICard>
 
-              <PerformanceMetric>
-                <MetricLabel>No-Show Rate</MetricLabel>
-                <MetricValue
+              {/* No-Show Rate */}
+              <KPICard
+                $variant={
+                  (perf.noShowRate || 0) <= 5
+                    ? "success"
+                    : (perf.noShowRate || 0) <= 10
+                    ? "warning"
+                    : "danger"
+                }
+              >
+                <KPIHeader>
+                  <KPILabel>No-Show Rate</KPILabel>
+                  <KPIIcon
+                    $color={
+                      (perf.noShowRate || 0) <= 5
+                        ? "#15803d"
+                        : (perf.noShowRate || 0) <= 10
+                        ? "#ca8a04"
+                        : "#dc2626"
+                    }
+                  >
+                    <AlertCircle size={18} />
+                  </KPIIcon>
+                </KPIHeader>
+                <KPIValue
                   $color={
-                    (member.performance.noShowRate || 0) <= 5
+                    (perf.noShowRate || 0) <= 5
                       ? "#15803d"
-                      : (member.performance.noShowRate || 0) <= 10
+                      : (perf.noShowRate || 0) <= 10
                       ? "#ca8a04"
                       : "#dc2626"
                   }
                 >
-                  {member.performance.noShowRate?.toFixed(0) || 0}%
-                </MetricValue>
-                <MetricSubtext>
-                  {member.performance.appointmentsCancelled} cancelled
-                </MetricSubtext>
-              </PerformanceMetric>
+                  {perf.noShowRate?.toFixed(1) || 0}%
+                </KPIValue>
+                <KPISubtext>{perf.appointmentsCancelled} cancelled</KPISubtext>
+              </KPICard>
 
-              <PerformanceMetric>
-                <MetricLabel>Hours Worked</MetricLabel>
-                <MetricValue>
-                  {member.performance.totalHoursWorked?.toFixed(0) || 0}h
-                </MetricValue>
-                <MetricSubtext>this period</MetricSubtext>
-              </PerformanceMetric>
-            </PerformanceGrid>
+              {/* Total Appointments */}
+              <KPICard $variant="info">
+                <KPIHeader>
+                  <KPILabel>Appointments</KPILabel>
+                  <KPIIcon $color="#2563eb">
+                    <Calendar size={18} />
+                  </KPIIcon>
+                </KPIHeader>
+                <KPIValue $color="#2563eb">
+                  {perf.appointmentsCompleted}
+                </KPIValue>
+                <KPISubtext>completed this month</KPISubtext>
+              </KPICard>
+            </KPIGrid>
           </PerformanceSection>
         )}
 
-        {/* Name */}
-        <FormField>
-          <Label htmlFor="staff-name">Name</Label>
-          {isEditing ? (
-            <Input
-              id="staff-name"
-              value={formValues.firstName}
-              onChange={(e) =>
-                setFormValues((prev) => ({ ...prev, name: e.target.value }))
-              }
-              required
-            />
-          ) : (
-            <ReadOnlyField>
-              <UserIcon size={16} />
-              {member.firstName}
-            </ReadOnlyField>
-          )}
-        </FormField>
-
-        <InfoGrid>
-          {/* Email */}
-          <FormField>
-            <Label htmlFor="staff-email">Email</Label>
-            {isEditing ? (
-              <Input
-                id="staff-email"
-                type="email"
-                value={formValues.email}
-                onChange={(e) =>
-                  setFormValues((prev) => ({ ...prev, email: e.target.value }))
-                }
-              />
-            ) : (
-              <ReadOnlyField>
-                <Mail size={16} />
-                {member.email || "Not provided"}
-              </ReadOnlyField>
-            )}
-          </FormField>
-
-          {/* Phone */}
-          <FormField>
-            <Label htmlFor="staff-phone">Phone</Label>
-            {isEditing ? (
-              <Input
-                id="staff-phone"
-                type="tel"
-                value={formValues.phone}
-                onChange={(e) =>
-                  setFormValues((prev) => ({ ...prev, phone: e.target.value }))
-                }
-              />
-            ) : (
-              <ReadOnlyField>
-                <Phone size={16} />
-                {member.phone || "Not provided"}
-              </ReadOnlyField>
-            )}
-          </FormField>
-        </InfoGrid>
-
-        <InfoGrid>
-          {/* Role */}
-          <FormField>
-            <Label htmlFor="staff-role">Role</Label>
-            {isEditing ? (
-              <Input
-                id="staff-role"
-                value={formValues.role}
-                onChange={(e) =>
-                  setFormValues((prev) => ({ ...prev, role: e.target.value }))
-                }
-                required
-              />
-            ) : (
-              <ReadOnlyField>
-                <Briefcase size={16} />
-                {member.role}
-              </ReadOnlyField>
-            )}
-          </FormField>
-
-          {/* Status */}
-          {isEditing && (
+        <Form>
+          {/* Name Fields */}
+          <InfoGrid>
             <FormField>
-              <Label htmlFor="staff-status">Status</Label>
-              <Select
-                id="staff-status"
-                value={formValues.status}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    status: e.target.value as any,
-                  }))
-                }
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="on_leave">On Leave</option>
-              </Select>
+              <Label htmlFor="staff-first-name">First Name</Label>
+              {isEditing ? (
+                <Input
+                  id="staff-first-name"
+                  value={formValues.firstName}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      firstName: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              ) : (
+                <ReadOnlyField>
+                  <UserIcon size={16} />
+                  {member.firstName}
+                </ReadOnlyField>
+              )}
             </FormField>
-          )}
 
-          {/* Hire Date */}
-          {!isEditing && member.hireDate && (
             <FormField>
-              <Label>Hire Date</Label>
-              <ReadOnlyField>
-                <Calendar size={16} />
-                {new Date(member.hireDate).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </ReadOnlyField>
+              <Label htmlFor="staff-last-name">Last Name</Label>
+              {isEditing ? (
+                <Input
+                  id="staff-last-name"
+                  value={formValues.lastName}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      lastName: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              ) : (
+                <ReadOnlyField>{member.lastName}</ReadOnlyField>
+              )}
             </FormField>
-          )}
-        </InfoGrid>
+          </InfoGrid>
 
-        {/* Specializations */}
-        {!isEditing &&
-          member.specializations &&
-          member.specializations.length > 0 && (
+          <InfoGrid>
+            {/* Email */}
             <FormField>
-              <Label>Specializations</Label>
-              <TagsContainer>
-                {member.specializations.map((spec, idx) => (
-                  <Tag key={idx}>{spec}</Tag>
-                ))}
-              </TagsContainer>
+              <Label htmlFor="staff-email">Email</Label>
+              {isEditing ? (
+                <Input
+                  id="staff-email"
+                  type="email"
+                  value={formValues.email}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <ReadOnlyField>
+                  <Mail size={16} />
+                  {member.email || "Not provided"}
+                </ReadOnlyField>
+              )}
             </FormField>
-          )}
 
-        {/* Certifications */}
-        {!isEditing &&
-          member.certifications &&
-          member.certifications.length > 0 && (
+            {/* Phone */}
             <FormField>
-              <Label>Certifications</Label>
-              <ReadOnlyField>
-                <Award size={16} />
-                {member.certifications.join(", ")}
-              </ReadOnlyField>
+              <Label htmlFor="staff-phone">Phone</Label>
+              {isEditing ? (
+                <Input
+                  id="staff-phone"
+                  type="tel"
+                  value={formValues.phone}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <ReadOnlyField>
+                  <Phone size={16} />
+                  {member.phone || "Not provided"}
+                </ReadOnlyField>
+              )}
             </FormField>
-          )}
+          </InfoGrid>
 
-        {/* Bio */}
-        <FormField>
-          <Label htmlFor="staff-bio">Bio</Label>
-          {isEditing ? (
-            <TextArea
-              id="staff-bio"
-              value={formValues.bio}
-              onChange={(e) =>
-                setFormValues((prev) => ({ ...prev, bio: e.target.value }))
-              }
-              placeholder="Add a bio..."
-            />
-          ) : (
-            <ReadOnlyField>{member.bio || "No bio provided"}</ReadOnlyField>
-          )}
-        </FormField>
+          <InfoGrid>
+            {/* Role */}
+            <FormField>
+              <Label htmlFor="staff-role">Role</Label>
+              {isEditing ? (
+                <Input
+                  id="staff-role"
+                  value={formValues.role}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({ ...prev, role: e.target.value }))
+                  }
+                  required
+                />
+              ) : (
+                <ReadOnlyField>
+                  <Briefcase size={16} />
+                  {member.role}
+                </ReadOnlyField>
+              )}
+            </FormField>
 
-        {/* Actions */}
-        <Actions>
-          <LeftActions>
-            {!isEditing && isAdmin && (
-              <Button
-                variation="danger"
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                <Trash2 size={16} />
-                {deleting ? "Removing..." : "Remove"}
-              </Button>
-            )}
-          </LeftActions>
-
-          <RightActions>
+            {/* Status */}
             {isEditing ? (
-              <>
-                <Button
-                  variation="secondary"
-                  type="button"
-                  onClick={handleCancel}
+              <FormField>
+                <Label htmlFor="staff-status">Status</Label>
+                <Select
+                  id="staff-status"
+                  value={formValues.status}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      status: e.target.value as any,
+                    }))
+                  }
                 >
-                  <X size={16} />
-                  Cancel
-                </Button>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="on_leave">On Leave</option>
+                </Select>
+              </FormField>
+            ) : (
+              member.hireDate && (
+                <FormField>
+                  <Label>Hire Date</Label>
+                  <ReadOnlyField>
+                    <Calendar size={16} />
+                    {new Date(member.hireDate).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </ReadOnlyField>
+                </FormField>
+              )
+            )}
+          </InfoGrid>
+
+          {/* Specializations */}
+          {!isEditing &&
+            member.specializations &&
+            member.specializations.length > 0 && (
+              <FormField>
+                <Label>Specializations</Label>
+                <TagsContainer>
+                  {member.specializations.map((spec, idx) => (
+                    <Tag key={idx}>
+                      <Award size={12} style={{ marginRight: "0.25rem" }} />
+                      {spec}
+                    </Tag>
+                  ))}
+                </TagsContainer>
+              </FormField>
+            )}
+
+          {/* Certifications */}
+          {!isEditing &&
+            member.certifications &&
+            member.certifications.length > 0 && (
+              <FormField>
+                <Label>Certifications</Label>
+                <ReadOnlyField>
+                  <Award size={16} />
+                  {member.certifications.join(", ")}
+                </ReadOnlyField>
+              </FormField>
+            )}
+
+          {/* Bio */}
+          <FormField>
+            <Label htmlFor="staff-bio">Bio</Label>
+            {isEditing ? (
+              <TextArea
+                id="staff-bio"
+                value={formValues.bio}
+                onChange={(e) =>
+                  setFormValues((prev) => ({ ...prev, bio: e.target.value }))
+                }
+                placeholder="Add a bio..."
+              />
+            ) : (
+              <ReadOnlyField>{member.bio || "No bio provided"}</ReadOnlyField>
+            )}
+          </FormField>
+
+          {/* Actions */}
+          <Actions>
+            <LeftActions>
+              {!isEditing && (
                 <Button
                   variation="primary"
                   type="button"
-                  onClick={handleSave}
-                  disabled={updating || !formValues.firstName || !formValues.role}
+                  onClick={handleBookStaff}
                 >
-                  <Save size={16} />
-                  {updating ? "Saving..." : "Save Changes"}
+                  <Calendar size={16} />
+                  Book with {member.firstName}
                 </Button>
-              </>
-            ) : (
-              <>
-                <Button variation="secondary" type="button" onClick={onClose}>
-                  Close
+              )}
+              {!isEditing && isAdmin && (
+                <Button
+                  variation="danger"
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  <Trash2 size={16} />
+                  {deleting ? "Removing..." : "Remove"}
                 </Button>
-                {isAdmin && (
+              )}
+            </LeftActions>
+
+            <RightActions>
+              {isEditing ? (
+                <>
+                  <Button
+                    variation="secondary"
+                    type="button"
+                    onClick={handleCancel}
+                  >
+                    <X size={16} />
+                    Cancel
+                  </Button>
                   <Button
                     variation="primary"
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    onClick={handleSave}
+                    disabled={
+                      updating || !formValues.firstName || !formValues.role
+                    }
                   >
-                    <Edit2 size={16} />
-                    Edit
+                    <Save size={16} />
+                    {updating ? "Saving..." : "Save Changes"}
                   </Button>
-                )}
-              </>
-            )}
-          </RightActions>
-        </Actions>
-      </Form>
+                </>
+              ) : (
+                <>
+                  <Button variation="secondary" type="button" onClick={onClose}>
+                    Close
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variation="primary"
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Edit2 size={16} />
+                      Edit
+                    </Button>
+                  )}
+                </>
+              )}
+            </RightActions>
+          </Actions>
+        </Form>
+      </Content>
     </Modal>
   );
 }

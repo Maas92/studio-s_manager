@@ -1,14 +1,14 @@
 import React, { useCallback, useMemo, useState } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
-  Search as SearchIcon,
   Clock as ClockIcon,
   DollarSign as DollarIcon,
   TrendingUp,
   Sparkles,
+  Tag as TagIcon,
 } from "lucide-react";
-import toast from "react-hot-toast";
 
 import PageHeader from "../../ui/components/PageHeader";
 import Button from "../../ui/components/Button";
@@ -16,41 +16,185 @@ import Spinner from "../../ui/components/Spinner";
 import SearchBar from "../../ui/components/SearchBar";
 import EmptyState from "../../ui/components/EmptyState";
 import Card from "../../ui/components/Card";
-import Modal from "../../ui/components/Modal";
 
 import { useTreatments } from "./useTreatments";
 import { useListFilter } from "../../hooks/useListFilter";
+import CreateTreatmentModal from "./CreateTreatmentModal";
+import TreatmentDetailModal from "./TreatmentDetailModal";
+import useAuth from "../../hooks/useAuth";
 
 import type { Treatment } from "./TreatmentSchema";
 import { useModalState } from "../../hooks/useModalState";
 
 const PageWrapper = styled.div`
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+`;
+
+const ControlsWrapper = styled.div`
+  position: sticky;
+  top: 0;
+  background: ${({ theme }) => theme.color.bg};
+  z-index: 5;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const FiltersRow = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const CategoryFilters = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 `;
 
 const Grid = styled.div`
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
-const Title = styled.h4`
-  margin: 0 0 6px 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-`;
-
-const MetaRow = styled.div`
+const TreatmentCard = styled(Card)`
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
-  color: ${({ theme }) => theme.color.mutedText};
+  flex-direction: column;
+  gap: 0.875rem;
+  height: 100%;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      ${({ theme }) => theme.color.brand400},
+      ${({ theme }) => theme.color.brand600}
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+`;
+
+const TreatmentHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+`;
+
+const TreatmentTitle = styled.h3`
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+  line-height: 1.3;
+  flex: 1;
+`;
+
+const PopularBadge = styled.div`
+  display: inline-flex;
   align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.brand100},
+    ${({ theme }) => theme.color.brand200}
+  );
+  color: ${({ theme }) => theme.color.brand800};
+  border-radius: ${({ theme }) => theme.radii.round};
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid ${({ theme }) => theme.color.brand300};
+`;
+
+const Description = styled.p`
+  margin: 0;
+  color: ${({ theme }) => theme.color.mutedText};
+  font-size: 0.9rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const MetaGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: ${({ theme }) => theme.color.text};
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  svg {
+    color: ${({ theme }) => theme.color.brand600};
+    flex-shrink: 0;
+  }
+`;
+
+const TagsList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+`;
+
+const Tag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: ${({ theme }) => theme.color.grey100};
+  color: ${({ theme }) => theme.color.grey700};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid ${({ theme }) => theme.color.border};
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
 `;
 
 export default function TreatmentsPage() {
+  const navigate = useNavigate();
+  const { canManageTreatments } = useAuth();
+
   const { listQuery, createMutation, updateMutation, deleteMutation } =
     useTreatments();
   const treatments = listQuery.data ?? [];
@@ -66,16 +210,17 @@ export default function TreatmentsPage() {
   });
 
   const categories = useMemo(() => {
-    const s = new Set(
-      (treatments || []).map((t) => t.category).filter(Boolean)
+    const categorySet = new Set(
+      treatments.map((t) => t.category).filter(Boolean)
     );
-    return ["all", ...Array.from(s)];
+    return ["all", ...Array.from(categorySet)];
   }, [treatments]);
 
   const filtered = useMemo(() => {
-    let items = (filteredItems ?? []).filter((t) => t.isActive);
-    if (categoryFilter !== "all")
+    let items = filteredItems.filter((t) => t.isActive);
+    if (categoryFilter !== "all") {
       items = items.filter((t) => t.category === categoryFilter);
+    }
     return items.sort(
       (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)
     );
@@ -85,36 +230,64 @@ export default function TreatmentsPage() {
   const createModal = useModalState();
 
   const handleCreate = useCallback(
-    (payload: Partial<Treatment>) => {
-      createMutation.mutate(payload as any, {
-        onSuccess: () => createModal.close(),
+    (payload: any) => {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          createModal.close();
+        },
       });
     },
     [createMutation, createModal]
   );
 
   const handleUpdate = useCallback(
-    (id: string, updates: Partial<Treatment>) => {
-      updateMutation.mutate({ id, updates } as any, {
-        onSuccess: () => detailModal.close(),
-      });
+    (id: string, updates: any) => {
+      updateMutation.mutate(
+        { id, updates },
+        {
+          onSuccess: () => {
+            detailModal.close();
+          },
+        }
+      );
     },
     [updateMutation, detailModal]
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      if (!window.confirm("Delete this treatment?")) return;
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          detailModal.close();
+        },
+      });
     },
-    [deleteMutation]
+    [deleteMutation, detailModal]
+  );
+
+  const handleBook = useCallback(
+    (treatmentId: string, treatmentName: string) => {
+      // Navigate to appointments page with pre-filled treatment
+      navigate("/appointments", {
+        state: {
+          createAppointment: true,
+          treatmentId,
+          treatmentName,
+        },
+      });
+    },
+    [navigate]
   );
 
   if (isLoading) {
     return (
       <PageWrapper>
         <PageHeader title="Treatments" />
-        <Spinner />
+        <div
+          style={{ display: "flex", justifyContent: "center", padding: "3rem" }}
+        >
+          <Spinner />
+        </div>
       </PageWrapper>
     );
   }
@@ -123,7 +296,7 @@ export default function TreatmentsPage() {
     return (
       <PageWrapper>
         <PageHeader title="Treatments" />
-        <div style={{ padding: 16 }}>
+        <div style={{ padding: "1rem", color: "var(--color-red500)" }}>
           {error instanceof Error ? error.message : "Failed to load treatments"}
         </div>
       </PageWrapper>
@@ -132,47 +305,35 @@ export default function TreatmentsPage() {
 
   return (
     <PageWrapper>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          background: "transparent",
-          zIndex: 5,
-          paddingBottom: 12,
-        }}
-      >
+      <ControlsWrapper>
         <PageHeader title="Treatments">
-          <Button variation="primary" onClick={() => createModal.open()}>
-            <Plus size={16} /> New Treatment
-          </Button>
+          {canManageTreatments && (
+            <Button variation="primary" onClick={() => createModal.open()}>
+              <Plus size={16} /> New Treatment
+            </Button>
+          )}
         </PageHeader>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            marginTop: 8,
-          }}
-        >
+        <FiltersRow>
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Search treatments..."
           />
-          <div style={{ display: "flex", gap: 8 }}>
-            {categories.map((c) => (
+          <CategoryFilters>
+            {categories.map((cat: any) => (
               <Button
-                key={c}
-                variation={categoryFilter === c ? "primary" : "secondary"}
-                onClick={() => setCategoryFilter(c)}
+                key={cat}
+                size="small"
+                variation={categoryFilter === cat ? "primary" : "secondary"}
+                onClick={() => setCategoryFilter(cat)}
               >
-                {c}
+                {cat}
               </Button>
             ))}
-          </div>
-        </div>
-      </div>
+          </CategoryFilters>
+        </FiltersRow>
+      </ControlsWrapper>
 
       {filtered.length === 0 ? (
         <EmptyState
@@ -183,151 +344,89 @@ export default function TreatmentsPage() {
               : "No treatments available"
           }
         >
-          {!searchQuery && categoryFilter === "all" && (
+          {!searchQuery && categoryFilter === "all" && canManageTreatments && (
             <p>Add a new treatment to get started.</p>
           )}
         </EmptyState>
       ) : (
         <Grid>
-          {filtered.map((t) => (
-            <Card
-              key={t.id}
-              onClick={() => detailModal.open(t)}
+          {filtered.map((treatment) => (
+            <TreatmentCard
+              key={treatment.id}
+              hoverable
+              onClick={() => detailModal.open(treatment)}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") detailModal.open(t);
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  detailModal.open(treatment);
+                }
               }}
-              style={{ cursor: "pointer" }}
             >
-              <div>
-                <Title>{t.name}</Title>
-                {t.description && (
-                  <div style={{ color: "var(--muted)", marginTop: 6 }}>
-                    {t.description}
-                  </div>
-                )}
-                <MetaRow>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <ClockIcon size={14} /> {t.durationMinutes} min
-                  </div>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                  >
-                    <DollarIcon size={14} /> ${(t.price ?? 0).toFixed(2)}
-                  </div>
-                  {t.popularityScore && t.popularityScore > 80 && (
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      <TrendingUp size={14} /> Popular
-                    </div>
+              <TreatmentHeader>
+                <TreatmentTitle>{treatment.name}</TreatmentTitle>
+                {treatment.popularityScore &&
+                  treatment.popularityScore > 80 && (
+                    <PopularBadge>
+                      <TrendingUp size={12} />
+                      Popular
+                    </PopularBadge>
                   )}
-                </MetaRow>
-              </div>
-            </Card>
+              </TreatmentHeader>
+
+              {treatment.description && (
+                <Description>{treatment.description}</Description>
+              )}
+
+              {treatment.tags && treatment.tags.length > 0 && (
+                <TagsList>
+                  {treatment.tags.slice(0, 3).map((tag, idx) => (
+                    <Tag key={idx}>
+                      <TagIcon size={12} />
+                      {tag}
+                    </Tag>
+                  ))}
+                  {treatment.tags.length > 3 && (
+                    <Tag>+{treatment.tags.length - 3} more</Tag>
+                  )}
+                </TagsList>
+              )}
+
+              <MetaGrid>
+                <MetaItem>
+                  <ClockIcon size={16} />
+                  {treatment.durationMinutes} min
+                </MetaItem>
+                <MetaItem>
+                  <DollarIcon size={16} />${treatment.price.toFixed(2)}
+                </MetaItem>
+              </MetaGrid>
+            </TreatmentCard>
           ))}
         </Grid>
       )}
 
-      <Modal
+      <TreatmentDetailModal
         isOpen={detailModal.isOpen}
         onClose={detailModal.close}
-        title={detailModal.selectedItem?.name ?? "Treatment"}
-        size="md"
-      >
-        {detailModal.selectedItem ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            <div>
-              <strong>Category:</strong>{" "}
-              {detailModal.selectedItem.category ?? "—"}
-            </div>
-            <div>
-              <strong>Duration:</strong>{" "}
-              {detailModal.selectedItem.durationMinutes} min
-            </div>
-            <div>
-              <strong>Price:</strong> $
-              {(detailModal.selectedItem.price ?? 0).toFixed(2)}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <Button
-                variation="primary"
-                onClick={() =>
-                  detailModal.selectedItem &&
-                  handleUpdate(
-                    detailModal.selectedItem.id,
-                    detailModal.selectedItem
-                  )
-                }
-                disabled={updateMutation.isPending}
-              >
-                Save
-              </Button>
-              <Button
-                variation="danger"
-                onClick={() =>
-                  detailModal.selectedItem &&
-                  handleDelete(detailModal.selectedItem.id)
-                }
-                disabled={deleteMutation.isPending}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div>Loading…</div>
-        )}
-      </Modal>
+        treatment={detailModal.selectedItem}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        onBook={handleBook}
+        updating={updateMutation.isPending}
+        deleting={deleteMutation.isPending}
+        isAdmin={canManageTreatments}
+      />
 
-      <Modal
-        isOpen={createModal.isOpen}
-        onClose={createModal.close}
-        title="Create treatment"
-        size="md"
-      >
-        {/* Replace with your CreateTreatmentModal if you have one */}
-        <div style={{ display: "grid", gap: 8 }}>
-          <input
-            placeholder="Name"
-            onChange={(e) => ((createModal as any).tempName = e.target.value)}
-          />
-          <input
-            placeholder="Duration (minutes)"
-            type="number"
-            onChange={(e) =>
-              ((createModal as any).tempDuration = Number(e.target.value))
-            }
-          />
-          <input
-            placeholder="Price"
-            type="number"
-            onChange={(e) =>
-              ((createModal as any).tempPrice = Number(e.target.value))
-            }
-          />
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <Button
-              variation="primary"
-              onClick={() => {
-                const p = {
-                  name: (createModal as any).tempName ?? "",
-                  durationMinutes: (createModal as any).tempDuration ?? 60,
-                  price: (createModal as any).tempPrice ?? 0,
-                };
-                handleCreate(p as any);
-              }}
-              disabled={createMutation.isPending}
-            >
-              Create
-            </Button>
-            <Button onClick={createModal.close}>Cancel</Button>
-          </div>
-        </div>
-      </Modal>
+      {canManageTreatments && (
+        <CreateTreatmentModal
+          isOpen={createModal.isOpen}
+          onClose={createModal.close}
+          onCreate={handleCreate}
+          creating={createMutation.isPending}
+        />
+      )}
     </PageWrapper>
   );
 }

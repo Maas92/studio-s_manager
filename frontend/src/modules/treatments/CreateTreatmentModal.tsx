@@ -14,7 +14,7 @@ interface CreateTreatmentModalProps {
 
 const Form = styled.form`
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
 `;
 
 const FormField = styled.div`
@@ -31,7 +31,7 @@ const Label = styled.label`
 `;
 
 const RequiredIndicator = styled.span`
-  color: ${({ theme }) => theme.color.red500 || "#ef4444"};
+  color: ${({ theme }) => theme.color.red500};
   margin-left: 4px;
 `;
 
@@ -59,12 +59,21 @@ const TextArea = styled.textarea`
   line-height: 1.5;
   outline: none;
   resize: vertical;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
 
+  &:hover:not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400};
+  }
+
   &:focus {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
     border-color: ${({ theme }) => theme.color.brand600};
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.color.mutedText};
+    opacity: 0.7;
   }
 `;
 
@@ -73,8 +82,14 @@ const Actions = styled.div`
   gap: 0.75rem;
   justify-content: flex-end;
   margin-top: 0.5rem;
-  padding-top: 1rem;
+  padding-top: 1.5rem;
   border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const HintText = styled.span`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  margin-top: 0.25rem;
 `;
 
 const INITIAL: CreateTreatmentInput = {
@@ -109,7 +124,6 @@ export default function CreateTreatmentModal({
         !formValues.durationMinutes ||
         formValues.price < 0
       ) {
-        // lightweight client guard; server-side validation will still run
         return;
       }
       onCreate(formValues);
@@ -133,7 +147,7 @@ export default function CreateTreatmentModal({
       <Form onSubmit={handleSubmit}>
         <FormField>
           <Label htmlFor="treatment-name">
-            Name <RequiredIndicator>*</RequiredIndicator>
+            Treatment Name <RequiredIndicator>*</RequiredIndicator>
           </Label>
           <Input
             id="treatment-name"
@@ -141,6 +155,7 @@ export default function CreateTreatmentModal({
             onChange={(e) =>
               setFormValues((p) => ({ ...p, name: e.target.value }))
             }
+            placeholder="e.g., Swedish Massage"
             required
             autoFocus
           />
@@ -150,18 +165,18 @@ export default function CreateTreatmentModal({
           <Label htmlFor="treatment-description">Description</Label>
           <TextArea
             id="treatment-description"
-            value={formValues.description}
+            value={formValues.description ?? ""}
             onChange={(e) =>
               setFormValues((p) => ({ ...p, description: e.target.value }))
             }
-            placeholder="Describe the treatment..."
+            placeholder="Describe what makes this treatment special..."
           />
         </FormField>
 
         <Grid>
           <FormField>
             <Label htmlFor="treatment-duration">
-              Duration (minutes) <RequiredIndicator>*</RequiredIndicator>
+              Duration <RequiredIndicator>*</RequiredIndicator>
             </Label>
             <Input
               id="treatment-duration"
@@ -174,13 +189,15 @@ export default function CreateTreatmentModal({
                   durationMinutes: Number(e.target.value),
                 }))
               }
+              placeholder="60"
               required
             />
+            <HintText>Duration in minutes</HintText>
           </FormField>
 
           <FormField>
             <Label htmlFor="treatment-price">
-              Price ($) <RequiredIndicator>*</RequiredIndicator>
+              Price <RequiredIndicator>*</RequiredIndicator>
             </Label>
             <Input
               id="treatment-price"
@@ -191,8 +208,10 @@ export default function CreateTreatmentModal({
               onChange={(e) =>
                 setFormValues((p) => ({ ...p, price: Number(e.target.value) }))
               }
+              placeholder="0.00"
               required
             />
+            <HintText>Price in USD</HintText>
           </FormField>
         </Grid>
 
@@ -200,19 +219,19 @@ export default function CreateTreatmentModal({
           <Label htmlFor="treatment-category">Category</Label>
           <Input
             id="treatment-category"
-            value={formValues.category}
+            value={formValues.category ?? ""}
             onChange={(e) =>
               setFormValues((p) => ({ ...p, category: e.target.value }))
             }
+            placeholder="e.g., Massage, Facial, Body Treatment"
           />
         </FormField>
 
-        {/* Optional small inputs for tags (CSV) */}
         <FormField>
-          <Label htmlFor="treatment-tags">Tags (comma separated)</Label>
+          <Label htmlFor="treatment-tags">Tags</Label>
           <Input
             id="treatment-tags"
-            value={(formValues.tags || []).join(",")}
+            value={(formValues.tags || []).join(", ")}
             onChange={(e) =>
               setFormValues((p) => ({
                 ...p,
@@ -224,8 +243,9 @@ export default function CreateTreatmentModal({
                   : [],
               }))
             }
-            placeholder="relaxing, facial, beginner-friendly"
+            placeholder="relaxing, popular, beginner-friendly"
           />
+          <HintText>Separate tags with commas</HintText>
         </FormField>
 
         <Actions>

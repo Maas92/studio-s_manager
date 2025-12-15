@@ -1,11 +1,15 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Phone,
   Calendar as CalendarIcon,
   Clock as ClockIcon,
   User as UserIcon,
+  Mail,
+  TrendingUp,
+  Gift,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -15,87 +19,186 @@ import Spinner from "../../ui/components/Spinner";
 import SearchBar from "../../ui/components/SearchBar";
 import EmptyState from "../../ui/components/EmptyState";
 import Card from "../../ui/components/Card";
-import Modal from "../../ui/components/Modal";
 
 import { useClients } from "./useClient";
 import { useAppointments } from "../appointments/useAppointments";
 import { useListFilter } from "../../hooks/useListFilter";
 import { useModalState } from "../../hooks/useModalState";
+import CreateClientModal from "./CreateClientModal";
+import ClientDetailModal from "./ClientDetailModal";
+import useAuth from "../../hooks/useAuth";
 
 import type { Client } from "./ClientSchema";
 
 const PageWrapper = styled.div`
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+`;
+
+const ControlsWrapper = styled.div`
+  position: sticky;
+  top: 0;
+  background: ${({ theme }) => theme.color.bg};
+  z-index: 5;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
 `;
 
 const Grid = styled.div`
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
-const Row = styled.div`
+const ClientCard = styled(Card)`
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      ${({ theme }) => theme.color.brand400},
+      ${({ theme }) => theme.color.brand600}
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+`;
+
+const ClientHeader = styled.div`
+  display: flex;
+  gap: 1rem;
   align-items: center;
 `;
 
 const Avatar = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: ${({ theme }) => theme.color.brand100};
+  width: 56px;
+  height: 56px;
+  border-radius: ${({ theme }) => theme.radii.round};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.brand100},
+    ${({ theme }) => theme.color.brand200}
+  );
   color: ${({ theme }) => theme.color.brand700};
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
+  border: 2px solid ${({ theme }) => theme.color.brand300};
 `;
 
-const Name = styled.h3`
-  margin: 0;
-  font-size: 1.05rem;
+const ClientInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const ClientName = styled.h3`
+  margin: 0 0 0.25rem 0;
+  font-size: 1.125rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.text};
 `;
 
-const Meta = styled.div`
-  font-size: 0.9rem;
-  color: ${({ theme }) => theme.color.mutedText};
-`;
-
-const FormField = styled.div`
+const ContactInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.375rem;
 `;
 
-const Label = styled.label`
+const ContactItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.color.mutedText};
+
+  svg {
+    color: ${({ theme }) => theme.color.brand600};
+    flex-shrink: 0;
+  }
+`;
+
+const LoyaltyBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.yellow100},
+    ${({ theme }) => theme.color.yellow200}
+  );
+  color: ${({ theme }) => theme.color.yellow700};
+  border-radius: ${({ theme }) => theme.radii.round};
+  font-size: 0.75rem;
   font-weight: 600;
-  font-size: 0.9rem;
-  color: ${({ theme }) => theme.color.text};
+  border: 1px solid ${({ theme }) => theme.color.yellow200};
 `;
 
-const Input = styled.input`
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid ${({ theme }) => theme.color.border};
-  font-size: 1rem;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+const AppointmentInfo = styled.div`
+  padding: 0.75rem;
+  background: ${({ theme }) => theme.color.blue100};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border-left: 3px solid ${({ theme }) => theme.color.blue500};
+`;
 
-  &:focus {
-    border-color: ${({ theme }) => theme.color.brand600};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
-  }
+const AppointmentTitle = styled.div`
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.color.blue500};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+`;
 
-  &::placeholder {
-    color: ${({ theme }) => theme.color.mutedText};
+const AppointmentDetails = styled.div`
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const AppointmentDetail = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.color.text};
+
+  svg {
+    color: ${({ theme }) => theme.color.blue500};
   }
+`;
+
+const NoAppointmentInfo = styled.div`
+  padding: 0.75rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  color: ${({ theme }) => theme.color.mutedText};
+  font-size: 0.875rem;
+  text-align: center;
+  border: 1px dashed ${({ theme }) => theme.color.border};
 `;
 
 function getInitials(name = "") {
@@ -108,6 +211,9 @@ function getInitials(name = "") {
 }
 
 export default function ClientsPage() {
+  const navigate = useNavigate();
+  const { canManageClients } = useAuth();
+
   const { listQuery, createMutation, updateMutation, deleteMutation } =
     useClients();
   const { listQuery: apptQuery } = useAppointments();
@@ -118,69 +224,15 @@ export default function ClientsPage() {
   const isError = listQuery.isError;
   const error = listQuery.error;
 
-  const { filteredItems, searchQuery, setSearchQuery } = useListFilter<Client>(
-    clients,
-    {
-      searchFields: ["name", "email", "phone"],
-    }
-  );
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { filteredItems } = useListFilter<Client>(clients, {
+    searchFields: ["name", "email", "phone"],
+    // searchQuery,
+  });
 
   const detailModal = useModalState<Client>();
   const createModal = useModalState();
-
-  // Form state for create modal
-  const [createFormData, setCreateFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-  });
-
-  const handleCreate = useCallback(
-    (payload: Partial<Client>) => {
-      createMutation.mutate(payload as any, {
-        onSuccess: () => {
-          createModal.close();
-          setCreateFormData({ name: "", phone: "", email: "" });
-          toast.success("Client created successfully");
-        },
-        onError: (error: any) => {
-          toast.error(error?.message ?? "Failed to create client");
-        },
-      });
-    },
-    [createMutation, createModal]
-  );
-
-  const handleUpdate = useCallback(
-    (id: string, updates: Partial<Client>) => {
-      updateMutation.mutate({ id, updates } as any, {
-        onSuccess: () => {
-          detailModal.close();
-          toast.success("Client updated successfully");
-        },
-        onError: (error: any) => {
-          toast.error(error?.message ?? "Failed to update client");
-        },
-      });
-    },
-    [updateMutation, detailModal]
-  );
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      if (!window.confirm("Delete this client?")) return;
-      deleteMutation.mutate(id, {
-        onSuccess: () => {
-          detailModal.close();
-          toast.success("Client deleted successfully");
-        },
-        onError: (error: any) => {
-          toast.error(error?.message ?? "Failed to delete client");
-        },
-      });
-    },
-    [deleteMutation, detailModal]
-  );
 
   const getNextAppointmentFor = useCallback(
     (clientId: string) => {
@@ -200,37 +252,93 @@ export default function ClientsPage() {
     [appointments]
   );
 
-  const handleCreateSubmit = useCallback(() => {
-    if (!createFormData.name.trim()) {
-      toast.error("Name is required");
-      return;
-    }
+  const getClientStats = useCallback(
+    (clientId: string) => {
+      const clientAppointments = appointments.filter(
+        (a) => a.clientId === clientId
+      );
+      return {
+        total: clientAppointments.length,
+        completed: clientAppointments.filter((a) => a.status === "completed")
+          .length,
+        upcoming: clientAppointments.filter(
+          (a) => new Date(a.datetimeISO).getTime() >= Date.now()
+        ).length,
+      };
+    },
+    [appointments]
+  );
 
-    const payload: any = {
-      name: createFormData.name.trim(),
-    };
+  const handleCreate = useCallback(
+    (payload: any) => {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          createModal.close();
+          toast.success("Client created successfully!");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message ?? "Failed to create client");
+        },
+      });
+    },
+    [createMutation, createModal]
+  );
 
-    // Only include optional fields if they have values
-    if (createFormData.phone.trim()) {
-      payload.phone = createFormData.phone.trim();
-    }
-    if (createFormData.email.trim()) {
-      payload.email = createFormData.email.trim();
-    }
+  const handleUpdate = useCallback(
+    (id: string, updates: any) => {
+      updateMutation.mutate(
+        { id, updates },
+        {
+          onSuccess: () => {
+            detailModal.close();
+            toast.success("Client updated successfully!");
+          },
+          onError: (error: any) => {
+            toast.error(error?.message ?? "Failed to update client");
+          },
+        }
+      );
+    },
+    [updateMutation, detailModal]
+  );
 
-    handleCreate(payload);
-  }, [createFormData, handleCreate]);
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          detailModal.close();
+          toast.success("Client deleted successfully!");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message ?? "Failed to delete client");
+        },
+      });
+    },
+    [deleteMutation, detailModal]
+  );
 
-  const handleCloseCreateModal = useCallback(() => {
-    createModal.close();
-    setCreateFormData({ name: "", phone: "", email: "" });
-  }, [createModal]);
+  const handleCreateAppointment = useCallback(
+    (clientId: string, clientName: string) => {
+      navigate("/appointments", {
+        state: {
+          createAppointment: true,
+          clientId,
+          clientName,
+        },
+      });
+    },
+    [navigate]
+  );
 
   if (isLoading) {
     return (
       <PageWrapper>
         <PageHeader title="Clients" />
-        <Spinner />
+        <div
+          style={{ display: "flex", justifyContent: "center", padding: "3rem" }}
+        >
+          <Spinner />
+        </div>
       </PageWrapper>
     );
   }
@@ -239,7 +347,7 @@ export default function ClientsPage() {
     return (
       <PageWrapper>
         <PageHeader title="Clients" />
-        <div style={{ padding: 12 }}>
+        <div style={{ padding: "1rem", color: "var(--color-red500)" }}>
           {error instanceof Error ? error.message : "Failed to load clients"}
         </div>
       </PageWrapper>
@@ -248,246 +356,140 @@ export default function ClientsPage() {
 
   return (
     <PageWrapper>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          background: "transparent",
-          zIndex: 5,
-          paddingBottom: 12,
-        }}
-      >
+      <ControlsWrapper>
         <PageHeader title="Clients">
-          <Button variation="primary" onClick={() => createModal.open()}>
-            <Plus size={16} /> New Client
-          </Button>
+          {canManageClients && (
+            <Button variation="primary" onClick={() => createModal.open()}>
+              <Plus size={16} /> New Client
+            </Button>
+          )}
         </PageHeader>
 
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search clients by name, email or phone..."
+          placeholder="Search clients by name, email, or phone..."
         />
-      </div>
+      </ControlsWrapper>
 
       {filteredItems.length === 0 ? (
         <EmptyState
           icon={UserIcon}
           title={searchQuery ? "No clients found" : "No clients yet"}
         >
-          {!searchQuery && <p>Click "New Client" to add your first client.</p>}
+          {!searchQuery && canManageClients && (
+            <p>Add your first client to get started.</p>
+          )}
         </EmptyState>
       ) : (
         <Grid>
-          {filteredItems.map((c) => {
-            const next = getNextAppointmentFor(c.id);
+          {filteredItems.map((client) => {
+            const nextAppointment = getNextAppointmentFor(client.id);
+            const stats = getClientStats(client.id);
+
             return (
-              <Card
-                key={c.id}
-                onClick={() => detailModal.open(c)}
+              <ClientCard
+                key={client.id}
+                hoverable
+                onClick={() => detailModal.open(client)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") detailModal.open(c);
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    detailModal.open(client);
+                  }
                 }}
-                style={{ cursor: "pointer" }}
               >
-                <Row>
-                  <Avatar>{getInitials(c.name)}</Avatar>
-                  <div style={{ flex: 1 }}>
-                    <Name>{c.name}</Name>
-                    <Meta>
-                      {c.phone && (
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
-                          <Phone size={14} /> {c.phone}
-                        </span>
+                <ClientHeader>
+                  <Avatar>{getInitials(client.name)}</Avatar>
+                  <ClientInfo>
+                    <ClientName>{client.name}</ClientName>
+                    <ContactInfo>
+                      {client.phone && (
+                        <ContactItem>
+                          <Phone size={14} />
+                          {client.phone}
+                        </ContactItem>
                       )}
-                      {c.email && (
-                        <span style={{ marginLeft: 10 }}>{c.email}</span>
+                      {client.email && (
+                        <ContactItem>
+                          <Mail size={14} />
+                          {client.email}
+                        </ContactItem>
                       )}
-                    </Meta>
-                  </div>
-                </Row>
+                    </ContactInfo>
+                  </ClientInfo>
+                  {client.loyaltyPoints && client.loyaltyPoints > 50 && (
+                    <LoyaltyBadge>
+                      <Gift size={14} />
+                      {client.loyaltyPoints} pts
+                    </LoyaltyBadge>
+                  )}
+                </ClientHeader>
 
-                {next ? (
-                  <div style={{ marginTop: 12, background: "transparent" }}>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "var(--brand700)",
-                      }}
-                    >
-                      Next appointment
-                    </div>
-                    <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
+                {nextAppointment ? (
+                  <AppointmentInfo>
+                    <AppointmentTitle>Next Appointment</AppointmentTitle>
+                    <AppointmentDetails>
+                      <AppointmentDetail>
                         <CalendarIcon size={14} />
-                        <span>
-                          {new Date(next.datetimeISO).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
+                        {new Date(
+                          nextAppointment.datetimeISO
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </AppointmentDetail>
+                      <AppointmentDetail>
                         <ClockIcon size={14} />
-                        <span>
-                          {new Date(next.datetimeISO).toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                        {new Date(
+                          nextAppointment.datetimeISO
+                        ).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </AppointmentDetail>
+                      {stats.total > 5 && (
+                        <AppointmentDetail>
+                          <TrendingUp size={14} />
+                          {stats.total} visits
+                        </AppointmentDetail>
+                      )}
+                    </AppointmentDetails>
+                  </AppointmentInfo>
                 ) : (
-                  <div style={{ marginTop: 12, color: "var(--muted)" }}>
+                  <NoAppointmentInfo>
                     No upcoming appointments
-                  </div>
+                  </NoAppointmentInfo>
                 )}
-              </Card>
+              </ClientCard>
             );
           })}
         </Grid>
       )}
 
-      {/* Detail modal */}
-      <Modal
+      <ClientDetailModal
         isOpen={detailModal.isOpen}
         onClose={detailModal.close}
-        title={detailModal.selectedItem?.name ?? "Client"}
-        size="md"
-      >
-        {detailModal.selectedItem ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            <div>
-              <strong>Name:</strong> {detailModal.selectedItem.name}
-            </div>
-            <div>
-              <strong>Phone:</strong> {detailModal.selectedItem.phone ?? "—"}
-            </div>
-            <div>
-              <strong>Email:</strong> {detailModal.selectedItem.email ?? "—"}
-            </div>
+        client={detailModal.selectedItem}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        onCreateAppointment={handleCreateAppointment}
+        updating={updateMutation.isPending}
+        deleting={deleteMutation.isPending}
+        appointments={appointments}
+        isAdmin={canManageClients}
+      />
 
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <Button
-                variation="primary"
-                onClick={() =>
-                  detailModal.selectedItem &&
-                  handleUpdate(
-                    detailModal.selectedItem.id,
-                    detailModal.selectedItem
-                  )
-                }
-                disabled={updateMutation.isPending}
-              >
-                Save
-              </Button>
-              <Button
-                variation="danger"
-                onClick={() =>
-                  detailModal.selectedItem &&
-                  handleDelete(detailModal.selectedItem.id)
-                }
-                disabled={deleteMutation.isPending}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div>Loading…</div>
-        )}
-      </Modal>
-
-      {/* Create modal */}
-      <Modal
-        isOpen={createModal.isOpen}
-        onClose={handleCloseCreateModal}
-        title="Create Client"
-        size="md"
-      >
-        <div style={{ display: "grid", gap: 16 }}>
-          <FormField>
-            <Label htmlFor="create-client-name">
-              Name <span style={{ color: "#ef4444" }}>*</span>
-            </Label>
-            <Input
-              id="create-client-name"
-              type="text"
-              placeholder="Enter client name"
-              value={createFormData.name}
-              onChange={(e) =>
-                setCreateFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
-              autoFocus
-            />
-          </FormField>
-
-          <FormField>
-            <Label htmlFor="create-client-phone">Phone</Label>
-            <Input
-              id="create-client-phone"
-              type="tel"
-              placeholder="Enter phone number"
-              value={createFormData.phone}
-              onChange={(e) =>
-                setCreateFormData((prev) => ({
-                  ...prev,
-                  phone: e.target.value,
-                }))
-              }
-            />
-          </FormField>
-
-          <FormField>
-            <Label htmlFor="create-client-email">Email</Label>
-            <Input
-              id="create-client-email"
-              type="email"
-              placeholder="Enter email address"
-              value={createFormData.email}
-              onChange={(e) =>
-                setCreateFormData((prev) => ({
-                  ...prev,
-                  email: e.target.value,
-                }))
-              }
-            />
-          </FormField>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <Button
-              variation="primary"
-              onClick={handleCreateSubmit}
-              disabled={createMutation.isPending}
-              style={{ flex: 1 }}
-            >
-              {createMutation.isPending ? "Creating..." : "Create Client"}
-            </Button>
-            <Button onClick={handleCloseCreateModal} style={{ flex: 1 }}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {canManageClients && (
+        <CreateClientModal
+          isOpen={createModal.isOpen}
+          onClose={createModal.close}
+          onCreate={handleCreate}
+          creating={createMutation.isPending}
+        />
+      )}
     </PageWrapper>
   );
 }

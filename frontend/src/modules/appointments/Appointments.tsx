@@ -1,8 +1,8 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import styled from "styled-components";
 import toast from "react-hot-toast";
 import { Plus, Calendar as CalendarIcon, List } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 
 import PageHeader from "../../ui/components/PageHeader";
 import Button from "../../ui/components/Button";
@@ -20,6 +20,7 @@ import { useAppointments } from "./useAppointments";
 import { useClients } from "../clients/useClient";
 import { useTreatments } from "../treatments/useTreatments";
 import { useStaff } from "../staff/useStaff";
+import useAuth from "../../hooks/useAuth";
 
 import { type Appointment } from "./AppointmentsSchema";
 
@@ -27,6 +28,14 @@ const PageWrapper = styled.div`
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+`;
+
+const ControlsWrapper = styled.div`
+  position: sticky;
+  top: 0;
+  background: ${({ theme }) => theme.color.bg};
+  z-index: 5;
+  padding-bottom: 1rem;
 `;
 
 const HeaderRow = styled.div`
@@ -50,6 +59,7 @@ const ViewToggle = styled.div`
   padding: 0.25rem;
   background: ${({ theme }) => theme.color.grey100 || "#f3f4f6"};
   border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.color.border};
 `;
 
 const ViewButton = styled.button<{ $active?: boolean }>`
@@ -63,19 +73,30 @@ const ViewButton = styled.button<{ $active?: boolean }>`
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  box-shadow: ${({ $active, theme }) => ($active ? theme.shadowSm : "none")};
+
+  svg {
+    color: ${({ $active, theme }) =>
+      $active ? theme.color.brand600 : theme.color.mutedText};
+  }
 
   &:hover {
     background: ${({ theme }) => theme.color.panel};
   }
 `;
 
-const EmptyState = styled.div`
+const EmptyStateWrapper = styled.div`
   text-align: center;
   padding: 3rem 1rem;
   color: ${({ theme }) => theme.color.mutedText};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 `;
 
-// initial values used by appointment modal form
 const INITIAL_FORM_STATE: AppointmentFormValues = {
   client: "",
   treatment: "",
@@ -86,7 +107,9 @@ const INITIAL_FORM_STATE: AppointmentFormValues = {
 type ViewMode = "week" | "month";
 
 export default function Appointments() {
-  const queryClient = useQueryClient();
+  const location = useLocation();
+  const { canManageAppointments } = useAuth();
+
   const { listQuery, createMutation, updateMutation, deleteMutation } =
     useAppointments();
   const { listQuery: clientsQuery } = useClients();
@@ -110,13 +133,34 @@ export default function Appointments() {
   const [formValues, setFormValues] =
     useState<AppointmentFormValues>(INITIAL_FORM_STATE);
 
-  // transform for calendar
+  // Handle incoming navigation state (from booking in treatments)
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.createAppointment && state?.treatmentId) {
+      setFormValues({
+        ...INITIAL_FORM_STATE,
+        treatment: state.treatmentId,
+      });
+      setShowCreateModal(true);
+
+      // Show success message
+      if (state.treatmentName) {
+        toast.success(`Creating appointment for ${state.treatmentName}`);
+      }
+
+      // Clear the navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  // Transform appointments for calendar
   const calendarEvents = useMemo(() => {
     return (appointments || []).map((apt) => {
       const start = new Date(apt.datetimeISO);
       const durationMins =
         treatments.find((t) => t.id === apt.treatmentId)?.durationMinutes ?? 60;
       const end = new Date(start.getTime() + durationMins * 60 * 1000);
+
       return {
         id: apt.id,
         title: `${apt.clientName ?? apt.clientId} — ${apt.treatmentName ?? ""}`,
@@ -133,7 +177,6 @@ export default function Appointments() {
   }, []);
 
   const handleSubmitCreate = useCallback(async () => {
-    // validation done in create mutation or upstream; we just map form to api payload
     try {
       await createMutation.mutateAsync({
         clientId: formValues.client,
@@ -141,9 +184,11 @@ export default function Appointments() {
         staffId: formValues.staff || undefined,
         datetimeISO: new Date(formValues.datetimeLocal).toISOString(),
       });
-      // create mutation onSuccess already invalidates queries via the hook
+
+      toast.success("Appointment created successfully!");
+      setShowCreateModal(false);
+      setFormValues(INITIAL_FORM_STATE);
     } catch (err: any) {
-      // handled in mutation onError; but keep a fallback
       toast.error(err?.message ?? "Failed to create appointment");
     }
   }, [createMutation, formValues]);
@@ -168,7 +213,22 @@ export default function Appointments() {
         payload.treatmentId = (updates as any).treatment;
       if ((updates as any).staff !== undefined)
         payload.staffId = (updates as any).staff || undefined;
-      updateMutation.mutate({ id, updates: payload });
+      if ((updates as any).status) payload.status = (updates as any).status;
+      if ((updates as any).notes !== undefined)
+        payload.notes = (updates as any).notes;
+
+      updateMutation.mutate(
+        { id, updates: payload },
+        {
+          onSuccess: () => {
+            toast.success("Appointment updated successfully!");
+            setShowDetailModal(false);
+          },
+          onError: (err: any) => {
+            toast.error(err?.message ?? "Failed to update appointment");
+          },
+        }
+      );
     },
     [updateMutation]
   );
@@ -176,7 +236,15 @@ export default function Appointments() {
   const handleDelete = useCallback(
     (id: string) => {
       if (!window.confirm("Delete this appointment?")) return;
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          toast.success("Appointment deleted successfully!");
+          setShowDetailModal(false);
+        },
+        onError: (err: any) => {
+          toast.error(err?.message ?? "Failed to delete appointment");
+        },
+      });
     },
     [deleteMutation]
   );
@@ -187,7 +255,11 @@ export default function Appointments() {
         <HeaderRow>
           <PageHeader title="Appointments" />
         </HeaderRow>
-        <Spinner />
+        <div
+          style={{ display: "flex", justifyContent: "center", padding: "3rem" }}
+        >
+          <Spinner />
+        </div>
       </PageWrapper>
     );
   }
@@ -198,69 +270,85 @@ export default function Appointments() {
         <HeaderRow>
           <PageHeader title="Appointments" />
         </HeaderRow>
-        <EmptyState>
+        <EmptyStateWrapper>
           <p>
             {(error instanceof Error && error.message) ||
               "Unable to load appointments"}
           </p>
-        </EmptyState>
+        </EmptyStateWrapper>
       </PageWrapper>
     );
   }
 
   return (
     <PageWrapper>
-      <HeaderRow>
-        <PageHeader title="Appointments" />
-        <HeaderActions>
-          <ViewToggle>
-            <ViewButton
-              $active={viewMode === "month"}
-              onClick={() => setViewMode("month")}
-              type="button"
-            >
-              <CalendarIcon size={16} />
-              Month
-            </ViewButton>
-            <ViewButton
-              $active={viewMode === "week"}
-              onClick={() => setViewMode("week")}
-              type="button"
-            >
-              <List size={16} />
-              Week
-            </ViewButton>
-          </ViewToggle>
+      <ControlsWrapper>
+        <HeaderRow>
+          <PageHeader title="Appointments" />
+          <HeaderActions>
+            <ViewToggle>
+              <ViewButton
+                $active={viewMode === "month"}
+                onClick={() => setViewMode("month")}
+                type="button"
+                aria-label="Month view"
+              >
+                <CalendarIcon size={16} />
+                Month
+              </ViewButton>
+              <ViewButton
+                $active={viewMode === "week"}
+                onClick={() => setViewMode("week")}
+                type="button"
+                aria-label="Week view"
+              >
+                <List size={16} />
+                Week
+              </ViewButton>
+            </ViewToggle>
 
-          <Button variation="primary" onClick={handleOpenCreate}>
-            <Plus size={16} />
-            New Appointment
-          </Button>
-        </HeaderActions>
-      </HeaderRow>
+            {canManageAppointments && (
+              <Button variation="primary" onClick={handleOpenCreate}>
+                <Plus size={16} />
+                New Appointment
+              </Button>
+            )}
+          </HeaderActions>
+        </HeaderRow>
+      </ControlsWrapper>
 
       {appointments.length === 0 ? (
-        <EmptyState>
+        <EmptyStateWrapper>
           <CalendarIcon size={48} style={{ opacity: 0.5, marginBottom: 12 }} />
-          <p>No appointments yet — create one with the button above.</p>
-        </EmptyState>
+          <p>No appointments yet</p>
+          {canManageAppointments && (
+            <p style={{ fontSize: "0.9rem" }}>
+              Create one with the button above.
+            </p>
+          )}
+        </EmptyStateWrapper>
       ) : viewMode === "week" ? (
         <WeekCalendar events={calendarEvents} onEventClick={handleEventClick} />
       ) : (
         <Calendar events={calendarEvents} onEventClick={handleEventClick} />
       )}
 
-      <AppointmentModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        values={formValues}
-        onChange={(patch) => setFormValues((prev) => ({ ...prev, ...patch }))}
-        onSubmit={handleSubmitCreate}
-        submitting={createMutation.isPending}
-        clients={clients}
-        treatments={treatments}
-        staff={staff}
-      />
+      {canManageAppointments && (
+        <AppointmentModal
+          isOpen={showCreateModal}
+          onClose={() => {
+            setShowCreateModal(false);
+            setFormValues(INITIAL_FORM_STATE);
+          }}
+          values={formValues}
+          onChange={(patch) => setFormValues((prev) => ({ ...prev, ...patch }))}
+          onSubmit={handleSubmitCreate}
+          submitting={createMutation.isPending}
+          clients={clients}
+          treatments={treatments}
+          staff={staff}
+        />
+      )}
 
       <AppointmentDetailModal
         isOpen={showDetailModal}
@@ -276,6 +364,7 @@ export default function Appointments() {
         clients={clients}
         treatments={treatments}
         staff={staff}
+        canEdit={canManageAppointments}
       />
     </PageWrapper>
   );

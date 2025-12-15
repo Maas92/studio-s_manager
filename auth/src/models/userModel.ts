@@ -1,3 +1,4 @@
+// ./auth/src/models/userModel.ts
 import mongoose, { Document, Types, Schema, Model } from "mongoose";
 import validator from "validator";
 

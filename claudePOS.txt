@@ -2,15 +2,15 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
-import { ArrowLeft, Save, AlertTriangle, Check } from "lucide-react";
+import { ArrowLeft, Save, AlertTriangle } from "lucide-react";
 
 import Button from "../../ui/components/Button";
-import POSStepIndicator from "./POSStepWrapper";
+import POSStepIndicator from "./POSStepIndicator";
 import ClientSelection from "./ClientSelection";
 import ItemSelection from "./ItemSelection";
 import StaffAssignment from "./StaffAssignment";
 import PaymentReview from "./PaymentReview";
-import ReceiptAndNext from "./ReceiptAndNextAppointment";
+import ReceiptAndNext from "./ReceiptAndNext";
 import CreateClientModal from "./CreateClientModal";
 
 import { useClients } from "../clients/useClient";
@@ -22,10 +22,6 @@ import { usePos } from "./usePOS";
 import useAuth from "../../hooks/useAuth";
 
 import type { CartItem } from "./POSSchema";
-
-// ============================================================================
-// STYLED COMPONENTS
-// ============================================================================
 
 const PageWrapper = styled.div`
   min-height: 100vh;
@@ -80,23 +76,6 @@ const DraftBanner = styled.div`
   color: ${({ theme }) => theme.color.grey900};
 `;
 
-const DraftContent = styled.div`
-  flex: 1;
-
-  strong {
-    font-weight: 700;
-  }
-`;
-
-const DraftActions = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
 const STEPS = [
   { number: 1, label: "Select Client" },
   { number: 2, label: "Add Items" },
@@ -105,17 +84,11 @@ const STEPS = [
   { number: 5, label: "Complete" },
 ];
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-
 export default function PointOfSale() {
   const qc = useQueryClient();
   const { canManageStock } = useAuth();
 
-  // ============================================================================
-  // STATE
-  // ============================================================================
+  // State
   const [currentStep, setCurrentStep] = useState(1);
   const [clientType, setClientType] = useState<"booked" | "walk-in">("booked");
   const [selectedClient, setSelectedClient] = useState<any | null>(null);
@@ -136,9 +109,7 @@ export default function PointOfSale() {
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
 
-  // ============================================================================
-  // HOOKS
-  // ============================================================================
+  // Hooks
   const { listQuery: clientsQuery, createMutation: createClientMutation } =
     useClients();
   const { listQuery: appointmentsQuery } = useAppointments();
@@ -154,12 +125,11 @@ export default function PointOfSale() {
   const staff = staffQuery.data ?? [];
   const stockItems = stockQuery.data ?? [];
 
-  // ============================================================================
-  // PRODUCT STOCK MAP
-  // ============================================================================
+  // Build product stock map
   const productStock = useMemo(() => {
     const map: Record<string, number> = {};
     for (const item of stockItems) {
+      // Only count items in retail location
       if (item.location === "retail") {
         map[item.id] = item.quantity ?? 0;
       }
@@ -167,14 +137,13 @@ export default function PointOfSale() {
     return map;
   }, [stockItems]);
 
-  // ============================================================================
-  // DRAFT MANAGEMENT
-  // ============================================================================
+  // Check for draft on mount
   useEffect(() => {
     try {
       const draft = localStorage.getItem("pos_draft");
       if (draft) {
         const parsed = JSON.parse(draft);
+        // Check if not expired
         if (new Date(parsed.expiresAt) > new Date()) {
           setHasDraft(true);
         } else {
@@ -186,6 +155,7 @@ export default function PointOfSale() {
     }
   }, []);
 
+  // Save draft periodically
   const saveDraft = useCallback(() => {
     if (cart.length > 0 || selectedClient) {
       try {
@@ -198,13 +168,12 @@ export default function PointOfSale() {
           discount,
           tips,
           currentStep,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
         };
         localStorage.setItem("pos_draft", JSON.stringify(draft));
         toast.success("Draft saved", { duration: 2000 });
       } catch (err) {
         console.error("Failed to save draft:", err);
-        toast.error("Failed to save draft");
       }
     }
   }, [cart, selectedClient, discount, tips, currentStep]);
@@ -233,9 +202,7 @@ export default function PointOfSale() {
     setHasDraft(false);
   }, []);
 
-  // ============================================================================
-  // CART OPERATIONS
-  // ============================================================================
+  // Cart operations
   const addToCart = useCallback(
     (item: any) => {
       setCart((prev) => {
@@ -325,9 +292,7 @@ export default function PointOfSale() {
     []
   );
 
-  // ============================================================================
-  // CLIENT OPERATIONS
-  // ============================================================================
+  // Client operations
   const handleCreateClient = useCallback(
     async (payload: any) => {
       try {
@@ -374,9 +339,7 @@ export default function PointOfSale() {
     [clients, appointments, addToCart]
   );
 
-  // ============================================================================
-  // NAVIGATION
-  // ============================================================================
+  // Navigation
   const goToStep = useCallback(
     (step: number) => {
       // Validate before moving forward
@@ -407,9 +370,7 @@ export default function PointOfSale() {
     [currentStep, selectedClient, cart]
   );
 
-  // ============================================================================
-  // PAYMENT
-  // ============================================================================
+  // Payment
   const handleCompletePayment = useCallback(
     async (payments: any[]) => {
       if (cart.length === 0) {
@@ -485,9 +446,7 @@ export default function PointOfSale() {
     ]
   );
 
-  // ============================================================================
-  // RESET
-  // ============================================================================
+  // Reset
   const handleNewSale = useCallback(() => {
     setCurrentStep(1);
     setClientType("booked");
@@ -501,9 +460,6 @@ export default function PointOfSale() {
     clearDraft();
   }, [clearDraft]);
 
-  // ============================================================================
-  // RENDER
-  // ============================================================================
   return (
     <PageWrapper>
       <Container>
@@ -514,18 +470,13 @@ export default function PointOfSale() {
               <>
                 <Button
                   variation="secondary"
-                  size="medium"
                   onClick={saveDraft}
                   disabled={cart.length === 0 && !selectedClient}
                 >
                   <Save size={16} />
                   Save Draft
                 </Button>
-                <Button
-                  variation="secondary"
-                  size="medium"
-                  onClick={handleNewSale}
-                >
+                <Button variation="secondary" onClick={handleNewSale}>
                   <ArrowLeft size={16} />
                   Cancel Sale
                 </Button>
@@ -537,24 +488,22 @@ export default function PointOfSale() {
         {hasDraft && (
           <DraftBanner>
             <AlertTriangle size={20} />
-            <DraftContent>
+            <div style={{ flex: 1 }}>
               <strong>You have a saved draft</strong> - Would you like to
               continue where you left off?
-            </DraftContent>
-            <DraftActions>
-              <Button variation="primary" size="small" onClick={loadDraft}>
-                Load Draft
-              </Button>
-              <Button variation="secondary" size="small" onClick={clearDraft}>
-                Dismiss
-              </Button>
-            </DraftActions>
+            </div>
+            <Button variation="primary" size="small" onClick={loadDraft}>
+              Load Draft
+            </Button>
+            <Button variation="secondary" size="small" onClick={clearDraft}>
+              Dismiss
+            </Button>
           </DraftBanner>
         )}
 
         {currentStep < 5 && (
           <POSStepIndicator
-            steps={STEPS.slice(0, 4)}
+            steps={STEPS.slice(0, 4)} // Don't show "Complete" in indicator
             currentStep={currentStep}
             onStepClick={goToStep}
           />
@@ -633,6 +582,7 @@ export default function PointOfSale() {
                 available: s.status === "active",
               }))}
               onBookAppointment={async (data) => {
+                // TODO: Implement appointment booking
                 toast.success("Appointment booked!");
                 handleNewSale();
               }}

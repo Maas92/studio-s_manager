@@ -76,9 +76,10 @@ const InfoGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
-  padding: 1rem;
+  padding: 1.5rem;
   background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
   border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.color.border};
 
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
@@ -118,16 +119,16 @@ const Tag = styled.span<{ $variant?: "default" | "benefit" | "warning" }>`
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
   font-weight: 500;
   background: ${({ $variant, theme }) => {
     switch ($variant) {
       case "benefit":
         return theme.color.green100 || "#dcfce7";
       case "warning":
-        return theme.color.red600 || "#fee2e2";
+        return theme.color.red100 || "#fee2e2";
       default:
         return theme.color.brand100 || "#dbeafe";
     }
@@ -137,11 +138,22 @@ const Tag = styled.span<{ $variant?: "default" | "benefit" | "warning" }>`
       case "benefit":
         return theme.color.green700 || "#15803d";
       case "warning":
-        return theme.color.red500 || "#b91c1c";
+        return theme.color.red600 || "#b91c1c";
       default:
         return theme.color.brand700 || "#1d4ed8";
     }
   }};
+  border: 1px solid
+    ${({ $variant, theme }) => {
+      switch ($variant) {
+        case "benefit":
+          return theme.color.green100 || "#bbf7d0";
+        case "warning":
+          return theme.color.red200 || "#fecaca";
+        default:
+          return theme.color.brand200 || "#bfdbfe";
+      }
+    }};
 `;
 
 const TextArea = styled.textarea`
@@ -183,6 +195,16 @@ const LeftActions = styled.div`
 const RightActions = styled.div`
   display: flex;
   gap: 0.75rem;
+`;
+
+const EditModeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 export default function TreatmentDetailModal({
@@ -326,7 +348,7 @@ export default function TreatmentDetailModal({
               <Label htmlFor="treatment-description">Description</Label>
               <TextArea
                 id="treatment-description"
-                value={formValues.description}
+                value={formValues.description ?? ""}
                 onChange={(e) =>
                   setFormValues((prev) => ({
                     ...prev,
@@ -337,13 +359,7 @@ export default function TreatmentDetailModal({
               />
             </FormField>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: "1rem",
-              }}
-            >
+            <EditModeGrid>
               <FormField>
                 <Label htmlFor="treatment-duration">Duration (minutes)</Label>
                 <Input
@@ -383,7 +399,7 @@ export default function TreatmentDetailModal({
                 <Label htmlFor="treatment-category">Category</Label>
                 <Input
                   id="treatment-category"
-                  value={formValues.category}
+                  value={formValues.category ?? ""}
                   onChange={(e) =>
                     setFormValues((prev) => ({
                       ...prev,
@@ -392,7 +408,27 @@ export default function TreatmentDetailModal({
                   }
                 />
               </FormField>
-            </div>
+            </EditModeGrid>
+
+            <FormField>
+              <Label htmlFor="treatment-tags">Tags (comma separated)</Label>
+              <Input
+                id="treatment-tags"
+                value={(formValues.tags || []).join(", ")}
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    tags: e.target.value
+                      ? e.target.value
+                          .split(",")
+                          .map((t) => t.trim())
+                          .filter(Boolean)
+                      : [],
+                  }))
+                }
+                placeholder="relaxing, facial, popular"
+              />
+            </FormField>
           </>
         ) : (
           <>
@@ -505,7 +541,7 @@ export default function TreatmentDetailModal({
                     updating ||
                     !formValues.name ||
                     !formValues.durationMinutes ||
-                    !formValues.price
+                    formValues.price < 0
                   }
                 >
                   <Save size={16} />

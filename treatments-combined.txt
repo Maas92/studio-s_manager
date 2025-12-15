@@ -1,0 +1,1862 @@
+Code combined from: C:\Users\p01mansoorg\Documents\python\Studio-S_manager\frontend\src\modules\treatments
+================================================================================
+
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\api.ts
+================================================================================
+
+import { createResourceClient } from "../../services/resourceFactory";
+import {
+  TreatmentSchema,
+  CreateTreatmentSchema,
+  type Treatment,
+  type CreateTreatmentInput,
+} from "./TreatmentSchema";
+
+// Create typed API client
+export const treatmentsApi = createResourceClient<
+  Treatment,
+  CreateTreatmentInput
+>({
+  basePath: "/treatments",
+  schema: TreatmentSchema,
+  createSchema: CreateTreatmentSchema,
+});
+
+// Export individual functions for convenience
+export const {
+  list: listTreatments,
+  get: getTreatment,
+  create: createTreatment,
+  update: updateTreatment,
+  delete: deleteTreatment,
+} = treatmentsApi;
+
+// Export types
+export type { Treatment, CreateTreatmentInput };
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\CreateTreatmentModal.tsx
+================================================================================
+
+import React, { useState, useCallback } from "react";
+import Modal from "../../ui/components/Modal";
+import Button from "../../ui/components/Button";
+import Input from "../../ui/components/Input";
+import styled from "styled-components";
+import type { CreateTreatmentInput } from "./api";
+
+interface CreateTreatmentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (values: CreateTreatmentInput) => void;
+  creating?: boolean;
+}
+
+const Form = styled.form`
+  display: grid;
+  gap: 1.5rem;
+`;
+
+const FormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const Label = styled.label`
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+`;
+
+const RequiredIndicator = styled.span`
+  color: ${({ theme }) => theme.color.red500};
+  margin-left: 4px;
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  min-height: 100px;
+  padding: 0.8rem 1.2rem;
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  background-color: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+
+  &:hover:not(:focus) {
+    border-color: ${({ theme }) => theme.color.grey400};
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.color.brand100};
+    border-color: ${({ theme }) => theme.color.brand600};
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.color.mutedText};
+    opacity: 0.7;
+  }
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const HintText = styled.span`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  margin-top: 0.25rem;
+`;
+
+const INITIAL: CreateTreatmentInput = {
+  name: "",
+  description: "",
+  durationMinutes: 60,
+  price: 0,
+  category: "",
+  benefits: [],
+  contraindications: [],
+  preparationInstructions: "",
+  aftercareInstructions: "",
+  availableFor: [],
+  imageUrl: "",
+  isActive: true,
+  tags: [],
+};
+
+export default function CreateTreatmentModal({
+  isOpen,
+  onClose,
+  onCreate,
+  creating = false,
+}: CreateTreatmentModalProps) {
+  const [formValues, setFormValues] = useState<CreateTreatmentInput>(INITIAL);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (
+        !formValues.name ||
+        !formValues.durationMinutes ||
+        formValues.price < 0
+      ) {
+        return;
+      }
+      onCreate(formValues);
+    },
+    [formValues, onCreate]
+  );
+
+  const handleClose = useCallback(() => {
+    setFormValues(INITIAL);
+    onClose();
+  }, [onClose]);
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="New Treatment"
+      size="lg"
+      ariaLabel="Create treatment"
+    >
+      <Form onSubmit={handleSubmit}>
+        <FormField>
+          <Label htmlFor="treatment-name">
+            Treatment Name <RequiredIndicator>*</RequiredIndicator>
+          </Label>
+          <Input
+            id="treatment-name"
+            value={formValues.name}
+            onChange={(e) =>
+              setFormValues((p) => ({ ...p, name: e.target.value }))
+            }
+            placeholder="e.g., Swedish Massage"
+            required
+            autoFocus
+          />
+        </FormField>
+
+        <FormField>
+          <Label htmlFor="treatment-description">Description</Label>
+          <TextArea
+            id="treatment-description"
+            value={formValues.description ?? ""}
+            onChange={(e) =>
+              setFormValues((p) => ({ ...p, description: e.target.value }))
+            }
+            placeholder="Describe what makes this treatment special..."
+          />
+        </FormField>
+
+        <Grid>
+          <FormField>
+            <Label htmlFor="treatment-duration">
+              Duration <RequiredIndicator>*</RequiredIndicator>
+            </Label>
+            <Input
+              id="treatment-duration"
+              type="number"
+              min={1}
+              value={String(formValues.durationMinutes)}
+              onChange={(e) =>
+                setFormValues((p) => ({
+                  ...p,
+                  durationMinutes: Number(e.target.value),
+                }))
+              }
+              placeholder="60"
+              required
+            />
+            <HintText>Duration in minutes</HintText>
+          </FormField>
+
+          <FormField>
+            <Label htmlFor="treatment-price">
+              Price <RequiredIndicator>*</RequiredIndicator>
+            </Label>
+            <Input
+              id="treatment-price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={String(formValues.price)}
+              onChange={(e) =>
+                setFormValues((p) => ({ ...p, price: Number(e.target.value) }))
+              }
+              placeholder="0.00"
+              required
+            />
+            <HintText>Price in USD</HintText>
+          </FormField>
+        </Grid>
+
+        <FormField>
+          <Label htmlFor="treatment-category">Category</Label>
+          <Input
+            id="treatment-category"
+            value={formValues.category ?? ""}
+            onChange={(e) =>
+              setFormValues((p) => ({ ...p, category: e.target.value }))
+            }
+            placeholder="e.g., Massage, Facial, Body Treatment"
+          />
+        </FormField>
+
+        <FormField>
+          <Label htmlFor="treatment-tags">Tags</Label>
+          <Input
+            id="treatment-tags"
+            value={(formValues.tags || []).join(", ")}
+            onChange={(e) =>
+              setFormValues((p) => ({
+                ...p,
+                tags: e.target.value
+                  ? e.target.value
+                      .split(",")
+                      .map((t) => t.trim())
+                      .filter(Boolean)
+                  : [],
+              }))
+            }
+            placeholder="relaxing, popular, beginner-friendly"
+          />
+          <HintText>Separate tags with commas</HintText>
+        </FormField>
+
+        <Actions>
+          <Button variation="secondary" type="button" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button
+            variation="primary"
+            type="submit"
+            disabled={
+              creating ||
+              !formValues.name ||
+              formValues.durationMinutes < 1 ||
+              formValues.price < 0
+            }
+          >
+            {creating ? "Creating..." : "Create Treatment"}
+          </Button>
+        </Actions>
+      </Form>
+    </Modal>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\mockTreatments.ts
+================================================================================
+
+import type { Treatment } from "./api";
+
+export const mockTreatments: Treatment[] = [
+  {
+    id: "treatment_1",
+    name: "Classic Facial",
+    description:
+      "A deep cleansing and rejuvenating facial treatment perfect for all skin types. Includes cleansing, exfoliation, extraction, mask, and moisturization.",
+    durationMinutes: 60,
+    price: 75.0,
+    category: "Facial",
+    benefits: [
+      "Deep cleansing",
+      "Improved skin texture",
+      "Reduced fine lines",
+      "Hydrated skin",
+      "Relaxation",
+    ],
+    contraindications: [
+      "Active acne breakout",
+      "Recent chemical peel",
+      "Sunburn",
+    ],
+    preparationInstructions:
+      "Arrive with clean skin, no makeup. Avoid sun exposure 24 hours before treatment.",
+    aftercareInstructions:
+      "Avoid sun exposure for 24 hours. Apply SPF 30+ daily. Keep skin hydrated.",
+    availableFor: ["staff_1", "staff_3"],
+    imageUrl: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881",
+    isActive: true,
+    popularityScore: 92,
+    tags: ["relaxing", "rejuvenating", "beginner-friendly"],
+  },
+  {
+    id: "treatment_2",
+    name: "Anti-Aging Facial",
+    description:
+      "Advanced facial treatment targeting signs of aging with peptides and antioxidants. Promotes collagen production and reduces wrinkles.",
+    durationMinutes: 75,
+    price: 120.0,
+    category: "Facial",
+    benefits: [
+      "Reduces wrinkles",
+      "Firms skin",
+      "Boosts collagen",
+      "Brightens complexion",
+      "Long-lasting results",
+    ],
+    contraindications: [
+      "Pregnancy",
+      "Active skin infection",
+      "Recent Botox treatment",
+    ],
+    preparationInstructions:
+      "Discontinue retinol products 3 days before. Arrive makeup-free.",
+    aftercareInstructions:
+      "Use gentle products for 48 hours. Apply recommended serums. Avoid direct sun.",
+    availableFor: ["staff_1", "staff_3"],
+    imageUrl: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937",
+    isActive: true,
+    popularityScore: 88,
+    tags: ["anti-aging", "premium", "collagen-boosting"],
+  },
+  {
+    id: "treatment_3",
+    name: "Swedish Massage",
+    description:
+      "Full body relaxation massage using long, flowing strokes to reduce tension and promote circulation.",
+    durationMinutes: 60,
+    price: 85.0,
+    category: "Massage",
+    benefits: [
+      "Stress relief",
+      "Muscle relaxation",
+      "Improved circulation",
+      "Better sleep",
+      "Pain reduction",
+    ],
+    contraindications: [
+      "Fever or infection",
+      "Recent surgery",
+      "Severe osteoporosis",
+      "Blood clots",
+    ],
+    preparationInstructions:
+      "Avoid heavy meals 2 hours before. Communicate any problem areas to therapist.",
+    aftercareInstructions:
+      "Drink plenty of water. Rest for the remainder of the day. Avoid strenuous activity.",
+    availableFor: ["staff_2", "staff_4"],
+    imageUrl: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874",
+    isActive: true,
+    popularityScore: 95,
+    tags: ["relaxation", "full-body", "stress-relief"],
+  },
+  {
+    id: "treatment_4",
+    name: "Deep Tissue Massage",
+    description:
+      "Therapeutic massage targeting deep muscle layers to release chronic tension and knots.",
+    durationMinutes: 75,
+    price: 110.0,
+    category: "Massage",
+    benefits: [
+      "Releases chronic tension",
+      "Breaks up scar tissue",
+      "Improves mobility",
+      "Reduces inflammation",
+      "Treats injuries",
+    ],
+    contraindications: [
+      "Bleeding disorders",
+      "Recent fractures",
+      "Advanced osteoporosis",
+      "Severe varicose veins",
+    ],
+    preparationInstructions:
+      "Hydrate well before treatment. Inform therapist of pain tolerance level.",
+    aftercareInstructions:
+      "Expect some soreness for 24-48 hours. Apply ice if needed. Stay hydrated.",
+    availableFor: ["staff_2", "staff_4"],
+    imageUrl: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1",
+    isActive: true,
+    popularityScore: 78,
+    tags: ["therapeutic", "intensive", "pain-relief"],
+  },
+  {
+    id: "treatment_5",
+    name: "Gel Manicure",
+    description:
+      "Long-lasting gel polish application with nail shaping, cuticle care, and hand massage.",
+    durationMinutes: 45,
+    price: 45.0,
+    category: "Nails",
+    benefits: [
+      "Lasts 2-3 weeks",
+      "Chip-resistant",
+      "High shine finish",
+      "Quick drying",
+      "Strengthens nails",
+    ],
+    contraindications: [
+      "Nail fungus",
+      "Severely damaged nails",
+      "Allergic to gel products",
+    ],
+    preparationInstructions:
+      "Remove old polish. Keep nails trimmed. Moisturize hands.",
+    aftercareInstructions:
+      "Avoid water for 2 hours. Use cuticle oil daily. Wear gloves for housework.",
+    availableFor: ["staff_5", "staff_6"],
+    imageUrl: "https://images.unsplash.com/photo-1604654894610-df63bc536371",
+    isActive: true,
+    popularityScore: 90,
+    tags: ["nails", "gel", "long-lasting"],
+  },
+  {
+    id: "treatment_6",
+    name: "Spa Pedicure",
+    description:
+      "Luxurious foot treatment including soak, exfoliation, massage, and polish application.",
+    durationMinutes: 60,
+    price: 55.0,
+    category: "Nails",
+    benefits: [
+      "Soft, smooth feet",
+      "Removed calluses",
+      "Relaxed muscles",
+      "Improved circulation",
+      "Beautiful nails",
+    ],
+    contraindications: [
+      "Open wounds",
+      "Diabetic neuropathy",
+      "Foot infections",
+    ],
+    preparationInstructions:
+      "Wear open-toed shoes. Remove old polish if possible.",
+    aftercareInstructions:
+      "Avoid tight shoes for 24 hours. Moisturize feet daily. Touch up polish as needed.",
+    availableFor: ["staff_5", "staff_6"],
+    imageUrl: "https://images.unsplash.com/photo-1519415510236-718bdfcd89c8",
+    isActive: true,
+    popularityScore: 85,
+    tags: ["pedicure", "foot-care", "relaxing"],
+  },
+  {
+    id: "treatment_7",
+    name: "Microdermabrasion",
+    description:
+      "Non-invasive exfoliation treatment that removes dead skin cells and promotes cell renewal.",
+    durationMinutes: 45,
+    price: 95.0,
+    category: "Facial",
+    benefits: [
+      "Reduces fine lines",
+      "Evens skin tone",
+      "Minimizes pores",
+      "Fades scars",
+      "Brightens complexion",
+    ],
+    contraindications: [
+      "Active acne",
+      "Rosacea",
+      "Eczema",
+      "Recent laser treatment",
+    ],
+    preparationInstructions:
+      "Avoid exfoliating products for 1 week. No waxing 3 days before.",
+    aftercareInstructions:
+      "Use gentle cleanser. Apply SPF 50+. Avoid makeup for 24 hours.",
+    availableFor: ["staff_1", "staff_3"],
+    imageUrl: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2",
+    isActive: true,
+    popularityScore: 72,
+    tags: ["exfoliation", "resurfacing", "advanced"],
+  },
+  {
+    id: "treatment_8",
+    name: "Hot Stone Massage",
+    description:
+      "Therapeutic massage using heated smooth stones to melt away tension and stress.",
+    durationMinutes: 90,
+    price: 130.0,
+    category: "Massage",
+    benefits: [
+      "Deep relaxation",
+      "Releases tension",
+      "Improves circulation",
+      "Reduces anxiety",
+      "Eases muscle stiffness",
+    ],
+    contraindications: [
+      "Pregnancy",
+      "High blood pressure",
+      "Heart conditions",
+      "Varicose veins",
+    ],
+    preparationInstructions:
+      "Eat light beforehand. Inform therapist of temperature preference.",
+    aftercareInstructions:
+      "Drink water. Rest and relax. Avoid alcohol for 24 hours.",
+    availableFor: ["staff_2", "staff_4"],
+    imageUrl: "https://images.unsplash.com/photo-1540555700478-4be289fbecef",
+    isActive: true,
+    popularityScore: 81,
+    tags: ["luxury", "therapeutic", "hot-stones"],
+  },
+  {
+    id: "treatment_9",
+    name: "Eyebrow Tinting & Shaping",
+    description:
+      "Professional eyebrow shaping and tinting service for defined, polished brows.",
+    durationMinutes: 30,
+    price: 35.0,
+    category: "Beauty",
+    benefits: [
+      "Defined brows",
+      "No daily makeup needed",
+      "Lasts 4-6 weeks",
+      "Enhanced facial features",
+      "Natural look",
+    ],
+    contraindications: [
+      "Allergic to dyes",
+      "Eye infections",
+      "Very sensitive skin",
+    ],
+    preparationInstructions:
+      "Patch test required 48 hours before. Remove contact lenses.",
+    aftercareInstructions:
+      "Avoid water on brows for 24 hours. No makeup on area for 24 hours.",
+    availableFor: ["staff_3", "staff_5"],
+    imageUrl: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937",
+    isActive: true,
+    popularityScore: 76,
+    tags: ["brows", "tinting", "quick"],
+  },
+  {
+    id: "treatment_10",
+    name: "Body Scrub & Wrap",
+    description:
+      "Full body exfoliation followed by a nourishing wrap for silky smooth skin.",
+    durationMinutes: 75,
+    price: 100.0,
+    category: "Body",
+    benefits: [
+      "Removes dead skin",
+      "Deeply moisturizing",
+      "Improves skin texture",
+      "Detoxifying",
+      "Relaxing experience",
+    ],
+    contraindications: [
+      "Pregnancy",
+      "Skin conditions",
+      "Recent sunburn",
+      "Open wounds",
+    ],
+    preparationInstructions:
+      "Shower before treatment. Avoid shaving 24 hours prior.",
+    aftercareInstructions:
+      "Avoid showering for 6-8 hours. Moisturize daily. Drink plenty of water.",
+    availableFor: ["staff_1", "staff_2"],
+    imageUrl: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874",
+    isActive: true,
+    popularityScore: 68,
+    tags: ["body-treatment", "exfoliation", "moisturizing"],
+  },
+  {
+    id: "treatment_11",
+    name: "Aromatherapy Massage",
+    description:
+      "Relaxing massage using essential oils tailored to your needs and preferences.",
+    durationMinutes: 60,
+    price: 90.0,
+    category: "Massage",
+    benefits: [
+      "Stress reduction",
+      "Mood enhancement",
+      "Better sleep",
+      "Pain relief",
+      "Emotional balance",
+    ],
+    contraindications: [
+      "Pregnancy (certain oils)",
+      "Epilepsy",
+      "Allergies to essential oils",
+    ],
+    preparationInstructions:
+      "Discuss oil preferences and allergies with therapist.",
+    aftercareInstructions:
+      "Drink water. Enjoy the lingering scent. Rest if possible.",
+    availableFor: ["staff_2", "staff_4"],
+    imageUrl: "https://images.unsplash.com/photo-1600334129128-685c5582fd35",
+    isActive: true,
+    popularityScore: 87,
+    tags: ["aromatherapy", "essential-oils", "holistic"],
+  },
+  {
+    id: "treatment_12",
+    name: "Acne Treatment Facial",
+    description:
+      "Specialized facial targeting acne-prone skin with deep cleansing and treatment products.",
+    durationMinutes: 60,
+    price: 80.0,
+    category: "Facial",
+    benefits: [
+      "Reduces breakouts",
+      "Unclogs pores",
+      "Controls oil",
+      "Reduces inflammation",
+      "Prevents scarring",
+    ],
+    contraindications: [
+      "Accutane treatment",
+      "Severe cystic acne",
+      "Recent chemical peel",
+    ],
+    preparationInstructions:
+      "List current skincare products. Arrive makeup-free if possible.",
+    aftercareInstructions:
+      "Follow prescribed skincare routine. Avoid touching face. Change pillowcases regularly.",
+    availableFor: ["staff_1", "staff_3"],
+    imageUrl: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881",
+    isActive: true,
+    popularityScore: 79,
+    tags: ["acne", "therapeutic", "problem-solving"],
+  },
+  {
+    id: "treatment_13",
+    name: "Express Facial",
+    description:
+      "Quick 30-minute facial perfect for busy schedules. Cleanse, exfoliate, and moisturize.",
+    durationMinutes: 30,
+    price: 50.0,
+    category: "Facial",
+    benefits: [
+      "Quick refresh",
+      "Glowing skin",
+      "Deep cleansing",
+      "Convenient",
+      "Budget-friendly",
+    ],
+    contraindications: ["Active skin infection", "Recent cosmetic procedures"],
+    preparationInstructions: "Remove makeup before appointment if possible.",
+    aftercareInstructions: "Apply SPF. Keep skin hydrated throughout the day.",
+    availableFor: ["staff_1", "staff_3"],
+    imageUrl: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2",
+    isActive: true,
+    popularityScore: 94,
+    tags: ["quick", "express", "convenient"],
+  },
+  {
+    id: "treatment_14",
+    name: "Prenatal Massage",
+    description:
+      "Gentle, safe massage designed specifically for expectant mothers.",
+    durationMinutes: 60,
+    price: 95.0,
+    category: "Massage",
+    benefits: [
+      "Reduces swelling",
+      "Relieves back pain",
+      "Improves sleep",
+      "Reduces anxiety",
+      "Safe for baby",
+    ],
+    contraindications: [
+      "High-risk pregnancy",
+      "First trimester",
+      "Pre-eclampsia",
+      "Severe swelling",
+    ],
+    preparationInstructions:
+      "Obtain doctor's approval. Communicate any discomfort during treatment.",
+    aftercareInstructions: "Rest and hydrate. Move slowly when getting up.",
+    availableFor: ["staff_2"],
+    imageUrl: "https://images.unsplash.com/photo-1519415510236-718bdfcd89c8",
+    isActive: true,
+    popularityScore: 71,
+    tags: ["prenatal", "pregnancy-safe", "specialized"],
+  },
+  {
+    id: "treatment_15",
+    name: "Lash Lift & Tint",
+    description:
+      "Semi-permanent treatment that lifts and darkens natural lashes for a wide-eyed look.",
+    durationMinutes: 45,
+    price: 65.0,
+    category: "Beauty",
+    benefits: [
+      "No daily mascara needed",
+      "Lasts 6-8 weeks",
+      "Low maintenance",
+      "Natural enhancement",
+      "Opens up eyes",
+    ],
+    contraindications: [
+      "Eye infections",
+      "Very short lashes",
+      "Recent eye surgery",
+      "Allergic to solutions",
+    ],
+    preparationInstructions:
+      "Patch test required 48 hours before. Remove contact lenses and eye makeup.",
+    aftercareInstructions:
+      "Keep lashes dry for 24 hours. No mascara for 24 hours. Use lash serum daily.",
+    availableFor: ["staff_3", "staff_5"],
+    imageUrl: "https://images.unsplash.com/photo-1516975080664-ed2fc6a32937",
+    isActive: true,
+    popularityScore: 89,
+    tags: ["lashes", "semi-permanent", "eye-enhancement"],
+  },
+];
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\TreatmentDetailModal.tsx
+================================================================================
+
+import React, { useState, useCallback, useEffect } from "react";
+import Modal from "../../ui/components/Modal";
+import Button from "../../ui/components/Button";
+import Input from "../../ui/components/Input";
+import styled from "styled-components";
+import type { Treatment, CreateTreatmentInput } from "./api";
+import {
+  Edit2,
+  Save,
+  X,
+  Trash2,
+  Calendar,
+  Clock,
+  DollarSign,
+  Tags,
+  CheckCircle,
+  AlertTriangle,
+  Info,
+} from "lucide-react";
+
+interface TreatmentDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  treatment: Treatment | null;
+  onUpdate?: (id: string, values: Partial<CreateTreatmentInput>) => void;
+  onDelete?: (id: string) => void;
+  onBook?: (treatmentId: string, treatmentName: string) => void;
+  updating?: boolean;
+  deleting?: boolean;
+  isAdmin?: boolean;
+}
+
+const Content = styled.div`
+  display: grid;
+  gap: 1.5rem;
+`;
+
+const Section = styled.div`
+  display: grid;
+  gap: 1rem;
+`;
+
+const SectionTitle = styled.h4`
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid ${({ theme }) => theme.color.border};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const FormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const Label = styled.label`
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+`;
+
+const ReadOnlyField = styled.div`
+  padding: 0.8rem 0;
+  color: ${({ theme }) => theme.color.text};
+  font-size: 0.95rem;
+  line-height: 1.6;
+`;
+
+const InfoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.color.border};
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const InfoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const InfoLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+const InfoValue = styled.div`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.color.text};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const TagsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+const Tag = styled.span<{ $variant?: "default" | "benefit" | "warning" }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: ${({ $variant, theme }) => {
+    switch ($variant) {
+      case "benefit":
+        return theme.color.green100 || "#dcfce7";
+      case "warning":
+        return theme.color.red100 || "#fee2e2";
+      default:
+        return theme.color.brand100 || "#dbeafe";
+    }
+  }};
+  color: ${({ $variant, theme }) => {
+    switch ($variant) {
+      case "benefit":
+        return theme.color.green700 || "#15803d";
+      case "warning":
+        return theme.color.red600 || "#b91c1c";
+      default:
+        return theme.color.brand700 || "#1d4ed8";
+    }
+  }};
+  border: 1px solid
+    ${({ $variant, theme }) => {
+      switch ($variant) {
+        case "benefit":
+          return theme.color.green100 || "#bbf7d0";
+        case "warning":
+          return theme.color.red200 || "#fecaca";
+        default:
+          return theme.color.brand200 || "#bfdbfe";
+      }
+    }};
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  min-height: 100px;
+  padding: 0.8rem 1.2rem;
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  background-color: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.text};
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
+    border-color: ${({ theme }) => theme.color.brand600};
+  }
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const LeftActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+const RightActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+const EditModeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export default function TreatmentDetailModal({
+  isOpen,
+  onClose,
+  treatment,
+  onUpdate,
+  onDelete,
+  onBook,
+  updating = false,
+  deleting = false,
+  isAdmin = false,
+}: TreatmentDetailModalProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formValues, setFormValues] = useState<CreateTreatmentInput>({
+    name: "",
+    description: "",
+    durationMinutes: 0,
+    price: 0,
+    category: "",
+    benefits: [],
+    contraindications: [],
+    preparationInstructions: "",
+    aftercareInstructions: "",
+    isActive: true,
+    tags: [],
+  });
+
+  useEffect(() => {
+    if (treatment) {
+      setFormValues({
+        name: treatment.name,
+        description: treatment.description || "",
+        durationMinutes: treatment.durationMinutes,
+        price: treatment.price,
+        category: treatment.category || "",
+        benefits: treatment.benefits || [],
+        contraindications: treatment.contraindications || [],
+        preparationInstructions: treatment.preparationInstructions || "",
+        aftercareInstructions: treatment.aftercareInstructions || "",
+        isActive: treatment.isActive,
+        tags: treatment.tags || [],
+      });
+      setIsEditing(false);
+    }
+  }, [treatment]);
+
+  const handleSave = useCallback(() => {
+    if (!treatment || !isAdmin) return;
+    onUpdate?.(treatment.id, formValues);
+    setIsEditing(false);
+  }, [treatment, formValues, onUpdate, isAdmin]);
+
+  const handleDelete = useCallback(() => {
+    if (!treatment || !isAdmin) return;
+    if (
+      window.confirm(`Are you sure you want to delete "${treatment.name}"?`)
+    ) {
+      onDelete?.(treatment.id);
+    }
+  }, [treatment, onDelete, isAdmin]);
+
+  const handleCancel = useCallback(() => {
+    if (treatment) {
+      setFormValues({
+        name: treatment.name,
+        description: treatment.description || "",
+        durationMinutes: treatment.durationMinutes,
+        price: treatment.price,
+        category: treatment.category || "",
+        benefits: treatment.benefits || [],
+        contraindications: treatment.contraindications || [],
+        preparationInstructions: treatment.preparationInstructions || "",
+        aftercareInstructions: treatment.aftercareInstructions || "",
+        isActive: treatment.isActive,
+        tags: treatment.tags || [],
+      });
+    }
+    setIsEditing(false);
+  }, [treatment]);
+
+  const handleBook = useCallback(() => {
+    if (!treatment) return;
+    onBook?.(treatment.id, treatment.name);
+    onClose();
+  }, [treatment, onBook, onClose]);
+
+  if (!treatment) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditing ? "Edit Treatment" : treatment.name}
+      size="lg"
+      ariaLabel="Treatment details"
+    >
+      <Content>
+        {!isEditing && (
+          <InfoGrid>
+            <InfoItem>
+              <InfoLabel>Duration</InfoLabel>
+              <InfoValue>
+                <Clock size={20} />
+                {treatment.durationMinutes} min
+              </InfoValue>
+            </InfoItem>
+            <InfoItem>
+              <InfoLabel>Price</InfoLabel>
+              <InfoValue>
+                <DollarSign size={20} />${treatment.price.toFixed(2)}
+              </InfoValue>
+            </InfoItem>
+            {treatment.category && (
+              <InfoItem>
+                <InfoLabel>Category</InfoLabel>
+                <InfoValue>
+                  <Tags size={20} />
+                  {treatment.category}
+                </InfoValue>
+              </InfoItem>
+            )}
+          </InfoGrid>
+        )}
+
+        {isEditing ? (
+          <>
+            <FormField>
+              <Label htmlFor="treatment-name">Name</Label>
+              <Input
+                id="treatment-name"
+                value={formValues.name}
+                onChange={(e) =>
+                  setFormValues((prev) => ({ ...prev, name: e.target.value }))
+                }
+                required
+              />
+            </FormField>
+
+            <FormField>
+              <Label htmlFor="treatment-description">Description</Label>
+              <TextArea
+                id="treatment-description"
+                value={formValues.description ?? ""}
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                placeholder="Describe this treatment..."
+              />
+            </FormField>
+
+            <EditModeGrid>
+              <FormField>
+                <Label htmlFor="treatment-duration">Duration (minutes)</Label>
+                <Input
+                  id="treatment-duration"
+                  type="number"
+                  min="1"
+                  value={formValues.durationMinutes}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      durationMinutes: Number(e.target.value),
+                    }))
+                  }
+                  required
+                />
+              </FormField>
+
+              <FormField>
+                <Label htmlFor="treatment-price">Price ($)</Label>
+                <Input
+                  id="treatment-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formValues.price}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      price: Number(e.target.value),
+                    }))
+                  }
+                  required
+                />
+              </FormField>
+
+              <FormField>
+                <Label htmlFor="treatment-category">Category</Label>
+                <Input
+                  id="treatment-category"
+                  value={formValues.category ?? ""}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      category: e.target.value,
+                    }))
+                  }
+                />
+              </FormField>
+            </EditModeGrid>
+
+            <FormField>
+              <Label htmlFor="treatment-tags">Tags (comma separated)</Label>
+              <Input
+                id="treatment-tags"
+                value={(formValues.tags || []).join(", ")}
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    tags: e.target.value
+                      ? e.target.value
+                          .split(",")
+                          .map((t) => t.trim())
+                          .filter(Boolean)
+                      : [],
+                  }))
+                }
+                placeholder="relaxing, facial, popular"
+              />
+            </FormField>
+          </>
+        ) : (
+          <>
+            {treatment.description && (
+              <Section>
+                <ReadOnlyField>{treatment.description}</ReadOnlyField>
+              </Section>
+            )}
+
+            {treatment.benefits && treatment.benefits.length > 0 && (
+              <Section>
+                <SectionTitle>
+                  <CheckCircle size={18} />
+                  Benefits
+                </SectionTitle>
+                <TagsContainer>
+                  {treatment.benefits.map((benefit, idx) => (
+                    <Tag key={idx} $variant="benefit">
+                      <CheckCircle size={12} />
+                      {benefit}
+                    </Tag>
+                  ))}
+                </TagsContainer>
+              </Section>
+            )}
+
+            {treatment.contraindications &&
+              treatment.contraindications.length > 0 && (
+                <Section>
+                  <SectionTitle>
+                    <AlertTriangle size={18} />
+                    Contraindications
+                  </SectionTitle>
+                  <TagsContainer>
+                    {treatment.contraindications.map((contra, idx) => (
+                      <Tag key={idx} $variant="warning">
+                        <AlertTriangle size={12} />
+                        {contra}
+                      </Tag>
+                    ))}
+                  </TagsContainer>
+                </Section>
+              )}
+
+            {treatment.preparationInstructions && (
+              <Section>
+                <SectionTitle>
+                  <Info size={18} />
+                  Preparation Instructions
+                </SectionTitle>
+                <ReadOnlyField>
+                  {treatment.preparationInstructions}
+                </ReadOnlyField>
+              </Section>
+            )}
+
+            {treatment.aftercareInstructions && (
+              <Section>
+                <SectionTitle>
+                  <Info size={18} />
+                  Aftercare Instructions
+                </SectionTitle>
+                <ReadOnlyField>{treatment.aftercareInstructions}</ReadOnlyField>
+              </Section>
+            )}
+
+            {treatment.tags && treatment.tags.length > 0 && (
+              <Section>
+                <TagsContainer>
+                  {treatment.tags.map((tag, idx) => (
+                    <Tag key={idx}>{tag}</Tag>
+                  ))}
+                </TagsContainer>
+              </Section>
+            )}
+          </>
+        )}
+
+        <Actions>
+          <LeftActions>
+            {!isEditing && isAdmin && (
+              <Button
+                variation="danger"
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                <Trash2 size={16} />
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            )}
+          </LeftActions>
+
+          <RightActions>
+            {isEditing ? (
+              <>
+                <Button
+                  variation="secondary"
+                  type="button"
+                  onClick={handleCancel}
+                >
+                  <X size={16} />
+                  Cancel
+                </Button>
+                <Button
+                  variation="primary"
+                  type="button"
+                  onClick={handleSave}
+                  disabled={
+                    updating ||
+                    !formValues.name ||
+                    !formValues.durationMinutes ||
+                    formValues.price < 0
+                  }
+                >
+                  <Save size={16} />
+                  {updating ? "Saving..." : "Save Changes"}
+                </Button>
+              </>
+            ) : (
+              <>
+                {isAdmin && (
+                  <Button
+                    variation="secondary"
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Edit2 size={16} />
+                    Edit
+                  </Button>
+                )}
+                <Button variation="primary" type="button" onClick={handleBook}>
+                  <Calendar size={16} />
+                  Book This Treatment
+                </Button>
+              </>
+            )}
+          </RightActions>
+        </Actions>
+      </Content>
+    </Modal>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\Treatments.tsx
+================================================================================
+
+import React, { useCallback, useMemo, useState } from "react";
+import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
+import {
+  Plus,
+  Clock as ClockIcon,
+  DollarSign as DollarIcon,
+  TrendingUp,
+  Sparkles,
+  Tag as TagIcon,
+} from "lucide-react";
+
+import PageHeader from "../../ui/components/PageHeader";
+import Button from "../../ui/components/Button";
+import Spinner from "../../ui/components/Spinner";
+import SearchBar from "../../ui/components/SearchBar";
+import EmptyState from "../../ui/components/EmptyState";
+import Card from "../../ui/components/Card";
+
+import { useTreatments } from "./useTreatments";
+import { useListFilter } from "../../hooks/useListFilter";
+import CreateTreatmentModal from "./CreateTreatmentModal";
+import TreatmentDetailModal from "./TreatmentDetailModal";
+import useAuth from "../../hooks/useAuth";
+
+import type { Treatment } from "./TreatmentSchema";
+import { useModalState } from "../../hooks/useModalState";
+
+const PageWrapper = styled.div`
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+`;
+
+const ControlsWrapper = styled.div`
+  position: sticky;
+  top: 0;
+  background: ${({ theme }) => theme.color.bg};
+  z-index: 5;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const FiltersRow = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const CategoryFilters = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const Grid = styled.div`
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const TreatmentCard = styled(Card)`
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  height: 100%;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      ${({ theme }) => theme.color.brand400},
+      ${({ theme }) => theme.color.brand600}
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+`;
+
+const TreatmentHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+`;
+
+const TreatmentTitle = styled.h3`
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+  line-height: 1.3;
+  flex: 1;
+`;
+
+const PopularBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.brand100},
+    ${({ theme }) => theme.color.brand200}
+  );
+  color: ${({ theme }) => theme.color.brand800};
+  border-radius: ${({ theme }) => theme.radii.round};
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid ${({ theme }) => theme.color.brand300};
+`;
+
+const Description = styled.p`
+  margin: 0;
+  color: ${({ theme }) => theme.color.mutedText};
+  font-size: 0.9rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const MetaGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: ${({ theme }) => theme.color.text};
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  svg {
+    color: ${({ theme }) => theme.color.brand600};
+    flex-shrink: 0;
+  }
+`;
+
+const TagsList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+`;
+
+const Tag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: ${({ theme }) => theme.color.grey100};
+  color: ${({ theme }) => theme.color.grey700};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid ${({ theme }) => theme.color.border};
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+`;
+
+export default function TreatmentsPage() {
+  const navigate = useNavigate();
+  const { canManageTreatments } = useAuth();
+
+  const { listQuery, createMutation, updateMutation, deleteMutation } =
+    useTreatments();
+  const treatments = listQuery.data ?? [];
+  const isLoading = listQuery.isLoading;
+  const isError = listQuery.isError;
+  const error = listQuery.error;
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  const { filteredItems } = useListFilter<Treatment>(treatments, {
+    searchFields: ["name", "description", "category", "tags"],
+  });
+
+  const categories = useMemo(() => {
+    const categorySet = new Set(
+      treatments.map((t) => t.category).filter(Boolean)
+    );
+    return ["all", ...Array.from(categorySet)];
+  }, [treatments]);
+
+  const filtered = useMemo(() => {
+    let items = filteredItems.filter((t) => t.isActive);
+    if (categoryFilter !== "all") {
+      items = items.filter((t) => t.category === categoryFilter);
+    }
+    return items.sort(
+      (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)
+    );
+  }, [filteredItems, categoryFilter]);
+
+  const detailModal = useModalState<Treatment>();
+  const createModal = useModalState();
+
+  const handleCreate = useCallback(
+    (payload: any) => {
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          createModal.close();
+        },
+      });
+    },
+    [createMutation, createModal]
+  );
+
+  const handleUpdate = useCallback(
+    (id: string, updates: any) => {
+      updateMutation.mutate(
+        { id, updates },
+        {
+          onSuccess: () => {
+            detailModal.close();
+          },
+        }
+      );
+    },
+    [updateMutation, detailModal]
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          detailModal.close();
+        },
+      });
+    },
+    [deleteMutation, detailModal]
+  );
+
+  const handleBook = useCallback(
+    (treatmentId: string, treatmentName: string) => {
+      // Navigate to appointments page with pre-filled treatment
+      navigate("/appointments", {
+        state: {
+          createAppointment: true,
+          treatmentId,
+          treatmentName,
+        },
+      });
+    },
+    [navigate]
+  );
+
+  if (isLoading) {
+    return (
+      <PageWrapper>
+        <PageHeader title="Treatments" />
+        <div
+          style={{ display: "flex", justifyContent: "center", padding: "3rem" }}
+        >
+          <Spinner />
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (isError) {
+    return (
+      <PageWrapper>
+        <PageHeader title="Treatments" />
+        <div style={{ padding: "1rem", color: "var(--color-red500)" }}>
+          {error instanceof Error ? error.message : "Failed to load treatments"}
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  return (
+    <PageWrapper>
+      <ControlsWrapper>
+        <PageHeader title="Treatments">
+          {canManageTreatments && (
+            <Button variation="primary" onClick={() => createModal.open()}>
+              <Plus size={16} /> New Treatment
+            </Button>
+          )}
+        </PageHeader>
+
+        <FiltersRow>
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search treatments..."
+          />
+          <CategoryFilters>
+            {categories.map((cat: any) => (
+              <Button
+                key={cat}
+                size="small"
+                variation={categoryFilter === cat ? "primary" : "secondary"}
+                onClick={() => setCategoryFilter(cat)}
+              >
+                {cat}
+              </Button>
+            ))}
+          </CategoryFilters>
+        </FiltersRow>
+      </ControlsWrapper>
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={Sparkles}
+          title={
+            searchQuery || categoryFilter !== "all"
+              ? "No treatments found"
+              : "No treatments available"
+          }
+        >
+          {!searchQuery && categoryFilter === "all" && canManageTreatments && (
+            <p>Add a new treatment to get started.</p>
+          )}
+        </EmptyState>
+      ) : (
+        <Grid>
+          {filtered.map((treatment) => (
+            <TreatmentCard
+              key={treatment.id}
+              hoverable
+              onClick={() => detailModal.open(treatment)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  detailModal.open(treatment);
+                }
+              }}
+            >
+              <TreatmentHeader>
+                <TreatmentTitle>{treatment.name}</TreatmentTitle>
+                {treatment.popularityScore &&
+                  treatment.popularityScore > 80 && (
+                    <PopularBadge>
+                      <TrendingUp size={12} />
+                      Popular
+                    </PopularBadge>
+                  )}
+              </TreatmentHeader>
+
+              {treatment.description && (
+                <Description>{treatment.description}</Description>
+              )}
+
+              {treatment.tags && treatment.tags.length > 0 && (
+                <TagsList>
+                  {treatment.tags.slice(0, 3).map((tag, idx) => (
+                    <Tag key={idx}>
+                      <TagIcon size={12} />
+                      {tag}
+                    </Tag>
+                  ))}
+                  {treatment.tags.length > 3 && (
+                    <Tag>+{treatment.tags.length - 3} more</Tag>
+                  )}
+                </TagsList>
+              )}
+
+              <MetaGrid>
+                <MetaItem>
+                  <ClockIcon size={16} />
+                  {treatment.durationMinutes} min
+                </MetaItem>
+                <MetaItem>
+                  <DollarIcon size={16} />${treatment.price.toFixed(2)}
+                </MetaItem>
+              </MetaGrid>
+            </TreatmentCard>
+          ))}
+        </Grid>
+      )}
+
+      <TreatmentDetailModal
+        isOpen={detailModal.isOpen}
+        onClose={detailModal.close}
+        treatment={detailModal.selectedItem}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        onBook={handleBook}
+        updating={updateMutation.isPending}
+        deleting={deleteMutation.isPending}
+        isAdmin={canManageTreatments}
+      />
+
+      {canManageTreatments && (
+        <CreateTreatmentModal
+          isOpen={createModal.isOpen}
+          onClose={createModal.close}
+          onCreate={handleCreate}
+          creating={createMutation.isPending}
+        />
+      )}
+    </PageWrapper>
+  );
+}
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\TreatmentSchema.ts
+================================================================================
+
+import { z } from "zod";
+
+export const TreatmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  // allow null or undefined for description
+  description: z.string().nullable().optional(),
+  durationMinutes: z.number(),
+  price: z.number(),
+  // category may be null too depending on backend
+  category: z.string().nullable().optional(),
+  benefits: z.array(z.string()).optional(),
+  contraindications: z.array(z.string()).optional(),
+  // allow null for these fields coming from DB/backend
+  preparationInstructions: z.string().nullable().optional(),
+  aftercareInstructions: z.string().nullable().optional(),
+  availableFor: z.array(z.string()).optional(),
+  imageUrl: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
+  popularityScore: z.number().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const CreateTreatmentSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().nullable().optional(),
+  durationMinutes: z.number().min(1, "Duration must be at least 1 minute"),
+  price: z.number().min(0, "Price must be positive"),
+  category: z.string().nullable().optional(),
+  benefits: z.array(z.string()).optional(),
+  contraindications: z.array(z.string()).optional(),
+  preparationInstructions: z.string().nullable().optional(),
+  aftercareInstructions: z.string().nullable().optional(),
+  availableFor: z.array(z.string()).optional(),
+  imageUrl: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
+  tags: z.array(z.string()).optional(),
+});
+
+// Types
+export type Treatment = z.infer<typeof TreatmentSchema>;
+export type CreateTreatmentInput = z.infer<typeof CreateTreatmentSchema>;
+
+
+================================================================================
+FILE: ./frontend/src/modules/treatments\useTreatments.ts
+================================================================================
+
+import { useResource } from "../../hooks/useResource";
+import { treatmentsClient } from "../../services/treatmentsClient";
+import type { Treatment, CreateTreatmentInput } from "./TreatmentSchema";
+
+export function useTreatments() {
+  return useResource<Treatment, CreateTreatmentInput>({
+    resourceKey: "treatments",
+    client: treatmentsClient,
+    toastMessages: {
+      create: "Treatment created",
+      update: "Treatment updated",
+      delete: "Treatment deleted",
+    },
+  });
+}

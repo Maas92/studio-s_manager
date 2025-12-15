@@ -1,3 +1,175 @@
+// Button.tsx
+
+import React from "react";
+import styled, { css } from "styled-components";
+
+export type ButtonVariation = "primary" | "secondary" | "danger";
+export type ButtonSize = "small" | "medium" | "large";
+
+type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variation?: ButtonVariation;
+  size?: ButtonSize;
+};
+
+const variations = {
+  primary: css`
+    background: ${({ theme }) => theme.color.brand600};
+    color: white;
+    border: 1px solid ${({ theme }) => theme.color.brand600};
+    &:hover {
+      background: ${({ theme }) => theme.color.brand700};
+    }
+  `,
+  secondary: css`
+    background: ${({ theme }) => theme.color.grey100};
+    color: ${({ theme }) => theme.color.text};
+    border: 1px solid ${({ theme }) => theme.color.border};
+    &:hover {
+      background: ${({ theme }) => theme.color.grey200};
+    }
+  `,
+  danger: css`
+    background: ${({ theme }) => theme.color.red600};
+    color: white;
+    border: 1px solid ${({ theme }) => theme.color.red600};
+    &:hover {
+      background: ${({ theme }) => theme.color.red500};
+    }
+  `,
+};
+
+const sizes = {
+  small: css`
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  `,
+  medium: css`
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+  `,
+  large: css`
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 16px;
+  `,
+} as const;
+
+const Btn = styled.button<Props>`
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  ${(p) => variations[p.variation ?? "primary"]}
+  ${(p) => sizes[p.size ?? "medium"]}
+`;
+
+const Button = React.forwardRef<HTMLButtonElement, Props>(function Button(
+  { variation = "primary", size = "medium", ...rest },
+  ref
+) {
+  return <Btn ref={ref} variation={variation} size={size} {...rest} />;
+});
+
+Button.displayName = "Button";
+
+export default Button;
+
+// Card.tsx
+import React from "react";
+import styled, { useTheme } from "styled-components";
+
+type Props = React.HTMLAttributes<HTMLDivElement> & {
+  children: React.ReactNode;
+  hoverable?: boolean;
+};
+
+const Wrapper = styled.div<{ $hoverable?: boolean }>`
+  border-radius: ${({ theme }) => theme.radii.lg};
+  padding: 20px;
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  box-shadow: ${({ theme }) => theme.shadowSm};
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  /* Subtle gradient overlay for depth */
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      ${({ theme }) => theme.color.brand200 || "#bfdbfe"}40,
+      transparent
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  ${({ $hoverable }) =>
+    $hoverable &&
+    `
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15),
+                  0 0 0 1px rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.3);
+      
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 8px -4px rgba(0, 0, 0, 0.1);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2),
+                  0 12px 24px -10px rgba(0, 0, 0, 0.15);
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+  `}
+`;
+
+const Card = React.forwardRef<HTMLDivElement, Props>(function Card(
+  { children, className, style, hoverable = false, ...rest },
+  ref
+) {
+  const theme = useTheme();
+  void theme;
+
+  return (
+    <Wrapper
+      ref={ref}
+      className={className}
+      style={style}
+      $hoverable={hoverable}
+      {...rest}
+    >
+      {children}
+    </Wrapper>
+  );
+});
+
+Card.displayName = "Card";
+
+export default Card;
+
+// Modal.tsx
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
