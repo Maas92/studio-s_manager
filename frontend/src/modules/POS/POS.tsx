@@ -5,12 +5,12 @@ import styled from "styled-components";
 import { ArrowLeft, Save, AlertTriangle, Check } from "lucide-react";
 
 import Button from "../../ui/components/Button";
-import POSStepIndicator from "./POSStepWrapper";
+import POSStepIndicator from "./POSStepIndicator";
 import ClientSelection from "./ClientSelection";
 import ItemSelection from "./ItemSelection";
 import StaffAssignment from "./StaffAssignment";
 import PaymentReview from "./PaymentReview";
-import ReceiptAndNext from "./ReceiptAndNextAppointment";
+import ReceiptAndNext from "./ReceiptAndNext";
 import CreateClientModal from "./CreateClientModal";
 
 import { useClients } from "../clients/useClient";

@@ -22,13 +22,21 @@ export const createProxy = (config: ProxyConfig) => {
     timeout,
 
     proxyReqPathResolver: (req) => {
-      let newPath = req.url;
+      let newPath = `${req.baseUrl}${req.url}`;
       if (pathRewrite) {
         for (const [pattern, replacement] of Object.entries(pathRewrite)) {
           const regex = new RegExp(pattern);
           newPath = newPath.replace(regex, replacement);
         }
       }
+      logger.debug("🔁 Proxying request", {
+        method: req.method,
+        baseUrl: req.baseUrl,
+        url: req.url,
+        newPath,
+        target,
+      });
+
       return newPath;
     },
 

@@ -1,20 +1,24 @@
 import React, { useState, useMemo, useCallback } from "react";
 import styled from "styled-components";
 import {
+  CheckCircle,
   Calendar,
-  Check,
-  X,
   Mail,
   Printer,
   MessageSquare,
   Gift,
-  CheckCircle,
+  X,
+  Clock,
 } from "lucide-react";
+
 import Button from "../../ui/components/Button";
-import Modal from "../../ui/components/Modal";
 import Input from "../../ui/components/Input";
-import toast from "react-hot-toast";
-import type { Client, Treatment, Staff } from "./POSSchema";
+import Modal from "../../ui/components/Modal";
+import Card from "../../ui/components/Card";
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface Transaction {
   id: string;
@@ -32,7 +36,32 @@ interface Transaction {
   paymentMethod: string;
 }
 
-interface ReceiptAndNextAppointmentProps {
+interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  loyaltyPoints: number;
+}
+
+interface Treatment {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  price: number;
+  category?: string;
+  isActive: boolean;
+}
+
+interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  specialties?: string[];
+  available: boolean;
+}
+
+interface ReceiptAndNextProps {
   transaction: Transaction;
   client: Client;
   treatments: Treatment[];
@@ -45,11 +74,13 @@ interface ReceiptAndNextAppointmentProps {
     notes?: string;
   }) => void;
   onNewSale: () => void;
-  bookingAppointment?: boolean;
   onClose: () => void;
 }
 
-// Styled Components
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
 const Container = styled.div`
   display: grid;
   gap: 2rem;
@@ -66,20 +97,27 @@ const SuccessIcon = styled.div`
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: ${({ theme }) => theme.color.green500};
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.green500},
+    ${({ theme }) => theme.color.green500}
+  );
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1.5rem;
-  animation: scaleIn 0.4s ease-out;
+  animation: scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.4);
 
   @keyframes scaleIn {
     from {
       transform: scale(0);
+      opacity: 0;
     }
     to {
       transform: scale(1);
+      opacity: 1;
     }
   }
 `;
@@ -101,24 +139,21 @@ const TransactionId = styled.div`
   font-size: 0.875rem;
   color: ${({ theme }) => theme.color.mutedText};
   font-family: "Courier New", monospace;
+  font-weight: 600;
 `;
 
 const SectionGrid = styled.div`
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const Card = styled.div`
+const SectionCard = styled(Card)`
   padding: 1.5rem;
-  background: ${({ theme }) => theme.color.panel};
-  border: 1px solid ${({ theme }) => theme.color.border};
-  border-radius: ${({ theme }) => theme.radii.lg};
-  box-shadow: ${({ theme }) => theme.shadowSm};
 `;
 
 const CardTitle = styled.h3`
@@ -141,26 +176,28 @@ const ReceiptRow = styled.div<{ $isTotal?: boolean }>`
   justify-content: space-between;
   font-size: 0.9375rem;
   color: ${({ theme }) => theme.color.text};
+  padding: ${({ $isTotal }) => ($isTotal ? "0.75rem 0 0 0" : "0")};
+  border-top: ${({ $isTotal, theme }) =>
+    $isTotal ? `2px solid ${theme.color.border}` : "none"};
+  margin-top: ${({ $isTotal }) => ($isTotal ? "0.5rem" : "0")};
 
   ${({ $isTotal, theme }) =>
     $isTotal &&
     `
     font-weight: 700;
     font-size: 1.125rem;
-    padding-top: 0.75rem;
-    border-top: 2px solid ${theme.color.border};
     color: ${theme.color.brand600};
   `}
 `;
 
 const LoyaltyCard = styled.div`
-  padding: 1.25rem;
+  padding: 1.5rem;
   background: linear-gradient(
     135deg,
-    ${({ theme }) => theme.color.brand500}20,
-    ${({ theme }) => theme.color.brand600}20
+    ${({ theme }) => theme.color.brand100}40,
+    ${({ theme }) => theme.color.brand200}40
   );
-  border: 2px solid ${({ theme }) => theme.color.brand500};
+  border: 2px solid ${({ theme }) => theme.color.brand300};
   border-radius: ${({ theme }) => theme.radii.lg};
   text-align: center;
 `;
@@ -170,6 +207,10 @@ const LoyaltyAmount = styled.div`
   font-weight: 800;
   color: ${({ theme }) => theme.color.brand600};
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 `;
 
 const LoyaltyLabel = styled.div`
@@ -178,6 +219,18 @@ const LoyaltyLabel = styled.div`
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
+`;
+
+const LoyaltyBalance = styled.div`
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.color.text};
+  font-weight: 500;
+
+  strong {
+    font-weight: 700;
+    color: ${({ theme }) => theme.color.brand600};
+  }
 `;
 
 const ReceiptActions = styled.div`
@@ -200,29 +253,41 @@ const ReceiptButton = styled.button`
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: ${({ theme }) => theme.shadowSm};
 
   &:hover {
     background: ${({ theme }) => theme.color.brand50};
     border-color: ${({ theme }) => theme.color.brand500};
+    transform: translateY(-2px);
+    box-shadow: ${({ theme }) => theme.shadowMd};
   }
 
   &:active {
-    transform: scale(0.98);
+    transform: translateY(0);
   }
 
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    transform: none;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
   }
 `;
 
-const AppointmentPrompt = styled.div`
+const AppointmentPrompt = styled(Card)`
   padding: 2rem;
-  background: ${({ theme }) => theme.color.brand50};
-  border: 2px solid ${({ theme }) => theme.color.brand500};
-  border-radius: ${({ theme }) => theme.radii.lg};
   text-align: center;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.brand50},
+    ${({ theme }) => theme.color.brand100}40
+  );
+  border: 2px solid ${({ theme }) => theme.color.brand300};
 `;
 
 const PromptTitle = styled.h3`
@@ -263,6 +328,10 @@ const Label = styled.label`
   font-weight: 600;
   font-size: 0.9375rem;
   color: ${({ theme }) => theme.color.text};
+
+  span {
+    color: ${({ theme }) => theme.color.red500};
+  }
 `;
 
 const Select = styled.select`
@@ -312,6 +381,10 @@ const InfoBox = styled.div`
   font-size: 0.875rem;
   color: ${({ theme }) => theme.color.text};
   margin-bottom: 1.5rem;
+
+  strong {
+    font-weight: 700;
+  }
 `;
 
 const ModalActions = styled.div`
@@ -320,7 +393,10 @@ const ModalActions = styled.div`
   margin-top: 1.5rem;
 `;
 
-// Helper function to generate time slots
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 function generateTimeSlots(): string[] {
   const slots: string[] = [];
   for (let h = 9; h <= 17; h++) {
@@ -334,16 +410,19 @@ function generateTimeSlots(): string[] {
   return slots;
 }
 
-export default function ReceiptAndNextAppointment({
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export default function ReceiptAndNext({
   transaction,
   client,
   treatments,
   staff,
   onBookAppointment,
   onNewSale,
-  bookingAppointment = false,
   onClose,
-}: ReceiptAndNextAppointmentProps) {
+}: ReceiptAndNextProps) {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointmentData, setAppointmentData] = useState({
     date: "",
@@ -355,48 +434,35 @@ export default function ReceiptAndNextAppointment({
 
   const timeSlots = useMemo(() => generateTimeSlots(), []);
 
-  // Filter treatments that were actually treatments (not products)
-  const availableTreatments = useMemo(() => {
-    return treatments.filter((t) =>
-      transaction.items.some(
-        (item) => item.name.toLowerCase() === t.name.toLowerCase()
-      )
-    );
-  }, [treatments, transaction.items]);
+  const activeTreatments = useMemo(
+    () => treatments.filter((t) => t.isActive),
+    [treatments]
+  );
+
+  const minDate = useMemo(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  }, []);
 
   const handleSendReceipt = useCallback(
     async (method: "email" | "print" | "sms") => {
-      try {
-        // In real app, call API to send receipt
-        // await sendReceipt(transaction.id, method, client.email or client.phone);
-
-        toast.success(
-          `Receipt ${method === "print" ? "printed" : `sent via ${method}`}!`,
-          {
-            duration: 3000,
-            position: "top-right",
-          }
-        );
-      } catch (error) {
-        toast.error(`Failed to send receipt via ${method}`, {
-          duration: 4000,
-          position: "top-right",
-        });
-      }
+      // Simulate sending receipt
+      console.log(`Sending receipt via ${method} to:`, client);
+      alert(`Receipt would be sent via ${method}!`);
     },
-    [transaction.id, client]
+    [client]
   );
 
   const handleOpenAppointmentModal = useCallback(() => {
-    // Pre-fill with first treatment if available
-    if (availableTreatments.length > 0) {
+    if (activeTreatments.length > 0) {
       setAppointmentData((prev) => ({
         ...prev,
-        treatment: availableTreatments[0].id,
+        treatment: activeTreatments[0].id,
       }));
     }
     setShowAppointmentModal(true);
-  }, [availableTreatments]);
+  }, [activeTreatments]);
 
   const handleCloseAppointmentModal = useCallback(() => {
     setShowAppointmentModal(false);
@@ -410,20 +476,15 @@ export default function ReceiptAndNextAppointment({
   }, []);
 
   const handleAppointmentSubmit = useCallback(() => {
-    // Validate required fields
     if (
       !appointmentData.date ||
       !appointmentData.time ||
       !appointmentData.treatment
     ) {
-      toast.error("Please fill in all required fields", {
-        duration: 4000,
-        position: "top-right",
-      });
+      alert("Please fill in all required fields");
       return;
     }
 
-    // Build ISO datetime string
     const datetimeISO = `${appointmentData.date}T${appointmentData.time}:00`;
 
     onBookAppointment({
@@ -442,14 +503,12 @@ export default function ReceiptAndNextAppointment({
     handleCloseAppointmentModal,
   ]);
 
-  const minDate = new Date().toISOString().split("T")[0];
-
   return (
     <Container>
       {/* Success Header */}
       <SuccessHeader>
         <SuccessIcon>
-          <Check size={48} strokeWidth={3} />
+          <CheckCircle size={48} strokeWidth={3} />
         </SuccessIcon>
         <SuccessTitle>Payment Successful!</SuccessTitle>
         <SuccessSubtitle>Thank you for your payment</SuccessSubtitle>
@@ -458,7 +517,7 @@ export default function ReceiptAndNextAppointment({
 
       {/* Receipt & Loyalty Cards */}
       <SectionGrid>
-        <Card>
+        <SectionCard>
           <CardTitle>
             <CheckCircle size={18} />
             Receipt Summary
@@ -476,8 +535,7 @@ export default function ReceiptAndNextAppointment({
               style={{
                 marginTop: "0.5rem",
                 paddingTop: "0.5rem",
-                borderTop: "1px solid",
-                borderColor: "inherit",
+                borderTop: "1px solid var(--color-border)",
               }}
             >
               <span>Subtotal:</span>
@@ -486,7 +544,7 @@ export default function ReceiptAndNextAppointment({
             {transaction.discountAmount > 0 && (
               <ReceiptRow>
                 <span>Discount:</span>
-                <span style={{ color: "#22c55e" }}>
+                <span style={{ color: "var(--color-green500)" }}>
                   -${transaction.discountAmount.toFixed(2)}
                 </span>
               </ReceiptRow>
@@ -521,31 +579,26 @@ export default function ReceiptAndNextAppointment({
               SMS
             </ReceiptButton>
           </ReceiptActions>
-        </Card>
+        </SectionCard>
 
-        <Card>
+        <SectionCard>
           <CardTitle>
             <Gift size={18} />
             Loyalty Points
           </CardTitle>
           <LoyaltyCard>
-            <LoyaltyAmount>+{transaction.loyaltyPointsEarned}</LoyaltyAmount>
+            <LoyaltyAmount>
+              <Gift size={32} />+{transaction.loyaltyPointsEarned}
+            </LoyaltyAmount>
             <LoyaltyLabel>Points Earned</LoyaltyLabel>
+            <LoyaltyBalance>
+              New balance:{" "}
+              <strong>
+                {client.loyaltyPoints + transaction.loyaltyPointsEarned} points
+              </strong>
+            </LoyaltyBalance>
           </LoyaltyCard>
-          <div
-            style={{
-              marginTop: "1rem",
-              textAlign: "center",
-              fontSize: "0.875rem",
-              color: "#6b7280",
-            }}
-          >
-            New balance:{" "}
-            <strong>
-              {client.loyaltyPoints + transaction.loyaltyPointsEarned} points
-            </strong>
-          </div>
-        </Card>
+        </SectionCard>
       </SectionGrid>
 
       {/* Book Next Appointment Prompt */}
@@ -557,26 +610,18 @@ export default function ReceiptAndNextAppointment({
         <PromptActions>
           <Button
             variation="secondary"
-            size="medium"
+            size="large"
             onClick={onNewSale}
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              minWidth: "160px",
-            }}
+            style={{ flex: 1, justifyContent: "center", minWidth: "160px" }}
           >
             <X size={20} />
             No Thanks
           </Button>
           <Button
             variation="primary"
-            size="medium"
+            size="large"
             onClick={handleOpenAppointmentModal}
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              minWidth: "160px",
-            }}
+            style={{ flex: 1, justifyContent: "center", minWidth: "160px" }}
           >
             <Calendar size={20} />
             Book Appointment
@@ -594,15 +639,15 @@ export default function ReceiptAndNextAppointment({
       >
         <InfoBox>
           <strong>Booking for:</strong> {client.name}
-          <br />
           {client.email && (
             <>
-              <strong>Email:</strong> {client.email}
               <br />
+              <strong>Email:</strong> {client.email}
             </>
           )}
           {client.phone && (
             <>
+              <br />
               <strong>Phone:</strong> {client.phone}
             </>
           )}
@@ -611,7 +656,7 @@ export default function ReceiptAndNextAppointment({
         <FormContainer>
           <FormField>
             <Label htmlFor="appointment-treatment">
-              Treatment <span style={{ color: "#ef4444" }}>*</span>
+              Treatment <span>*</span>
             </Label>
             <Select
               id="appointment-treatment"
@@ -624,10 +669,10 @@ export default function ReceiptAndNextAppointment({
               }
             >
               <option value="">Select a treatment</option>
-              {availableTreatments.map((treatment) => (
+              {activeTreatments.map((treatment) => (
                 <option key={treatment.id} value={treatment.id}>
                   {treatment.name} ({treatment.durationMinutes} min - $
-                  {treatment.price})
+                  {treatment.price.toFixed(2)})
                 </option>
               ))}
             </Select>
@@ -636,7 +681,7 @@ export default function ReceiptAndNextAppointment({
           <DateTimeGrid>
             <FormField>
               <Label htmlFor="appointment-date">
-                Date <span style={{ color: "#ef4444" }}>*</span>
+                Date <span>*</span>
               </Label>
               <Input
                 type="date"
@@ -654,7 +699,7 @@ export default function ReceiptAndNextAppointment({
 
             <FormField>
               <Label htmlFor="appointment-time">
-                Time <span style={{ color: "#ef4444" }}>*</span>
+                Time <span>*</span>
               </Label>
               <Select
                 id="appointment-time"
@@ -716,6 +761,7 @@ export default function ReceiptAndNextAppointment({
           <ModalActions>
             <Button
               variation="secondary"
+              size="medium"
               onClick={handleCloseAppointmentModal}
               style={{ flex: 1, justifyContent: "center" }}
             >
@@ -723,12 +769,12 @@ export default function ReceiptAndNextAppointment({
             </Button>
             <Button
               variation="primary"
+              size="medium"
               onClick={handleAppointmentSubmit}
-              disabled={bookingAppointment}
               style={{ flex: 1, justifyContent: "center" }}
             >
               <Calendar size={18} />
-              {bookingAppointment ? "Booking..." : "Book Appointment"}
+              Book Appointment
             </Button>
           </ModalActions>
         </FormContainer>

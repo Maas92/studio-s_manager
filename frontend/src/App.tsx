@@ -9,11 +9,15 @@ import { AuthProvider } from "./modules/auth/AuthProvider.js";
 import { router } from "./routes/router.js";
 // import { theme } from "./ui/Theme.js";
 import { ThemeProvider } from "./contexts/ThemeContext.js";
+import { useEffect } from "react";
+import { setupInterceptors } from "./services/api.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
 });

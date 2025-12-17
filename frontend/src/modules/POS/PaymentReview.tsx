@@ -221,7 +221,7 @@ const ErrorBox = styled.div`
   background: ${({ theme }) => theme.color.red100 || "#fee2e2"};
   border: 1px solid ${({ theme }) => theme.color.red500 || "#ef4444"};
   border-radius: ${({ theme }) => theme.radii.md};
-  color: ${({ theme }) => theme.color.red700 || "#b91c1c"};
+  color: ${({ theme }) => theme.color.red600 || "#b91c1c"};
   font-size: 0.875rem;
   margin-bottom: 1rem;
 

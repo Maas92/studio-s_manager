@@ -4,11 +4,11 @@ export const useAuth = () => {
   const auth = useAuthContext();
 
   // Role checking helpers
-  const isOwner = auth.user?.role === "owner";
-  const isAdmin = auth.user?.role === "admin" || isOwner;
-  const isManager = auth.user?.role === "manager" || isAdmin;
-  const isTherapist = auth.user?.role === "therapist";
-  const isReceptionist = auth.user?.role === "receptionist";
+  const isOwner = auth.user?.data?.role === "owner";
+  const isAdmin = auth.user?.data?.role === "admin" || isOwner;
+  const isManager = auth.user?.data?.role === "manager" || isAdmin;
+  const isTherapist = auth.user?.data?.role === "therapist";
+  const isReceptionist = auth.user?.data?.role === "receptionist";
   const isStaff = isTherapist || isReceptionist || isManager || isAdmin;
 
   // Permission helpers

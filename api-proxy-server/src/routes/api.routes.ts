@@ -35,8 +35,7 @@ inventoryRoutes.forEach((route) => {
     `/${route}`,
     createProxy({
       target: env.INVENTORY_SERVICE_URL,
-      pathRewrite: { [`^/`]: `/${route}` },
-      isBackendService: true, // Backend service requires GATEWAY_SECRET
+      isBackendService: true,
     })
   );
 });
