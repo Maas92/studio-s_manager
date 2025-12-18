@@ -23,11 +23,11 @@ export const StaffMemberSchema = z.object({
   role: z.string(),
   specializations: z.array(z.string()).optional(),
   status: z.enum(["active", "inactive", "on_leave"]).optional(),
-  hireDate: z.string().optional(),
-  bio: z.string().optional(),
+  hireDate: z.string().nullable().optional(),
+  bio: z.string().nullable().optional(),
   certifications: z.array(z.string()).optional(),
-  schedule: z.record(z.string(), z.string()).optional(), // e.g., { "monday": "9am-5pm" }
-  avatar: z.string().optional(),
+  schedule: z.record(z.string(), z.string()).nullable().optional(), // e.g., { "monday": "9am-5pm" }
+  avatar: z.string().nullable().optional(),
   performance: StaffPerformanceSchema.optional(),
 });
 

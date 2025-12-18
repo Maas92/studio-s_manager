@@ -10,6 +10,7 @@ export function useStock() {
       create: "Stock item created",
       update: "Stock item updated",
       delete: "Stock item removed",
+      transfer: "Stock item transferred",
     },
   });
 }

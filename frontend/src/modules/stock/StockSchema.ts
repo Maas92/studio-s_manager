@@ -12,10 +12,10 @@ export const StockItemSchema = z.object({
   quantity: z.number(),
   minQuantity: z.number().optional(),
   unit: z.string().optional(),
-  cost: z.number().optional(),
-  retailPrice: z.number().optional(),
+  cost: z.coerce.number().optional(),
+  retailPrice: z.coerce.number().optional(),
   supplier: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().nullable().optional(),
   lastRestocked: z.string().optional(),
 });
 
@@ -27,10 +27,10 @@ export const CreateStockItemSchema = z.object({
   quantity: z.number().min(0, "Quantity must be positive"),
   minQuantity: z.number().optional(),
   unit: z.string().optional(),
-  cost: z.number().optional(),
-  retailPrice: z.number().optional(),
+  cost: z.coerce.number().optional(),
+  retailPrice: z.coerce.number().optional(),
   supplier: z.string().optional(),
-  notes: z.string().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 export const TransferStockSchema = z.object({
@@ -38,7 +38,7 @@ export const TransferStockSchema = z.object({
   fromLocation: StockLocationSchema,
   toLocation: StockLocationSchema,
   quantity: z.number().min(1, "Quantity must be at least 1"),
-  notes: z.string().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 // Types

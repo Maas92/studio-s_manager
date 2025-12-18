@@ -25,7 +25,6 @@ import useAuth from "../../hooks/useAuth";
 
 import type { Treatment } from "./TreatmentSchema";
 import { useModalState } from "../../hooks/useModalState";
-import { is } from "zod/v4/locales";
 
 const PageWrapper = styled.div`
   padding: 2rem;

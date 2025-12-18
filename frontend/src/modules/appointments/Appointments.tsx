@@ -182,6 +182,7 @@ export default function Appointments() {
         clientId: formValues.client,
         treatmentId: formValues.treatment,
         staffId: formValues.staff || undefined,
+        status: "confirmed",
         datetimeISO: new Date(formValues.datetimeLocal).toISOString(),
       });
 

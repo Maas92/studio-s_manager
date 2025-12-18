@@ -1,0 +1,1633 @@
+Code combined from: C:\Users\p01mansoorg\Documents\python\Studio-S_manager\backend\src\controllers
+================================================================================
+
+
+
+================================================================================
+FILE: ./backend/src/controllers\appointmentsController.ts
+================================================================================
+
+import { Response, NextFunction } from "express";
+import { UserRequest } from '../middleware/userMiddleware.js';
+import { appointmentService } from '../services/appointment.service.js';
+import catchAsync from '../utils/catchAsync.js';
+import AppError from '../utils/appError.js';
+import { logger } from '../utils/logger.js';
+import { toCamelCase } from '../utils/fieldMapper.js';
+
+/**
+ * Get all appointments with filtering
+ * GET /api/v1/appointments
+ */
+export const getAllAppointments = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const filters = {
+      client_id: req.query.client_id as string,
+      staff_id: req.query.staff_id as string,
+      treatment_id: req.query.treatment_id as string,
+      status: req.query.status as string,
+      date_from: req.query.date_from as string,
+      date_to: req.query.date_to as string,
+      page: req.query.page ? parseInt(req.query.page as string) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+    };
+
+    const result = await appointmentService.findAll(filters);
+
+    res.status(200).json({
+      status: "success",
+      results: result.appointments.length,
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
+      data: {
+        appointments: result.appointments,
+      },
+    });
+  }
+);
+
+/**
+ * Get single appointment
+ * GET /api/v1/appointments/:id
+ */
+export const getAppointment = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const appointment = await appointmentService.findById(req.params.id);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        appointment: toCamelCase(appointment),
+      },
+    });
+  }
+);
+
+/**
+ * Create appointment
+ * POST /api/v1/appointments
+ */
+export const createAppointment = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const appointment = await appointmentService.create({
+      ...req.body,
+      created_by: req.user?.id,
+    });
+
+    logger.info(
+      `Appointment created by user ${req.user?.id}: ${appointment.id}`
+    );
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        appointment: toCamelCase(appointment),
+      },
+    });
+  }
+);
+
+/**
+ * Update appointment
+ * PATCH /api/v1/appointments/:id
+ */
+export const updateAppointment = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const appointment = await appointmentService.update(
+      req.params.id,
+      req.body
+    );
+
+    logger.info(
+      `Appointment updated by user ${req.user?.id}: ${req.params.id}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        appointment: toCamelCase(appointment),
+      },
+    });
+  }
+);
+
+/**
+ * Cancel appointment
+ * POST /api/v1/appointments/:id/cancel
+ */
+export const cancelAppointment = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const { reason } = req.body;
+
+    const appointment = await appointmentService.cancel(
+      req.params.id,
+      reason,
+      req.user?.id
+    );
+
+    logger.info(
+      `Appointment cancelled by user ${req.user?.id}: ${req.params.id}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        appointment: toCamelCase(appointment),
+      },
+    });
+  }
+);
+
+/**
+ * Check-in appointment
+ * POST /api/v1/appointments/:id/check-in
+ */
+export const checkInAppointment = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const appointment = await appointmentService.checkIn(req.params.id);
+
+    logger.info(
+      `Appointment checked-in by user ${req.user?.id}: ${req.params.id}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        appointment: toCamelCase(appointment),
+      },
+    });
+  }
+);
+
+/**
+ * Complete appointment
+ * POST /api/v1/appointments/:id/complete
+ */
+export const completeAppointment = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const { notes } = req.body;
+
+    const appointment = await appointmentService.complete(req.params.id, notes);
+
+    logger.info(
+      `Appointment completed by user ${req.user?.id}: ${req.params.id}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        appointment: toCamelCase(appointment),
+      },
+    });
+  }
+);
+
+/**
+ * Get appointment availability
+ * GET /api/v1/appointments/availability
+ */
+export const getAvailability = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const { staff_id, date, duration_minutes } = req.query;
+
+    if (!staff_id || !date || !duration_minutes) {
+      throw AppError.badRequest(
+        "staff_id, date, and duration_minutes are required"
+      );
+    }
+
+    const availability = await appointmentService.getAvailability(
+      staff_id as string,
+      date as string,
+      parseInt(duration_minutes as string)
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        availability,
+      },
+    });
+  }
+);
+
+/**
+ * Get appointments by date range
+ * GET /api/v1/appointments/calendar
+ */
+export const getCalendar = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const { start_date, end_date, staff_id } = req.query;
+
+    if (!start_date || !end_date) {
+      throw AppError.badRequest("start_date and end_date are required");
+    }
+
+    const appointments = await appointmentService.getCalendar(
+      start_date as string,
+      end_date as string,
+      staff_id as string
+    );
+
+    res.status(200).json({
+      status: "success",
+      results: appointments.length,
+      data: {
+        appointment: toCamelCase(appointments),
+      },
+    });
+  }
+);
+
+
+================================================================================
+FILE: ./backend/src/controllers\clientController.ts
+================================================================================
+
+import { Request, Response, NextFunction } from "express";
+import { UserRequest } from "../middleware/userMiddleware.js";
+import { clientService } from "../services/client.service.js";
+import AppError from "../utils/appError.js";
+import catchAsync from "../utils/catchAsync.js";
+import {
+  createClientSchema,
+  searchClientSchema,
+  updateClientSchema,
+} from "../validators/client.validator.js";
+
+/**
+ * Create new client
+ * POST /api/v1/clients
+ */
+export const createClient = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const validation = createClientSchema.safeParse(req);
+    if (!validation.success) {
+      return next(
+        new AppError((validation.error as any).errors[0].message, 400)
+      );
+    }
+
+    const client = await clientService.create(validation.data.body);
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        client,
+      },
+    });
+  }
+);
+
+/**
+ * Get all clients with pagination
+ * GET /api/v1/clients
+ */
+export const getAllClients = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const filters = {
+      search: req.query.q as string,
+      page: req.query.page ? parseInt(req.query.page as string) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+    };
+
+    const result = await clientService.findAll(filters);
+
+    res.status(200).json({
+      status: "success",
+      results: result.clients.length,
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
+      data: {
+        clients: result.clients,
+      },
+    });
+  }
+);
+
+/**
+ * Search clients (for autocomplete/quick search)
+ * GET /api/v1/clients/search
+ */
+export const searchClients = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const validation = searchClientSchema.safeParse(req);
+    if (!validation.success) {
+      return next(new AppError("Invalid search parameters", 400));
+    }
+
+    const { q } = validation.data.query;
+
+    if (!q) {
+      return res.status(200).json({
+        status: "success",
+        data: {
+          clients: [],
+        },
+      });
+    }
+
+    const clients = await clientService.search(q);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        clients,
+      },
+    });
+  }
+);
+
+/**
+ * Get client by ID with full details
+ * GET /api/v1/clients/:id
+ */
+export const getClient = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const client = await clientService.findById(req.params.id);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        client,
+      },
+    });
+  }
+);
+
+/**
+ * Update client
+ * PATCH /api/v1/clients/:id
+ */
+export const updateClient = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const validation = updateClientSchema.safeParse(req);
+    if (!validation.success) {
+      return next(
+        new AppError((validation.error as any).errors[0].message, 400)
+      );
+    }
+
+    const client = await clientService.update(
+      req.params.id,
+      validation.data.body
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        client,
+      },
+    });
+  }
+);
+
+/**
+ * Get client history (appointments and purchases)
+ * GET /api/v1/clients/:id/history
+ */
+export const getClientHistory = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const history = await clientService.getHistory(req.params.id);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        history,
+      },
+    });
+  }
+);
+
+/**
+ * Get client statistics
+ * GET /api/v1/clients/:id/stats
+ */
+export const getClientStats = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const stats = await clientService.getStats(req.params.id);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        stats,
+      },
+    });
+  }
+);
+
+/**
+ * Delete/deactivate client
+ * DELETE /api/v1/clients/:id
+ */
+export const deleteClient = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    await clientService.delete(req.params.id);
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  }
+);
+
+
+================================================================================
+FILE: ./backend/src/controllers\errorController.ts
+================================================================================
+
+import { Request, Response, NextFunction } from "express";
+import AppError from '../utils/appError.js';
+import { logger } from '../utils/logger.js';
+import { env } from '../config/env.js';
+
+/**
+ * Handle database-specific errors
+ */
+const handleDatabaseError = (err: any): AppError => {
+  // Unique constraint violation
+  if (err.code === "23505") {
+    const match = err.detail?.match(/Key \((.*?)\)=\((.*?)\)/);
+    const field = match ? match[1] : "field";
+    const value = match ? match[2] : "value";
+    const message = `Duplicate ${field}: ${value}. Please use another value.`;
+    return new AppError(message, 409);
+  }
+
+  // Foreign key constraint violation
+  if (err.code === "23503") {
+    const message =
+      "Invalid reference to related data. The referenced record does not exist.";
+    return new AppError(message, 400);
+  }
+
+  // Invalid input syntax
+  if (err.code === "22P02") {
+    return new AppError("Invalid input data type provided", 400);
+  }
+
+  // Not null constraint violation
+  if (err.code === "23502") {
+    const column = err.column || "field";
+    return new AppError(`Missing required field: ${column}`, 400);
+  }
+
+  // Check constraint violation
+  if (err.code === "23514") {
+    return new AppError("Data validation failed", 400);
+  }
+
+  return new AppError("Database operation failed", 500);
+};
+
+/**
+ * Send detailed error in development
+ */
+const sendErrorDev = (err: AppError, req: Request, res: Response): void => {
+  logger.error("ERROR 💥", {
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+  });
+
+  res.status(err.statusCode).json({
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack,
+    requestId: req.id,
+  });
+};
+
+/**
+ * Send limited error in production
+ */
+const sendErrorProd = (err: AppError, req: Request, res: Response): void => {
+  // Operational, trusted error: send message to client
+  if (err.isOperational) {
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+      requestId: req.id,
+    });
+  } else {
+    // Programming or other unknown error: don't leak error details
+    logger.error("ERROR 💥", {
+      error: err,
+      url: req.originalUrl,
+      method: req.method,
+      requestId: req.id,
+    });
+
+    res.status(500).json({
+      status: "error",
+      message: "Something went wrong. Please try again later.",
+      requestId: req.id,
+    });
+  }
+};
+
+/**
+ * Global error handling middleware
+ */
+export default (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || "error";
+
+  if (env.NODE_ENV === "development") {
+    sendErrorDev(err, req, res);
+  } else {
+    let error = { ...err };
+    error.message = err.message;
+    error.name = err.name;
+    error.stack = err.stack;
+
+    // Handle specific error types
+    if (err.code) {
+      error = handleDatabaseError(error);
+    }
+
+    // Handle JWT errors (if you add authentication later)
+    if (error.name === "JsonWebTokenError") {
+      error = new AppError("Invalid token. Please log in again.", 401);
+    }
+
+    if (error.name === "TokenExpiredError") {
+      error = new AppError("Your token has expired. Please log in again.", 401);
+    }
+
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const message = Object.values(error.errors || {})
+        .map((e: any) => e.message)
+        .join(". ");
+      error = new AppError(message, 400);
+    }
+
+    sendErrorProd(error, req, res);
+  }
+};
+
+
+================================================================================
+FILE: ./backend/src/controllers\inventoryController.ts
+================================================================================
+
+import { Response, NextFunction } from "express";
+import { pool, getClient } from '../config/database.js';
+import catchAsync from '../utils/catchAsync.js';
+import AppError from '../utils/appError.js';
+import { UserRequest } from '../middleware/userMiddleware.js';
+import { logger } from '../utils/logger.js';
+
+/**
+ * Get inventory levels with optional filtering
+ * GET /api/v1/inventory/levels
+ */
+export const getInventoryLevels = catchAsync(
+  async (req: UserRequest, res: Response, _next: NextFunction) => {
+    const { location_id, product_id, low_stock, batch_number } = req.query;
+
+    let queryText = `
+      SELECT 
+        il.*,
+        p.name as product_name,
+        p.sku,
+        p.reorder_level,
+        sl.name as location_name,
+        sl.type as location_type,
+        (il.quantity_available - il.quantity_reserved) as quantity_free
+      FROM inventory_levels il
+      JOIN products p ON il.product_id = p.id
+      JOIN stock_locations sl ON il.location_id = sl.id
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramCounter = 1;
+
+    if (location_id) {
+      queryText += ` AND il.location_id = $${paramCounter}`;
+      params.push(location_id);
+      paramCounter++;
+    }
+
+    if (product_id) {
+      queryText += ` AND il.product_id = $${paramCounter}`;
+      params.push(product_id);
+      paramCounter++;
+    }
+
+    if (batch_number) {
+      queryText += ` AND il.batch_number = $${paramCounter}`;
+      params.push(batch_number);
+      paramCounter++;
+    }
+
+    if (low_stock === "true") {
+      queryText += ` AND il.quantity_available <= p.reorder_level`;
+    }
+
+    queryText += " ORDER BY p.name, sl.name";
+
+    const result = await pool.query(queryText, params);
+
+    logger.info(`Inventory levels retrieved: ${result.rows.length} items`);
+
+    res.status(200).json({
+      status: "success",
+      results: result.rows.length,
+      data: {
+        inventoryLevels: result.rows,
+      },
+    });
+  }
+);
+
+/**
+ * Adjust inventory (add or remove)
+ * POST /api/v1/inventory/adjust
+ */
+export const adjustInventory = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const {
+      product_id,
+      location_id,
+      quantity_change,
+      reason,
+      batch_number,
+      expiry_date,
+    } = req.body;
+
+    const client = await getClient();
+
+    try {
+      await client.query("BEGIN");
+
+      // Check if inventory level exists
+      const checkResult = await client.query(
+        `SELECT * FROM inventory_levels 
+         WHERE product_id = $1 AND location_id = $2 
+         AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
+        [product_id, location_id, batch_number]
+      );
+
+      let inventoryResult;
+
+      if (checkResult.rows.length === 0) {
+        // Create new inventory level
+        if (quantity_change < 0) {
+          throw new AppError(
+            "Cannot reduce inventory that does not exist",
+            400
+          );
+        }
+
+        inventoryResult = await client.query(
+          `INSERT INTO inventory_levels 
+           (product_id, location_id, quantity_available, batch_number, expiry_date)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [product_id, location_id, quantity_change, batch_number, expiry_date]
+        );
+      } else {
+        // Update existing inventory level
+        const currentQty = checkResult.rows[0].quantity_available;
+        const newQty = currentQty + quantity_change;
+
+        if (newQty < 0) {
+          throw new AppError(
+            "Insufficient inventory. Cannot reduce below zero.",
+            400
+          );
+        }
+
+        inventoryResult = await client.query(
+          `UPDATE inventory_levels 
+           SET quantity_available = $1, last_updated = CURRENT_TIMESTAMP
+           WHERE id = $2
+           RETURNING *`,
+          [newQty, checkResult.rows[0].id]
+        );
+      }
+
+      // Record the stock movement
+      await client.query(
+        `INSERT INTO stock_movements (
+          product_id, to_location_id, quantity, movement_type, 
+          reason, batch_number, performed_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          product_id,
+          location_id,
+          Math.abs(quantity_change),
+          "adjustment",
+          reason || "Manual adjustment",
+          batch_number,
+          req.user?.id,
+        ]
+      );
+
+      await client.query("COMMIT");
+
+      logger.info(
+        `Inventory adjusted by user ${req.user?.id}: Product ${product_id}, Change: ${quantity_change}`
+      );
+
+      res.status(200).json({
+        status: "success",
+        data: {
+          inventoryLevel: inventoryResult.rows[0],
+        },
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+);
+
+/**
+ * Transfer stock between locations
+ * POST /api/v1/inventory/transfer
+ */
+export const transferStock = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const {
+      product_id,
+      from_location_id,
+      to_location_id,
+      quantity,
+      reason,
+      batch_number,
+    } = req.body;
+
+    const client = await getClient();
+
+    try {
+      await client.query("BEGIN");
+
+      // Check source inventory
+      const sourceResult = await client.query(
+        `SELECT * FROM inventory_levels 
+         WHERE product_id = $1 AND location_id = $2 
+         AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
+        [product_id, from_location_id, batch_number]
+      );
+
+      if (sourceResult.rows.length === 0) {
+        throw new AppError("Product not found in source location", 404);
+      }
+
+      const sourceInventory = sourceResult.rows[0];
+      const availableQty =
+        sourceInventory.quantity_available - sourceInventory.quantity_reserved;
+
+      if (availableQty < quantity) {
+        throw new AppError(
+          `Insufficient available quantity. Available: ${availableQty}, Requested: ${quantity}`,
+          400
+        );
+      }
+
+      // Reduce from source
+      await client.query(
+        `UPDATE inventory_levels 
+         SET quantity_available = quantity_available - $1, 
+             last_updated = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [quantity, sourceInventory.id]
+      );
+
+      // Add to destination
+      const destResult = await client.query(
+        `SELECT * FROM inventory_levels 
+         WHERE product_id = $1 AND location_id = $2 
+         AND (batch_number = $3 OR ($3 IS NULL AND batch_number IS NULL))`,
+        [product_id, to_location_id, batch_number]
+      );
+
+      if (destResult.rows.length === 0) {
+        // Create new inventory level at destination
+        await client.query(
+          `INSERT INTO inventory_levels 
+           (product_id, location_id, quantity_available, batch_number, expiry_date)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            product_id,
+            to_location_id,
+            quantity,
+            batch_number,
+            sourceInventory.expiry_date,
+          ]
+        );
+      } else {
+        // Update existing inventory level at destination
+        await client.query(
+          `UPDATE inventory_levels 
+           SET quantity_available = quantity_available + $1, 
+               last_updated = CURRENT_TIMESTAMP
+           WHERE id = $2`,
+          [quantity, destResult.rows[0].id]
+        );
+      }
+
+      // Record the stock movement
+      await client.query(
+        `INSERT INTO stock_movements (
+          product_id, from_location_id, to_location_id, quantity, 
+          movement_type, reason, batch_number, performed_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          product_id,
+          from_location_id,
+          to_location_id,
+          quantity,
+          "transfer",
+          reason || "Stock transfer",
+          batch_number,
+          req.user?.id,
+        ]
+      );
+
+      await client.query("COMMIT");
+
+      logger.info(
+        `Stock transferred by user ${req.user?.id}: ${quantity} units of product ${product_id} from ${from_location_id} to ${to_location_id}`
+      );
+
+      res.status(200).json({
+        status: "success",
+        message: "Stock transferred successfully",
+        data: {
+          product_id,
+          from_location_id,
+          to_location_id,
+          quantity,
+        },
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+);
+
+
+================================================================================
+FILE: ./backend/src/controllers\productController.ts
+================================================================================
+
+import { Response, NextFunction } from "express";
+import { UserRequest } from '../middleware/userMiddleware.js';
+import { productService } from '../services/product.service.js';
+import catchAsync from '../utils/catchAsync.js';
+import { logger } from '../utils/logger.js';
+
+/**
+ * Get all products with filtering and pagination
+ * GET /api/v1/products
+ */
+export const getAllProducts = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const filters = {
+      category_id: req.query.category_id as string,
+      supplier_id: req.query.supplier_id as string,
+      active:
+        req.query.active === "true"
+          ? true
+          : req.query.active === "false"
+          ? false
+          : undefined,
+      retail:
+        req.query.retail === "true"
+          ? true
+          : req.query.retail === "false"
+          ? false
+          : undefined,
+      search: req.query.search as string,
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+      sort: req.query.sort as string,
+    };
+
+    const result = await productService.findAll(filters);
+
+    logger.info(`Products retrieved: ${result.products.length} items`);
+
+    res.status(200).json({
+      status: "success",
+      results: result.products.length,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+      data: {
+        products: result.products,
+      },
+    });
+  }
+);
+
+/**
+ * Get a single product by ID
+ * GET /api/v1/products/:id
+ */
+export const getProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const product = await productService.findById(req.params.id);
+
+    logger.info(`Product retrieved: ${req.params.id}`);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        product,
+      },
+    });
+  }
+);
+
+/**
+ * Create a new product
+ * POST /api/v1/products
+ */
+export const createProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const product = await productService.create(req.body);
+
+    logger.info(`Product created by user ${req.user?.id}: ${product.id}`);
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        product,
+      },
+    });
+  }
+);
+
+/**
+ * Update a product
+ * PATCH /api/v1/products/:id
+ */
+export const updateProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const product = await productService.update(req.params.id, req.body);
+
+    logger.info(`Product updated by user ${req.user?.id}: ${req.params.id}`);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        product,
+      },
+    });
+  }
+);
+
+/**
+ * Delete a product
+ * DELETE /api/v1/products/:id
+ */
+export const deleteProduct = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    await productService.delete(req.params.id);
+
+    logger.info(`Product deleted by user ${req.user?.id}: ${req.params.id}`);
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  }
+);
+
+
+================================================================================
+FILE: ./backend/src/controllers\salesController.ts
+================================================================================
+
+import { Request, Response, NextFunction } from "express";
+import { getClient } from '../config/database.js';
+import AppError from '../utils/appError.js';
+import catchAsync from '../utils/catchAsync.js';
+import { createSaleSchema } from '../validators/sale.validator.js';
+
+export const createSale = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    // 1. Validate Input
+    const validation = createSaleSchema.safeParse(req);
+    if (!validation.success) {
+      return next(
+        new AppError((validation.error as any).errors[0].message, 400)
+      );
+    }
+
+    const {
+      clientId,
+      items,
+      discount,
+      payments,
+      tips,
+      loyaltyPointsRedeemed,
+      clientName,
+    } = validation.data.body;
+
+    const client = await getClient();
+
+    try {
+      await client.query("BEGIN");
+
+      // 2. Calculate Totals
+      let subtotal = 0;
+      items.forEach((item) => {
+        subtotal += item.price * item.quantity;
+      });
+
+      let discountAmount = 0;
+      if (discount.type === "percentage") {
+        discountAmount = (subtotal * discount.value) / 100;
+      } else {
+        discountAmount = discount.value;
+      }
+
+      // Ensure discount doesn't exceed subtotal
+      discountAmount = Math.min(discountAmount, subtotal);
+
+      const afterDiscount = subtotal - discountAmount;
+      const taxAmount = afterDiscount * 0.15; // 15% Tax Hardcoded for now
+
+      let tipsTotal = 0;
+      if (tips) {
+        Object.values(tips).forEach((tip) => {
+          tipsTotal += tip;
+        });
+      }
+
+      const finalAmount = afterDiscount + taxAmount + tipsTotal;
+
+      // 3. Insert Sale
+      // If clientId is provided, use it. If not, we store NULL.
+      // We currently don't have a way to store "Walk-in Client Name" in the sales table structure
+      // except in the notes or by creating a temporary client.
+      // For now, we'll append the clientName to notes if it's a walk-in.
+
+      let notes = "";
+      if (!clientId && clientName) {
+        notes = `Walk-in Client: ${clientName}`;
+      }
+
+      const saleResult = await client.query(
+        `INSERT INTO sales (
+          client_id, 
+          staff_id, 
+          sale_date, 
+          total_amount, 
+          discount_amount, 
+          tax_amount, 
+          tips_total, 
+          final_amount, 
+          status, 
+          receipt_number,
+          notes
+        ) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          clientId || null,
+          items[0].staffId || null, // Primary staff (fallback to first item's staff)
+          subtotal,
+          discountAmount,
+          taxAmount,
+          tipsTotal,
+          finalAmount,
+          "completed",
+          `REC-${Date.now()}`, // Simple receipt number generation
+          notes,
+        ]
+      );
+
+      const sale = saleResult.rows[0];
+
+      // 4. Insert Sale Items
+      for (const item of items) {
+        // Determine service_id vs product_id
+        // If type is 'treatment' or 'appointment', we assume it maps to a service.
+        // However, the frontend sends 'treatmentId' or 'appointmentId'.
+        // We need to map these to 'service_id'.
+        // For appointments, the appointment itself is NOT the service definition, but it links to one.
+        // But here we are recording the SALE of the service.
+        // Ideally we should have the serviceId in the cart item.
+        // Assuming treatmentId IS the serviceId for treatments.
+
+        const serviceId =
+          item.type === "treatment" || item.type === "appointment"
+            ? item.treatmentId || item.appointmentId
+            : null;
+
+        const productId = item.type === "product" ? item.productId : null;
+
+        await client.query(
+          `INSERT INTO sale_items (
+            sale_id, 
+            product_id, 
+            service_id,
+            quantity, 
+            unit_price, 
+            discount_amount, 
+            subtotal, 
+            staff_id, 
+            staff_name
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            sale.id,
+            productId,
+            serviceId,
+            item.quantity,
+            item.price,
+            item.discount || 0,
+            item.price * item.quantity,
+            item.staffId || null,
+            item.staffName || null,
+          ]
+        );
+
+        // 5. Update Inventory (only for products)
+        if (item.type === "product" && productId) {
+          await client.query(
+            `UPDATE inventory_levels 
+              SET quantity_available = quantity_available - $1 
+              WHERE product_id = $2`,
+            [item.quantity, productId]
+          );
+        }
+      }
+
+      // 6. Insert Payments
+      for (const payment of payments) {
+        await client.query(
+          `INSERT INTO payments (sale_id, method, amount) VALUES ($1, $2, $3)`,
+          [sale.id, payment.method, payment.amount]
+        );
+      }
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        status: "success",
+        data: {
+          sale,
+        },
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      next(error);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+
+================================================================================
+FILE: ./backend/src/controllers\staffController.ts
+================================================================================
+
+import { Request, Response } from "express";
+import { staffService } from '../services/staff.service.js';
+import catchAsync from '../utils/catchAsync.js';
+import AppError from '../utils/appError.js';
+
+export const getAllStaff = catchAsync(async (req: Request, res: Response) => {
+  const filters = {
+    role: req.query.role as string,
+    status: req.query.status as string,
+    search: req.query.search as string,
+    page: parseInt(req.query.page as string) || 1,
+    limit: parseInt(req.query.limit as string) || 50,
+  };
+
+  const result = await staffService.findAll(filters);
+
+  res.status(200).json({
+    status: "success",
+    data: result,
+  });
+});
+
+export const getStaff = catchAsync(async (req: Request, res: Response) => {
+  const staff = await staffService.findById(req.params.id);
+
+  res.status(200).json({
+    status: "success",
+    data: { staff },
+  });
+});
+
+export const createStaff = catchAsync(async (req: Request, res: Response) => {
+  const staff = await staffService.create(req.body);
+
+  res.status(201).json({
+    status: "success",
+    data: { staff },
+  });
+});
+
+export const updateStaff = catchAsync(async (req: Request, res: Response) => {
+  const staff = await staffService.update(req.params.id, req.body);
+
+  res.status(200).json({
+    status: "success",
+    data: { staff },
+  });
+});
+
+export const deleteStaff = catchAsync(async (req: Request, res: Response) => {
+  await staffService.delete(req.params.id);
+
+  res.status(204).json({
+    status: "success",
+    data: null,
+  });
+});
+
+export const getStaffPerformance = catchAsync(
+  async (req: Request, res: Response) => {
+    const period =
+      (req.query.period as string) || new Date().toISOString().slice(0, 7);
+    const performance = await staffService.getPerformance(
+      req.params.id,
+      period
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: { performance },
+    });
+  }
+);
+
+
+================================================================================
+FILE: ./backend/src/controllers\stockController.ts
+================================================================================
+
+import { Request, Response } from "express";
+import { stockService } from '../services/stock.service.js';
+import catchAsync from '../utils/catchAsync.js';
+
+export const getAllStockItems = catchAsync(
+  async (req: Request, res: Response) => {
+    const filters = {
+      location: req.query.location as any,
+      category: req.query.category as string,
+      low_stock: req.query.low_stock === "true",
+      search: req.query.search as string,
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 50,
+    };
+
+    const result = await stockService.findAll(filters);
+
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  }
+);
+
+export const getStockItem = catchAsync(async (req: Request, res: Response) => {
+  const item = await stockService.findById(req.params.id);
+
+  res.status(200).json({
+    status: "success",
+    data: { item },
+  });
+});
+
+export const createStockItem = catchAsync(
+  async (req: Request, res: Response) => {
+    const item = await stockService.create(req.body);
+
+    res.status(201).json({
+      status: "success",
+      data: { item },
+    });
+  }
+);
+
+export const updateStockItem = catchAsync(
+  async (req: Request, res: Response) => {
+    const item = await stockService.update(req.params.id, req.body);
+
+    res.status(200).json({
+      status: "success",
+      data: { item },
+    });
+  }
+);
+
+export const deleteStockItem = catchAsync(
+  async (req: Request, res: Response) => {
+    await stockService.delete(req.params.id);
+
+    res.status(204).json({
+      status: "success",
+      data: null,
+    });
+  }
+);
+
+export const transferStock = catchAsync(async (req: Request, res: Response) => {
+  const result = await stockService.transfer(req.body);
+
+  res.status(200).json({
+    status: "success",
+    data: result,
+  });
+});
+
+
+================================================================================
+FILE: ./backend/src/controllers\transactionController.ts
+================================================================================
+
+import { Request, Response } from "express";
+import { transactionService } from '../services/transaction.service.js';
+import catchAsync from '../utils/catchAsync.js';
+
+export const getAllTransactions = catchAsync(
+  async (req: Request, res: Response) => {
+    const filters = {
+      client_id: req.query.client_id as string,
+      status: req.query.status as string,
+      date_from: req.query.date_from as string,
+      date_to: req.query.date_to as string,
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 50,
+    };
+
+    const result = await transactionService.findAll(filters);
+
+    res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  }
+);
+
+export const getTransaction = catchAsync(
+  async (req: Request, res: Response) => {
+    const transaction = await transactionService.findById(req.params.id);
+
+    res.status(200).json({
+      status: "success",
+      data: { transaction },
+    });
+  }
+);
+
+export const createTransaction = catchAsync(
+  async (req: Request, res: Response) => {
+    const transaction = await transactionService.create(req.body);
+
+    res.status(201).json({
+      status: "success",
+      data: { transaction },
+    });
+  }
+);
+
+export const updateTransaction = catchAsync(
+  async (req: Request, res: Response) => {
+    const transaction = await transactionService.update(
+      req.params.id,
+      req.body
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: { transaction },
+    });
+  }
+);
+
+export const sendReceipt = catchAsync(async (req: Request, res: Response) => {
+  const { method, recipient } = req.body;
+
+  // This would integrate with email/SMS service
+  // For now, just return success
+  res.status(200).json({
+    status: "success",
+    message: `Receipt sent via ${method} to ${recipient}`,
+  });
+});
+
+
+================================================================================
+FILE: ./backend/src/controllers\treatmentController.ts
+================================================================================
+
+import { Request, Response, NextFunction } from "express";
+import { pool } from "../config/database.js";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+import {
+  createTreatmentSchema,
+  updateTreatmentSchema,
+} from "../validators/treatment.validator.js";
+import { ZodError } from "zod";
+
+// Helper to map DB row to API object
+function mapRow(row: any) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    durationMinutes: row.duration_minutes,
+    price: Number(row.price),
+    category: row.category,
+    benefits: row.benefits || [],
+    contraindications: row.contraindications || [],
+    preparationInstructions: row.preparation_instructions,
+    aftercareInstructions: row.aftercare_instructions,
+    availableFor: row.available_for || [],
+    imageUrl: row.image_url,
+    isActive: row.is_active,
+    popularityScore: row.popularity_score,
+    tags: row.tags || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// GET /api/v1/treatments
+export const getAllTreatments = catchAsync(
+  async (req: Request, res: Response) => {
+    const q = `SELECT * FROM treatments ORDER BY created_at DESC`;
+    const { rows } = await pool.query(q);
+    res.status(200).json({
+      status: "success",
+      results: rows.length,
+      data: { treatments: rows.map(mapRow) },
+    });
+  }
+);
+
+// GET /api/v1/treatments/:id
+export const getTreatment = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const q = `SELECT * FROM treatments WHERE id = $1 LIMIT 1`;
+    const { rows } = await pool.query(q, [req.params.id]);
+    if (rows.length === 0)
+      return next(AppError.notFound("Treatment not found"));
+    res
+      .status(200)
+      .json({ status: "success", data: { treatment: mapRow(rows[0]) } });
+  }
+);
+
+// POST /api/v1/treatments
+export const createTreatment = catchAsync(
+  async (req: any, res: Response, next: NextFunction) => {
+    try {
+      createTreatmentSchema.parse({ body: req.body });
+    } catch (err) {
+      if (err instanceof ZodError)
+        return next(
+          AppError.badRequest(err.issues.map((i) => i.message).join(", "))
+        );
+      throw err;
+    }
+
+    const b = req.body;
+    const q = `
+    INSERT INTO treatments
+      (name, description, duration_minutes, price, category,
+       benefits, contraindications,
+       preparation_instructions, aftercare_instructions,
+       available_for, image_url, is_active, popularity_score, tags, created_at, updated_at)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, now(), now())
+    RETURNING *;
+  `;
+    // store arrays as Postgres arrays or jsonb accordingly
+    const params = [
+      b.name,
+      b.description || null,
+      b.durationMinutes,
+      b.price,
+      b.category || null,
+      b.benefits ? JSON.stringify(b.benefits) : null, // benefits -> JSONB
+      b.contraindications ? JSON.stringify(b.contraindications) : null,
+      b.preparationInstructions || null,
+      b.aftercareInstructions || null,
+      b.availableFor && b.availableFor.length ? b.availableFor : null, // TEXT[]
+      b.imageUrl || null,
+      typeof b.isActive === "boolean" ? b.isActive : true,
+      b.popularityScore || 0,
+      b.tags && b.tags.length ? b.tags : null, // TEXT[]
+    ];
+
+    const { rows } = await pool.query(q, params);
+    res
+      .status(201)
+      .json({ status: "success", data: { treatment: mapRow(rows[0]) } });
+  }
+);
+
+// PATCH /api/v1/treatments/:id
+export const updateTreatment = catchAsync(
+  async (req: any, res: Response, next: NextFunction) => {
+    try {
+      updateTreatmentSchema.parse({ body: req.body });
+    } catch (err) {
+      if (err instanceof ZodError)
+        return next(
+          AppError.badRequest(err.issues.map((i) => i.message).join(", "))
+        );
+      throw err;
+    }
+
+    // Build dynamic SET clause (safe parameterized)
+    const fields = [];
+    const values: any[] = [];
+    let idx = 1;
+    const b = req.body;
+    const pushField = (col: string, val: any) => {
+      fields.push(`${col} = $${idx++}`);
+      values.push(val);
+    };
+
+    if (b.name !== undefined) pushField("name", b.name);
+    if (b.description !== undefined) pushField("description", b.description);
+    if (b.durationMinutes !== undefined)
+      pushField("duration_minutes", b.durationMinutes);
+    if (b.price !== undefined) pushField("price", b.price);
+    if (b.category !== undefined) pushField("category", b.category);
+    if (b.benefits !== undefined)
+      pushField("benefits", b.benefits ? JSON.stringify(b.benefits) : null);
+    if (b.contraindications !== undefined)
+      pushField(
+        "contraindications",
+        b.contraindications ? JSON.stringify(b.contraindications) : null
+      );
+    if (b.preparationInstructions !== undefined)
+      pushField("preparation_instructions", b.preparationInstructions);
+    if (b.aftercareInstructions !== undefined)
+      pushField("aftercare_instructions", b.aftercareInstructions);
+    if (b.availableFor !== undefined)
+      pushField(
+        "available_for",
+        b.availableFor && b.availableFor.length ? b.availableFor : null
+      );
+    if (b.imageUrl !== undefined) pushField("image_url", b.imageUrl);
+    if (b.isActive !== undefined) pushField("is_active", b.isActive);
+    if (b.popularityScore !== undefined)
+      pushField("popularity_score", b.popularityScore);
+    if (b.tags !== undefined)
+      pushField("tags", b.tags && b.tags.length ? b.tags : null);
+
+    if (fields.length === 0)
+      return next(AppError.badRequest("No fields provided for update"));
+
+    // add updated_at
+    fields.push(`updated_at = now()`);
+
+    const sql = `UPDATE treatments SET ${fields.join(
+      ", "
+    )} WHERE id = $${idx} RETURNING *`;
+    values.push(req.params.id);
+
+    const { rows } = await pool.query(sql, values);
+    if (rows.length === 0)
+      return next(AppError.notFound("Treatment not found"));
+    res
+      .status(200)
+      .json({ status: "success", data: { treatment: mapRow(rows[0]) } });
+  }
+);
+
+// DELETE /api/v1/treatments/:id
+export const deleteTreatment = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const q = `DELETE FROM treatments WHERE id = $1 RETURNING id`;
+    const { rows } = await pool.query(q, [req.params.id]);
+    if (rows.length === 0)
+      return next(AppError.notFound("Treatment not found"));
+    res.status(204).json({ status: "success", data: null });
+  }
+);

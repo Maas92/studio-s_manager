@@ -6,9 +6,9 @@ import {
   updateStaff,
   deleteStaff,
   getStaffPerformance,
-} from '../controllers/staffController.js';
-import { restrictTo } from '../middleware/userMiddleware.js';
-import { validateUUID } from '../middleware/validation.js';
+} from "../controllers/staffController.js";
+import { restrictTo } from "../middleware/userMiddleware.js";
+import { validateUUID } from "../middleware/validation.js";
 
 const router = Router();
 
@@ -16,13 +16,13 @@ const router = Router();
 router
   .route("/")
   .get(getAllStaff)
-  .post(restrictTo("owner", "manager"), createStaff);
+  .post(restrictTo("admin", "manager", "owner"), createStaff);
 
 router
   .route("/:id")
   .get(validateUUID("id"), getStaff)
-  .patch(validateUUID("id"), restrictTo("owner", "manager"), updateStaff)
-  .delete(validateUUID("id"), restrictTo("owner"), deleteStaff);
+  .patch(validateUUID("id"), restrictTo("admin", "owner"), updateStaff)
+  .delete(validateUUID("id"), restrictTo("admin", "owner"), deleteStaff);
 
 // Staff performance
 router.get(

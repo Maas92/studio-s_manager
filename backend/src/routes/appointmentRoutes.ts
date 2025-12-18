@@ -1,7 +1,7 @@
 import express from "express";
-import * as appointmentController from '../controllers/appointmentsController.js';
-import { restrictTo } from '../middleware/userMiddleware.js';
-import { validate, validateUUID } from '../middleware/validation.js';
+import * as appointmentController from "../controllers/appointmentsController.js";
+import { restrictTo } from "../middleware/userMiddleware.js";
+import { validate, validateUUID } from "../middleware/validation.js";
 import {
   createAppointmentSchema,
   updateAppointmentSchema,
@@ -9,7 +9,7 @@ import {
   availabilityQuerySchema,
   calendarQuerySchema,
   completeAppointmentSchema,
-} from '../validators/appointment.validator.js';
+} from "../validators/appointment.validator.js";
 
 const router = express.Router();
 
@@ -39,7 +39,7 @@ router
   .route("/")
   .get(appointmentController.getAllAppointments)
   .post(
-    restrictTo("owner", "manager", "receptionist"),
+    restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
     validate(createAppointmentSchema),
     appointmentController.createAppointment
   );
@@ -49,7 +49,7 @@ router
   .get(validateUUID("id"), appointmentController.getAppointment)
   .patch(
     validateUUID("id"),
-    restrictTo("owner", "manager", "receptionist"),
+    restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
     validate(updateAppointmentSchema),
     appointmentController.updateAppointment
   );
@@ -62,7 +62,7 @@ router
 router.post(
   "/:id/cancel",
   validateUUID("id"),
-  restrictTo("owner", "manager", "receptionist"),
+  restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
   validate(cancelAppointmentSchema),
   appointmentController.cancelAppointment
 );
@@ -71,7 +71,7 @@ router.post(
 router.post(
   "/:id/check-in",
   validateUUID("id"),
-  restrictTo("owner", "manager", "receptionist", "therapist"),
+  restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
   appointmentController.checkInAppointment
 );
 
@@ -79,7 +79,7 @@ router.post(
 router.post(
   "/:id/complete",
   validateUUID("id"),
-  restrictTo("owner", "manager", "therapist"),
+  restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
   validate(completeAppointmentSchema),
   appointmentController.completeAppointment
 );

@@ -16,6 +16,7 @@ import { useListFilter } from "../../hooks/useListFilter";
 import { useModalState } from "../../hooks/useModalState";
 
 import type { StaffMember } from "./StaffSchema";
+import useAuth from "../../hooks/useAuth";
 
 const PageWrapper = styled.div`
   padding: 2rem;
@@ -60,6 +61,7 @@ const Sub = styled.div`
 `;
 
 export default function StaffPage() {
+  const { canManageStaff, isAdmin, isOwner } = useAuth();
   const { listQuery, createMutation, updateMutation, deleteMutation } =
     useStaff();
   const staff = listQuery.data ?? [];
@@ -195,7 +197,9 @@ export default function StaffPage() {
           icon={UserIcon}
           title={searchQuery ? "No staff found" : "No staff yet"}
         >
-          {!searchQuery && <p>Click "New Staff" to add a team member.</p>}
+          {!searchQuery && canManageStaff && (
+            <p>Click "New Staff" to add a team member.</p>
+          )}
         </EmptyState>
       ) : (
         <Grid>

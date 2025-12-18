@@ -19,20 +19,20 @@ router.get("/:id", validateUUID("id"), treatmentController.getTreatment);
 router.post(
   "/",
   validate(createTreatmentSchema),
-  restrictTo("admin", "manager"),
+  restrictTo("admin", "manager", "owner"),
   treatmentController.createTreatment
 );
 router.patch(
   "/:id",
   validateUUID("id"),
   validate(updateTreatmentSchema),
-  restrictTo("admin", "manager"),
+  restrictTo("admin", "manager", "owner"),
   treatmentController.updateTreatment
 );
 router.delete(
   "/:id",
   validateUUID("id"),
-  restrictTo("admin"),
+  restrictTo("admin", "manager", "owner"),
   treatmentController.deleteTreatment
 );
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { staffService } from '../services/staff.service.js';
-import catchAsync from '../utils/catchAsync.js';
-import AppError from '../utils/appError.js';
+import { staffService } from "../services/staff.service.js";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
 
 export const getAllStaff = catchAsync(async (req: Request, res: Response) => {
   const filters = {
@@ -25,7 +25,7 @@ export const getStaff = catchAsync(async (req: Request, res: Response) => {
 
   res.status(200).json({
     status: "success",
-    data: { staff },
+    data: { staff: staff },
   });
 });
 
@@ -43,7 +43,7 @@ export const updateStaff = catchAsync(async (req: Request, res: Response) => {
 
   res.status(200).json({
     status: "success",
-    data: { staff },
+    data: { staff: staff },
   });
 });
 

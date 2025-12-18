@@ -28,8 +28,8 @@ export const CreateAppointmentSchema = z.object({
 export const ClientSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
 });
 
 export const TreatmentSchema = z.object({
@@ -41,7 +41,8 @@ export const TreatmentSchema = z.object({
 
 export const StaffSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
   role: z.string().optional(),
 });
 

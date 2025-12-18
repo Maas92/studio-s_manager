@@ -372,11 +372,7 @@ export default function StockPage() {
                         )}
                       </StockLevel>
                     </td>
-                    <td>
-                      {item.retailPrice
-                        ? `$${item.retailPrice.toFixed(2)}`
-                        : "—"}
-                    </td>
+                    <td>{item.retailPrice ? `$${item.retailPrice}` : "—"}</td>
                     <td>
                       <Actions>
                         <Button

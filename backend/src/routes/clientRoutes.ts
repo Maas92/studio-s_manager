@@ -21,24 +21,31 @@ router.get("/search", searchClients);
 router
   .route("/")
   .get(getAllClients)
-  .post(restrictTo("owner", "manager", "receptionist"), createClient);
+  .post(
+    restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
+    createClient
+  );
 
 router
   .route("/:id")
   .get(validateUUID("id"), getClient)
   .patch(
     validateUUID("id"),
-    restrictTo("owner", "manager", "receptionist"),
+    restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
     updateClient
   )
-  .delete(validateUUID("id"), restrictTo("owner", "manager"), deleteClient);
+  .delete(
+    validateUUID("id"),
+    restrictTo("owner", "manager", "admin"),
+    deleteClient
+  );
 
 // Client history and stats
 router.get("/:id/history", validateUUID("id"), getClientHistory);
 router.get(
   "/:id/stats",
   validateUUID("id"),
-  restrictTo("owner", "manager"),
+  restrictTo("admin", "owner", "manager"),
   getClientStats
 );
 

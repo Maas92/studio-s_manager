@@ -1,6 +1,7 @@
-import { pool } from '../config/database.js';
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
+import { pool } from "../config/database.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
+import { toCamelCase } from "../utils/fieldMapper.js";
 
 type StockLocation = "retail" | "treatment" | "storage";
 
@@ -94,7 +95,7 @@ export class StockService {
     ]);
 
     return {
-      items: dataResult.rows,
+      items: toCamelCase(dataResult.rows),
       total: parseInt(countResult.rows[0].count),
       page,
       limit,
@@ -114,7 +115,7 @@ export class StockService {
       throw AppError.notFound("Stock item not found");
     }
 
-    return result.rows[0];
+    return toCamelCase(result.rows[0]);
   }
 
   /**
@@ -143,7 +144,7 @@ export class StockService {
     );
 
     logger.info(`Stock item created: ${result.rows[0].id}`);
-    return result.rows[0];
+    return toCamelCase(result.rows[0]);
   }
 
   /**
@@ -194,7 +195,7 @@ export class StockService {
     }
 
     logger.info(`Stock item updated: ${id}`);
-    return result.rows[0];
+    return toCamelCase(result.rows[0]);
   }
 
   /**

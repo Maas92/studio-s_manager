@@ -1,6 +1,6 @@
-import { pool } from '../config/database.js';
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
+import { pool } from "../config/database.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
 
 interface CreateStaffData {
   name: string;
@@ -17,6 +17,37 @@ interface CreateStaffData {
 }
 
 export class StaffService {
+  /**
+   * Format staff object for response
+   */
+  private formatStaff(staff: any) {
+    // Parse name into firstName and lastName
+    const nameParts = staff.name?.trim().split(/\s+/) || ["", ""];
+
+    return {
+      id: staff.id,
+      name: staff.name,
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      email: staff.email,
+      phone: staff.phone,
+      role: staff.role,
+      specializations: staff.specializations || [],
+      status: staff.status,
+      hireDate: staff.hire_date,
+      bio: staff.bio,
+      certifications: staff.certifications || [],
+      schedule: staff.schedule
+        ? typeof staff.schedule === "string"
+          ? JSON.parse(staff.schedule)
+          : staff.schedule
+        : null,
+      avatar: staff.avatar,
+      createdAt: staff.created_at,
+      updatedAt: staff.updated_at,
+    };
+  }
+
   /**
    * Find all staff members
    */
@@ -72,7 +103,7 @@ export class StaffService {
     ]);
 
     return {
-      staff: dataResult.rows,
+      staff: dataResult.rows.map(this.formatStaff.bind(this)),
       total: parseInt(countResult.rows[0].count),
       page,
       limit,
@@ -90,7 +121,7 @@ export class StaffService {
       throw AppError.notFound("Staff member not found");
     }
 
-    return result.rows[0];
+    return this.formatStaff(result.rows[0]);
   }
 
   /**
@@ -119,7 +150,7 @@ export class StaffService {
     );
 
     logger.info(`Staff member created: ${result.rows[0].id}`);
-    return result.rows[0];
+    return this.formatStaff(result.rows[0]);
   }
 
   /**
@@ -174,7 +205,7 @@ export class StaffService {
     }
 
     logger.info(`Staff member updated: ${id}`);
-    return result.rows[0];
+    return this.formatStaff(result.rows[0]);
   }
 
   /**
@@ -197,17 +228,18 @@ export class StaffService {
    * Get staff performance
    */
   async getPerformance(id: string, period: string) {
+    // Use 'bookings' table instead of 'appointments'
     const result = await pool.query(
       `SELECT 
         s.id as staff_id,
         $2 as period,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'completed') as appointments_completed,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'cancelled') as appointments_cancelled,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as appointments_completed,
+        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'cancelled') as appointments_cancelled,
         COALESCE(SUM(sale.final_amount), 0) as total_revenue,
-        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'no_show') as no_shows
+        COUNT(DISTINCT b.id) FILTER (WHERE b.no_show = true) as no_shows
       FROM staff s
-      LEFT JOIN appointments a ON s.id = a.staff_id
-      LEFT JOIN sales sale ON a.id = sale.appointment_id
+      LEFT JOIN bookings b ON s.id = b.staff_id
+      LEFT JOIN sales sale ON b.id = sale.booking_id
       WHERE s.id = $1
       GROUP BY s.id`,
       [id, period]
@@ -217,7 +249,16 @@ export class StaffService {
       throw AppError.notFound("Staff member not found");
     }
 
-    return result.rows[0];
+    return {
+      staffId: result.rows[0].staff_id,
+      period: result.rows[0].period,
+      appointmentsCompleted:
+        parseInt(result.rows[0].appointments_completed) || 0,
+      appointmentsCancelled:
+        parseInt(result.rows[0].appointments_cancelled) || 0,
+      totalRevenue: parseFloat(result.rows[0].total_revenue) || 0,
+      noShows: parseInt(result.rows[0].no_shows) || 0,
+    };
   }
 }
 

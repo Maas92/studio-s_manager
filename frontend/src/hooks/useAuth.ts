@@ -14,7 +14,7 @@ export const useAuth = () => {
   // Permission helpers
   const canManageTreatments = isAdmin || isManager;
   const canManageAppointments = isStaff;
-  const canManageClients = isStaff;
+  const canManageClients = isAdmin;
   const canManageStock = isAdmin || isManager;
   const canViewReports = isAdmin || isManager;
   const canManageStaff = isOwner || isAdmin;
