@@ -74,7 +74,7 @@ export interface SaleItem {
   id: string;
   sale_id: string;
   product_id?: string; // Made optional/nullable
-  service_id?: string; // Added
+  treatment_id?: string; // Added
   quantity: number;
   unit_price: number;
   discount_amount: number;

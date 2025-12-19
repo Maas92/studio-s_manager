@@ -39,10 +39,12 @@ export function toSnakeCase(obj: any): any {
   if (typeof obj === "object" && obj.constructor === Object) {
     return Object.keys(obj).reduce((acc, key) => {
       // Convert camelCase to snake_case
-      const snakeKey = key.replace(
-        /[A-Z]/g,
-        (letter) => `_${letter.toLowerCase()}`
-      );
+      // Handle sequences of capitals (like ISO, ID, URL) as a single word
+      const snakeKey = key
+        .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2") // Handle acronyms followed by words: "URLPath" -> "URL_Path"
+        .replace(/([a-z\d])([A-Z])/g, "$1_$2") // Handle normal camelCase: "camelCase" -> "camel_Case"
+        .toLowerCase(); // Convert to lowercase
+
       acc[snakeKey] = toSnakeCase(obj[key]);
       return acc;
     }, {} as any);

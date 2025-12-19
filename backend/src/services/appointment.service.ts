@@ -1,11 +1,11 @@
-import { pool } from '../config/database.js';
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
+import { pool } from "../config/database.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
 
 interface AppointmentFilters {
   client_id?: string;
   staff_id?: string;
-  service_id?: string; // Changed from treatment_id
+  treatment_id?: string;
   status?: string;
   date_from?: string;
   date_to?: string;
@@ -15,17 +15,31 @@ interface AppointmentFilters {
 
 interface CreateAppointmentData {
   client_id: string;
-  staff_id: string;
-  service_id: string; // Changed from treatment_id
-  booking_date: string; // Changed from appointment_date
-  start_time: string;
-  end_time: string;
-  duration_minutes: number;
+  staff_id?: string;
+  treatment_id: string;
+  datetime_iso: string;
   notes?: string;
   created_by?: string;
 }
 
 export class AppointmentService {
+  private async getServiceDuration(treatment_id: string): Promise<number> {
+    const result = await pool.query(
+      `
+    SELECT duration_minutes
+    FROM treatments
+    WHERE id = $1
+    `,
+      [treatment_id]
+    );
+
+    if (result.rows.length === 0) {
+      throw AppError.notFound("Service not found");
+    }
+
+    return result.rows[0].duration_minutes;
+  }
+
   /**
    * Find all appointments with filters
    * FIXED: Use 'bookings' table and 'services' table
@@ -34,7 +48,7 @@ export class AppointmentService {
     const {
       client_id,
       staff_id,
-      service_id,
+      treatment_id,
       status,
       date_from,
       date_to,
@@ -56,9 +70,9 @@ export class AppointmentService {
       params.push(staff_id);
     }
 
-    if (service_id) {
-      conditions.push(`b.service_id = $${paramIndex++}`);
-      params.push(service_id);
+    if (treatment_id) {
+      conditions.push(`b.treatment_id = $${paramIndex++}`);
+      params.push(treatment_id);
     }
 
     if (status) {
@@ -88,12 +102,12 @@ export class AppointmentService {
         c.first_name || ' ' || c.last_name as client_name,
         c.phone as client_phone,
         c.email as client_email,
-        s.name as treatment_name,
-        s.duration_minutes as treatment_duration,
-        s.price as treatment_price
+        t.name as treatment_name,
+        t.duration_minutes as treatment_duration,
+        t.price as treatment_price
       FROM bookings b
       LEFT JOIN clients c ON b.client_id = c.id
-      LEFT JOIN services s ON b.service_id = s.id
+      LEFT JOIN treatments t ON b.treatment_id = t.id
       ${whereClause}
       ORDER BY b.booking_date DESC, b.start_time DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -131,13 +145,13 @@ export class AppointmentService {
         c.first_name || ' ' || c.last_name as client_name,
         c.phone as client_phone,
         c.email as client_email,
-        s.name as treatment_name,
-        s.description as treatment_description,
-        s.duration_minutes as treatment_duration,
-        s.price as treatment_price
+        t.name as treatment_name,
+        t.description as treatment_description,
+        t.duration_minutes as treatment_duration,
+        t.price as treatment_price
       FROM bookings b
       LEFT JOIN clients c ON b.client_id = c.id
-      LEFT JOIN services s ON b.service_id = s.id
+      LEFT JOIN treatments t ON b.treatment_id = t.id
       WHERE b.id = $1
     `,
       [id]
@@ -155,9 +169,26 @@ export class AppointmentService {
    * FIXED: Use 'bookings' table
    */
   async create(data: CreateAppointmentData) {
-    // Check for conflicts
-    const conflictCheck = await pool.query(
-      `
+    // 1. Parse start datetime
+    const start = new Date(data.datetime_iso);
+    if (isNaN(start.getTime())) {
+      throw AppError.badRequest("Invalid appointment datetime");
+    }
+
+    const booking_date = start.toISOString().slice(0, 10); // YYYY-MM-DD
+    const start_time = start.toTimeString().slice(0, 5); // HH:MM
+
+    // 2. Get service duration
+    const duration_minutes = await this.getServiceDuration(data.treatment_id);
+
+    // 3. Calculate end time
+    const end = new Date(start.getTime() + duration_minutes * 60000);
+    const end_time = end.toTimeString().slice(0, 5);
+
+    // 4. Conflict check (UNCHANGED logic, new inputs)
+    if (data.staff_id) {
+      const conflictCheck = await pool.query(
+        `
       SELECT id FROM bookings
       WHERE staff_id = $1
         AND booking_date = $2
@@ -168,34 +199,44 @@ export class AppointmentService {
           OR (start_time < $4 AND end_time >= $4)
           OR (start_time >= $3 AND end_time <= $4)
         )
-    `,
-      [data.staff_id, data.booking_date, data.start_time, data.end_time]
-    );
-
-    if (conflictCheck.rows.length > 0) {
-      throw AppError.conflict(
-        "This time slot is already booked for the selected staff member"
+      `,
+        [data.staff_id, booking_date, start_time, end_time]
       );
+
+      if (conflictCheck.rows.length > 0) {
+        throw AppError.conflict(
+          "This time slot is already booked for the selected staff member"
+        );
+      }
     }
 
+    // 5. Insert booking
     const result = await pool.query(
       `
-      INSERT INTO bookings (
-        client_id, staff_id, service_id, 
-        booking_date, start_time, end_time, 
-        total_price, status, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *
+    INSERT INTO bookings (
+      client_id,
+      staff_id,
+      treatment_id,
+      booking_date,
+      start_time,
+      end_time,
+      duration_minutes,
+      total_price,
+      status,
+      notes
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING *
     `,
       [
         data.client_id,
-        data.staff_id,
-        data.service_id,
-        data.booking_date,
-        data.start_time,
-        data.end_time,
-        0, // total_price - you might want to fetch this from services table
-        "scheduled",
+        data.staff_id || null,
+        data.treatment_id,
+        booking_date,
+        start_time,
+        end_time,
+        duration_minutes,
+        0, // total_price (can also be fetched from services)
+        "confirmed", // default status
         data.notes || null,
       ]
     );
@@ -216,7 +257,7 @@ export class AppointmentService {
     const allowedFields = [
       "client_id",
       "staff_id",
-      "service_id",
+      "treatment_id",
       "booking_date",
       "start_time",
       "end_time",
@@ -292,7 +333,7 @@ export class AppointmentService {
       SET status = 'checked_in',
           checked_in_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1 AND status = 'scheduled'
+      WHERE id = $1 AND status = 'confirmed'
       RETURNING *
     `,
       [id]
@@ -320,7 +361,7 @@ export class AppointmentService {
           notes = COALESCE($1, notes),
           completed_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2 AND status IN ('scheduled', 'checked_in')
+      WHERE id = $2 AND status IN ('confirmed', 'in_progress')
       RETURNING *
     `,
       [notes || null, id]
@@ -428,7 +469,7 @@ export class AppointmentService {
         s.price as treatment_price
       FROM bookings b
       LEFT JOIN clients c ON b.client_id = c.id
-      LEFT JOIN services s ON b.service_id = s.id
+      LEFT JOIN services s ON b.treatment_id = s.id
       WHERE b.booking_date >= $1
         AND b.booking_date <= $2
         ${staffCondition}

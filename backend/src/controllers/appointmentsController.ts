@@ -1,10 +1,26 @@
 import { Response, NextFunction } from "express";
-import { UserRequest } from '../middleware/userMiddleware.js';
-import { appointmentService } from '../services/appointment.service.js';
-import catchAsync from '../utils/catchAsync.js';
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
-import { toCamelCase } from '../utils/fieldMapper.js';
+import { UserRequest } from "../middleware/userMiddleware.js";
+import { appointmentService } from "../services/appointment.service.js";
+import catchAsync from "../utils/catchAsync.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
+import { toCamelCase, toSnakeCase } from "../utils/fieldMapper.js";
+/**
+ * Helper function to transform appointment data for frontend
+ */
+function transformAppointmentForFrontend(appointment: any) {
+  const transformed = toCamelCase(appointment);
+
+  // Construct datetimeISO from booking_date and start_time
+  if (appointment.booking_date && appointment.start_time) {
+    const date = new Date(appointment.booking_date);
+    const [hours, minutes] = appointment.start_time.split(":");
+    date.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
+    transformed.datetimeISO = date.toISOString();
+  }
+
+  return transformed;
+}
 
 /**
  * Get all appointments with filtering
@@ -32,7 +48,7 @@ export const getAllAppointments = catchAsync(
       page: result.page,
       totalPages: result.totalPages,
       data: {
-        appointments: result.appointments,
+        appointments: result.appointments.map(transformAppointmentForFrontend),
       },
     });
   }
@@ -49,7 +65,7 @@ export const getAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment: toCamelCase(appointment),
+        appointment: transformAppointmentForFrontend(appointment),
       },
     });
   }
@@ -61,10 +77,12 @@ export const getAppointment = catchAsync(
  */
 export const createAppointment = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const appointment = await appointmentService.create({
+    const data = toSnakeCase({
       ...req.body,
-      created_by: req.user?.id,
+      createdBy: req.user?.id,
     });
+
+    const appointment = await appointmentService.create(data);
 
     logger.info(
       `Appointment created by user ${req.user?.id}: ${appointment.id}`
@@ -73,7 +91,7 @@ export const createAppointment = catchAsync(
     res.status(201).json({
       status: "success",
       data: {
-        appointment: toCamelCase(appointment),
+        appointment: transformAppointmentForFrontend(appointment),
       },
     });
   }
@@ -97,7 +115,7 @@ export const updateAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment: toCamelCase(appointment),
+        appointment: transformAppointmentForFrontend(appointment),
       },
     });
   }
@@ -124,7 +142,7 @@ export const cancelAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment: toCamelCase(appointment),
+        appointment: transformAppointmentForFrontend(appointment),
       },
     });
   }
@@ -145,7 +163,7 @@ export const checkInAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment: toCamelCase(appointment),
+        appointment: transformAppointmentForFrontend(appointment),
       },
     });
   }
@@ -168,36 +186,7 @@ export const completeAppointment = catchAsync(
     res.status(200).json({
       status: "success",
       data: {
-        appointment: toCamelCase(appointment),
-      },
-    });
-  }
-);
-
-/**
- * Get appointment availability
- * GET /api/v1/appointments/availability
- */
-export const getAvailability = catchAsync(
-  async (req: UserRequest, res: Response, next: NextFunction) => {
-    const { staff_id, date, duration_minutes } = req.query;
-
-    if (!staff_id || !date || !duration_minutes) {
-      throw AppError.badRequest(
-        "staff_id, date, and duration_minutes are required"
-      );
-    }
-
-    const availability = await appointmentService.getAvailability(
-      staff_id as string,
-      date as string,
-      parseInt(duration_minutes as string)
-    );
-
-    res.status(200).json({
-      status: "success",
-      data: {
-        availability,
+        appointment: transformAppointmentForFrontend(appointment),
       },
     });
   }
@@ -225,7 +214,37 @@ export const getCalendar = catchAsync(
       status: "success",
       results: appointments.length,
       data: {
-        appointment: toCamelCase(appointments),
+        appointments: appointments.map(transformAppointmentForFrontend),
+      },
+    });
+  }
+);
+
+/**
+ * Get appointment availability
+ * GET /api/v1/appointments/availability
+ */
+
+export const getAvailability = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    const { staff_id, date, duration_minutes } = req.query;
+
+    if (!staff_id || !date || !duration_minutes) {
+      throw AppError.badRequest(
+        "staff_id, date, and duration_minutes are required"
+      );
+    }
+
+    const availability = await appointmentService.getAvailability(
+      staff_id as string,
+      date as string,
+      parseInt(duration_minutes as string)
+    );
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        availability,
       },
     });
   }

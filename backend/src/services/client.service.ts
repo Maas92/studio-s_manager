@@ -1,6 +1,6 @@
-import { pool } from '../config/database.js';
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
+import { pool } from "../config/database.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
 
 interface CreateClientData {
   name: string;
@@ -290,7 +290,7 @@ export class ClientService {
           s.price as treatment_price,
           s.duration_minutes
         FROM bookings b
-        LEFT JOIN services s ON b.service_id = s.id
+        LEFT JOIN services s ON b.treatment_id = s.id
         WHERE b.client_id = $1
         ORDER BY b.booking_date DESC, b.start_time DESC
         LIMIT 50`,
@@ -319,7 +319,7 @@ export class ClientService {
         FROM sales sl
         JOIN sale_items si ON sl.id = si.sale_id
         LEFT JOIN products p ON si.product_id = p.id
-        LEFT JOIN services s ON si.service_id = s.id
+        LEFT JOIN services s ON si.treatment_id = s.id
         WHERE sl.client_id = $1
         GROUP BY sl.id
         ORDER BY sl.sale_date DESC
@@ -353,7 +353,7 @@ export class ClientService {
         array_agg(DISTINCT srv.name) FILTER (WHERE srv.name IS NOT NULL) as favorite_treatments
       FROM clients c
       LEFT JOIN bookings b ON c.id = b.client_id
-      LEFT JOIN services srv ON b.service_id = srv.id
+      LEFT JOIN services srv ON b.treatment_id = srv.id
       LEFT JOIN sales s ON c.id = s.client_id
       WHERE c.id = $1
       GROUP BY c.id`,

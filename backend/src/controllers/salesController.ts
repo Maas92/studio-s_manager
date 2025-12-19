@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { getClient } from '../config/database.js';
-import AppError from '../utils/appError.js';
-import catchAsync from '../utils/catchAsync.js';
-import { createSaleSchema } from '../validators/sale.validator.js';
+import { getClient } from "../config/database.js";
+import AppError from "../utils/appError.js";
+import catchAsync from "../utils/catchAsync.js";
+import { createSaleSchema } from "../validators/sale.validator.js";
 
 export const createSale = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -120,7 +120,7 @@ export const createSale = catchAsync(
           `INSERT INTO sale_items (
             sale_id, 
             product_id, 
-            service_id,
+            treatment_id,
             quantity, 
             unit_price, 
             discount_amount, 
