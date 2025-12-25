@@ -133,19 +133,29 @@ export default function Appointments() {
   const [formValues, setFormValues] =
     useState<AppointmentFormValues>(INITIAL_FORM_STATE);
 
-  // Handle incoming navigation state (from booking in treatments)
+  // Handle incoming navigation state (from booking in clients or treatments)
   useEffect(() => {
     const state = location.state as any;
-    if (state?.createAppointment && state?.treatmentId) {
-      setFormValues({
-        ...INITIAL_FORM_STATE,
-        treatment: state.treatmentId,
-      });
+    if (state?.createAppointment) {
+      // Pre-fill form with whatever we have
+      const newFormValues = { ...INITIAL_FORM_STATE };
+
+      if (state.treatmentId) {
+        newFormValues.treatment = state.treatmentId;
+      }
+
+      if (state.clientId) {
+        newFormValues.client = state.clientId;
+      }
+
+      setFormValues(newFormValues);
       setShowCreateModal(true);
 
       // Show success message
       if (state.treatmentName) {
         toast.success(`Creating appointment for ${state.treatmentName}`);
+      } else if (state.clientName) {
+        toast.success(`Creating appointment for ${state.clientName}`);
       }
 
       // Clear the navigation state

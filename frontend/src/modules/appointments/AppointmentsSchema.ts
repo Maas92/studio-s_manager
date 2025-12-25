@@ -12,6 +12,9 @@ export const AppointmentSchema = z.object({
   staffId: z.string().nullable().optional(),
   staffName: z.string().optional(),
   notes: z.string().nullable().optional(),
+  duration: z.number().optional(),
+  price: z.number().optional(),
+  time: z.string().optional(),
 });
 
 export const CreateAppointmentSchema = z.object({

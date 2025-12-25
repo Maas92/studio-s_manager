@@ -421,10 +421,12 @@ export default function PointOfSale() {
         const payload = {
           clientId: selectedClient?.id,
           items: cart.map((item) => ({
+            id: item.id,
             type: item.type,
             referenceId: item.type === "product" ? item.productId : item.id,
             name: item.name,
             price: item.price,
+            originalPrice: item.originalPrice || item.price,
             quantity: item.quantity,
             notes: item.notes,
             staffId: item.staffId,

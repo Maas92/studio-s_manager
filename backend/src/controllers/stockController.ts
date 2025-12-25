@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { stockService } from '../services/stock.service.js';
-import catchAsync from '../utils/catchAsync.js';
+import { stockService } from "../services/stock.service.js";
+import catchAsync from "../utils/catchAsync.js";
+import { toSnakeCase } from "../utils/fieldMapper.js";
 
 export const getAllStockItems = catchAsync(
   async (req: Request, res: Response) => {
@@ -65,7 +66,8 @@ export const deleteStockItem = catchAsync(
 );
 
 export const transferStock = catchAsync(async (req: Request, res: Response) => {
-  const result = await stockService.transfer(req.body);
+  const data = toSnakeCase(req.body);
+  const result = await stockService.transfer(data);
 
   res.status(200).json({
     status: "success",

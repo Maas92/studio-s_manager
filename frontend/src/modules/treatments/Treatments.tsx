@@ -267,6 +267,7 @@ export default function TreatmentsPage() {
 
   const handleBook = useCallback(
     (treatmentId: string, treatmentName: string) => {
+      detailModal.close();
       // Navigate to appointments page with pre-filled treatment
       navigate("/appointments", {
         state: {

@@ -17,7 +17,19 @@ function transformAppointmentForFrontend(appointment: any) {
     const [hours, minutes] = appointment.start_time.split(":");
     date.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
     transformed.datetimeISO = date.toISOString();
+
+    // Add formatted time for display
+    transformed.time = appointment.start_time;
   }
+
+  // Add duration from treatment_duration or duration_minutes
+  transformed.duration =
+    appointment.treatment_duration || appointment.duration_minutes;
+
+  // Add price from treatment_price or total_price
+  transformed.price = parseFloat(
+    appointment.treatment_price || appointment.total_price || "0"
+  );
 
   return transformed;
 }

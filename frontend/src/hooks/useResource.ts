@@ -16,7 +16,6 @@ type Client<T, CreateInput> = {
   create: (input: CreateInput) => Promise<T>;
   update: (id: string, updates: Partial<CreateInput>) => Promise<T>;
   delete: (id: string) => Promise<void>;
-  transfer: (id: string, targetId: string, quantity: number) => Promise<void>;
 };
 
 export function useResource<T, CreateInput = Partial<T>>(opts: {
@@ -26,7 +25,6 @@ export function useResource<T, CreateInput = Partial<T>>(opts: {
     create?: string;
     update?: string;
     delete?: string;
-    transfer?: string;
   };
 }) {
   const { resourceKey, client, toastMessages } = opts;
@@ -71,24 +69,6 @@ export function useResource<T, CreateInput = Partial<T>>(opts: {
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
   });
 
-  const transferMutation = useMutation({
-    mutationFn: (payload: {
-      fromStockId: string;
-      toLocation: "retail" | "treatment" | "storage";
-      quantity: number;
-    }) =>
-      client.transfer(
-        payload.fromStockId,
-        payload.toLocation,
-        payload.quantity
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [resourceKey] });
-      if (toastMessages?.transfer) toast.success(toastMessages.transfer);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Transfer failed"),
-  });
-
   function getQuery(id: string) {
     return useQuery({
       queryKey: [resourceKey, id],
@@ -103,6 +83,5 @@ export function useResource<T, CreateInput = Partial<T>>(opts: {
     createMutation,
     updateMutation,
     deleteMutation,
-    transferMutation,
   };
 }

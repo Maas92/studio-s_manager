@@ -20,7 +20,7 @@ interface CreateStockItemData {
 }
 
 interface TransferStockData {
-  item_id: string;
+  sku: string;
   from_location: StockLocation;
   to_location: StockLocation;
   quantity: number;
@@ -207,50 +207,92 @@ export class StockService {
     try {
       await client.query("BEGIN");
 
-      // Check if item exists at source location
+      // 1. Get source item by SKU + from_location
       const sourceCheck = await client.query(
-        "SELECT quantity FROM stock_items WHERE id = $1 AND location = $2",
-        [data.item_id, data.from_location]
+        `SELECT * FROM stock_items
+         WHERE sku = $1 AND location = $2
+         FOR UPDATE`,
+        [data.sku, data.from_location]
       );
 
       if (sourceCheck.rows.length === 0) {
-        throw AppError.notFound("Item not found at source location");
+        throw AppError.notFound(
+          `Item with SKU "${data.sku}" not found at ${data.from_location} location`
+        );
       }
 
-      if (sourceCheck.rows[0].quantity < data.quantity) {
-        throw AppError.badRequest("Insufficient quantity at source location");
+      const sourceItem = sourceCheck.rows[0];
+
+      if (sourceItem.quantity < data.quantity) {
+        throw AppError.badRequest(
+          `Insufficient quantity at ${data.from_location}. Available: ${sourceItem.quantity}, Requested: ${data.quantity}`
+        );
       }
 
-      // Decrease quantity at source
+      // 2. Decrease quantity at source
       await client.query(
-        "UPDATE stock_items SET quantity = quantity - $1 WHERE id = $2 AND location = $3",
-        [data.quantity, data.item_id, data.from_location]
+        `UPDATE stock_items
+         SET quantity = quantity - $1,
+             updated_at = NOW()
+         WHERE sku = $2 AND location = $3`,
+        [data.quantity, data.sku, data.from_location]
       );
 
-      // Check if item exists at destination
+      // 3. Check if item exists at destination
       const destCheck = await client.query(
-        "SELECT id FROM stock_items WHERE id = $1 AND location = $2",
-        [data.item_id, data.to_location]
+        `SELECT * FROM stock_items
+         WHERE sku = $1 AND location = $2
+         FOR UPDATE`,
+        [data.sku, data.to_location]
       );
 
       if (destCheck.rows.length > 0) {
-        // Increase quantity at destination
+        // Update existing destination item
         await client.query(
-          "UPDATE stock_items SET quantity = quantity + $1 WHERE id = $2 AND location = $3",
-          [data.quantity, data.item_id, data.to_location]
+          `UPDATE stock_items
+           SET quantity = quantity + $1,
+               updated_at = NOW()
+           WHERE sku = $2 AND location = $3`,
+          [data.quantity, data.sku, data.to_location]
         );
       } else {
-        // Create new entry at destination (would need item details)
-        throw AppError.badRequest("Destination location entry does not exist");
+        // Create new destination item (with new UUID)
+        await client.query(
+          `INSERT INTO stock_items (
+            name, sku, category, location, quantity,
+            min_quantity, unit, cost, retail_price,
+            supplier, notes, last_restocked
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+          [
+            sourceItem.name,
+            data.sku,
+            sourceItem.category,
+            data.to_location,
+            data.quantity,
+            sourceItem.min_quantity || 0,
+            sourceItem.unit,
+            sourceItem.cost,
+            sourceItem.retail_price,
+            sourceItem.supplier,
+            sourceItem.notes,
+          ]
+        );
       }
 
-      // Log the transfer
+      // 4. Log transfer
       await client.query(
         `INSERT INTO stock_transfers (
-          item_id, from_location, to_location, quantity, notes, transferred_at
-        ) VALUES ($1, $2, $3, $4, $5, NOW())`,
+          sku,
+          from_location,
+          to_location,
+          quantity,
+          notes,
+          transferred_at
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW())`,
         [
-          data.item_id,
+          data.sku,
           data.from_location,
           data.to_location,
           data.quantity,
@@ -259,8 +301,9 @@ export class StockService {
       );
 
       await client.query("COMMIT");
+
       logger.info(
-        `Stock transferred: ${data.item_id} from ${data.from_location} to ${data.to_location}`
+        `Stock transferred: SKU ${data.sku} - ${data.quantity} units from ${data.from_location} to ${data.to_location}`
       );
 
       return { success: true };

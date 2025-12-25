@@ -1,4 +1,6 @@
 import { createResourceClient } from "../services/resourceFactory";
+import api from "../services/api";
+import { unwrapResponse, unwrapSingleResponse } from "../utils/unwrapResponse";
 import {
   StockItemSchema,
   CreateStockItemSchema,
@@ -7,8 +9,8 @@ import {
   type CreateStockItemInput,
   type TransferStockInput,
 } from "../modules/stock/StockSchema";
-import { tr } from "zod/v4/locales";
 
+// Create the base resource client (WITHOUT transfer)
 export const stockClient = createResourceClient<
   StockItem,
   CreateStockItemInput
@@ -16,5 +18,19 @@ export const stockClient = createResourceClient<
   basePath: "/stock",
   schema: StockItemSchema,
   createSchema: CreateStockItemSchema,
-  transferSchema: TransferStockSchema,
 });
+
+// Add the custom transfer method separately
+export async function transferStock(data: TransferStockInput) {
+  TransferStockSchema.parse(data); // Validate input
+  const response = await api.post("/stock/transfer", data);
+  const result = unwrapSingleResponse(response);
+  if (!result) {
+    throw new Error("Failed to transfer stock");
+  }
+
+  return result;
+}
+
+// Export types
+export type { StockItem, CreateStockItemInput, TransferStockInput };

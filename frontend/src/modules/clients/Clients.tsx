@@ -319,6 +319,8 @@ export default function ClientsPage() {
 
   const handleCreateAppointment = useCallback(
     (clientId: string, clientName: string) => {
+      detailModal.close();
+
       navigate("/appointments", {
         state: {
           createAppointment: true,
@@ -327,7 +329,7 @@ export default function ClientsPage() {
         },
       });
     },
-    [navigate]
+    [navigate, detailModal]
   );
 
   if (isLoading) {

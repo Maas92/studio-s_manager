@@ -34,7 +34,7 @@ export const CreateStockItemSchema = z.object({
 });
 
 export const TransferStockSchema = z.object({
-  itemId: z.string(),
+  sku: z.string().min(1, "SKU is required"),
   fromLocation: StockLocationSchema,
   toLocation: StockLocationSchema,
   quantity: z.number().min(1, "Quantity must be at least 1"),

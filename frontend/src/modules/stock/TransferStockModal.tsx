@@ -3,16 +3,20 @@ import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import styled from "styled-components";
-import type { StockItem, StockLocation, TransferStockInput } from "./api";
+import type {
+  StockItem,
+  StockLocation,
+  TransferStockInput,
+} from "./StockSchema";
+import { useStock } from "./useStock";
 import { ArrowRight, Package, MapPin, AlertCircle } from "lucide-react";
 
 interface TransferStockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTransfer: (transfer: TransferStockInput) => void;
-  transferring?: boolean;
-  preselectedItem?: StockItem | null;
   stockItems?: StockItem[];
+  preselectedItem?: StockItem | null;
+  onSuccess?: () => void;
 }
 
 const Form = styled.form`
@@ -171,26 +175,21 @@ const LOCATION_COLORS: Record<StockLocation, string> = {
   storage: "#f59e0b",
 };
 
-const INITIAL_FORM: Omit<TransferStockInput, "itemId"> = {
-  fromLocation: "storage",
-  toLocation: "retail",
-  quantity: 1,
-  notes: "",
-};
-
 export default function TransferStockModal({
   isOpen,
   onClose,
-  onTransfer,
-  transferring = false,
-  preselectedItem,
   stockItems = [],
+  preselectedItem,
+  onSuccess,
 }: TransferStockModalProps) {
   const [selectedItemId, setSelectedItemId] = useState("");
   const [fromLocation, setFromLocation] = useState<StockLocation>("storage");
   const [toLocation, setToLocation] = useState<StockLocation>("retail");
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+
+  // Import the transfer mutation hook
+  const { transferMutation } = useStock();
 
   // Reset and set preselected item when modal opens
   useEffect(() => {
@@ -216,27 +215,47 @@ export default function TransferStockModal({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (!selectedItemId || !quantity) return;
+      if (!selectedItemId || !quantity || !selectedItem?.sku) return;
 
-      onTransfer({
-        itemId: selectedItemId,
-        fromLocation,
-        toLocation,
-        quantity,
-        notes: notes || undefined,
-      });
+      transferMutation.mutate(
+        {
+          sku: selectedItem.sku,
+          fromLocation,
+          toLocation,
+          quantity,
+          notes: notes || undefined,
+        },
+        {
+          onSuccess: () => {
+            onClose();
+            onSuccess?.();
+          },
+        }
+      );
     },
-    [selectedItemId, fromLocation, toLocation, quantity, notes, onTransfer]
+    [
+      selectedItemId,
+      selectedItem,
+      fromLocation,
+      toLocation,
+      quantity,
+      notes,
+      transferMutation,
+      onClose,
+      onSuccess,
+    ]
   );
 
   const handleClose = useCallback(() => {
+    if (transferMutation.isPending) return; // Prevent closing while transferring
+
     setSelectedItemId("");
     setFromLocation("storage");
     setToLocation("retail");
     setQuantity(1);
     setNotes("");
     onClose();
-  }, [onClose]);
+  }, [onClose, transferMutation.isPending]);
 
   const isValid = selectedItemId && quantity > 0 && fromLocation !== toLocation;
   const hasInsufficientStock = selectedItem && quantity > selectedItem.quantity;
@@ -271,7 +290,7 @@ export default function TransferStockModal({
               }
             }}
             required
-            disabled={!!preselectedItem}
+            disabled={!!preselectedItem || transferMutation.isPending}
           >
             <option value="">Select an item...</option>
             {stockItems.map((item) => (
@@ -332,6 +351,7 @@ export default function TransferStockModal({
             value={toLocation}
             onChange={(e) => setToLocation(e.target.value as StockLocation)}
             required
+            disabled={transferMutation.isPending}
           >
             <option value="retail">Retail</option>
             <option value="treatment">Treatment</option>
@@ -353,6 +373,7 @@ export default function TransferStockModal({
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
             required
+            disabled={transferMutation.isPending}
           />
         </FormField>
 
@@ -377,6 +398,7 @@ export default function TransferStockModal({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add any notes about this transfer..."
+            disabled={transferMutation.isPending}
           />
         </FormField>
 
@@ -386,16 +408,18 @@ export default function TransferStockModal({
             variation="secondary"
             type="button"
             onClick={handleClose}
-            disabled={transferring}
+            disabled={transferMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             variation="primary"
             type="submit"
-            disabled={transferring || !isValid || hasInsufficientStock}
+            disabled={
+              transferMutation.isPending || !isValid || hasInsufficientStock
+            }
           >
-            {transferring ? "Transferring..." : "Transfer Stock"}
+            {transferMutation.isPending ? "Transferring..." : "Transfer Stock"}
           </Button>
         </Actions>
       </Form>

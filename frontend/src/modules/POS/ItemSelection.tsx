@@ -604,6 +604,7 @@ export default function ItemSelection({
                     type: "appointment",
                     name: apt.treatmentName,
                     price: apt.price || 0,
+                    originalPrice: apt.price || 0,
                     quantity: 1,
                   })
                 }
@@ -638,6 +639,7 @@ export default function ItemSelection({
                     type: "treatment",
                     name: t.name,
                     price: t.price,
+                    originalPrice: t.price || 0,
                     quantity: 1,
                   })
                 }
@@ -674,6 +676,7 @@ export default function ItemSelection({
                       type: "product",
                       name: p.name,
                       price: p.price,
+                      originalPrice: p.price || 0,
                       productId: key,
                       stockId: p.id,
                       quantity: 1,

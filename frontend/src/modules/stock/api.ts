@@ -93,10 +93,6 @@ export async function transferStock(
     const validatedInput = TransferStockSchema.parse(input);
 
     // Validate transfer
-    if (validatedInput.fromLocation === validatedInput.toLocation) {
-      throw new Error("Cannot transfer to the same location");
-    }
-
     if (validatedInput.quantity <= 0) {
       throw new Error("Transfer quantity must be greater than zero");
     }
