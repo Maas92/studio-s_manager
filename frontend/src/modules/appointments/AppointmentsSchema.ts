@@ -8,7 +8,9 @@ export const AppointmentSchema = z.object({
   treatmentId: z.string(),
   treatmentName: z.string().optional(),
   datetimeISO: z.string().datetime(),
-  status: z.enum(["confirmed", "pending", "cancelled", "completed"]).optional(),
+  status: z
+    .enum(["confirmed", "pending", "cancelled", "completed", "no_show"])
+    .optional(),
   staffId: z.string().nullable().optional(),
   staffName: z.string().optional(),
   notes: z.string().nullable().optional(),
@@ -22,7 +24,7 @@ export const CreateAppointmentSchema = z.object({
   treatmentId: z.string().min(1, "Treatment is required"),
   datetimeISO: z.string().datetime(),
   status: z
-    .enum(["confirmed", "pending", "cancelled", "completed"])
+    .enum(["confirmed", "pending", "cancelled", "completed", "no_show"])
     .default("confirmed"),
   staffId: z.string().optional(),
   notes: z.string().optional(),

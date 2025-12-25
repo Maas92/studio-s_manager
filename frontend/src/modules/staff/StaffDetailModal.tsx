@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import styled from "styled-components";
 import type { StaffMember, CreateStaffMemberInput } from "./api";
+import type { Appointment } from "../appointments/AppointmentsSchema";
 import {
   Edit2,
   Save,
@@ -22,6 +23,9 @@ import {
   Clock,
   Users,
   AlertCircle,
+  Percent,
+  Target,
+  Activity,
 } from "lucide-react";
 
 interface StaffDetailModalProps {
@@ -33,6 +37,7 @@ interface StaffDetailModalProps {
   onBookStaff?: (staffId: string, staffName: string) => void;
   updating?: boolean;
   deleting?: boolean;
+  appointments?: Appointment[];
   isAdmin?: boolean;
 }
 
@@ -41,14 +46,14 @@ const Content = styled.div`
   gap: 1.5rem;
 `;
 
-const PerformanceSection = styled.div`
+const StatsSection = styled.div`
   padding: 1.5rem;
   background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid ${({ theme }) => theme.color.border};
 `;
 
-const PerformanceTitle = styled.h4`
+const StatsTitle = styled.h4`
   margin: 0 0 1.25rem 0;
   font-size: 1rem;
   font-weight: 600;
@@ -58,12 +63,12 @@ const PerformanceTitle = styled.h4`
   gap: 0.5rem;
 `;
 
-const KPIGrid = styled.div`
+const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -72,8 +77,8 @@ const KPIGrid = styled.div`
   }
 `;
 
-const KPICard = styled.div<{
-  $variant?: "success" | "warning" | "danger" | "info";
+const StatCard = styled.div<{
+  $variant?: "success" | "info" | "warning" | "danger";
 }>`
   display: flex;
   flex-direction: column;
@@ -99,13 +104,13 @@ const KPICard = styled.div<{
     }};
 `;
 
-const KPIHeader = styled.div`
+const StatHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
 `;
 
-const KPILabel = styled.div`
+const StatLabel = styled.div`
   font-size: 0.75rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.mutedText};
@@ -113,32 +118,78 @@ const KPILabel = styled.div`
   letter-spacing: 0.05em;
 `;
 
-const KPIIcon = styled.div<{ $color?: string }>`
-  color: ${({ $color, theme }) => $color || theme.color.brand600};
+const StatIcon = styled.div<{ $color?: string }>`
+  color: ${({ $color }) => $color};
 `;
 
-const KPIValue = styled.div<{ $color?: string }>`
+const StatValue = styled.div<{ $color?: string }>`
   font-size: 1.75rem;
   font-weight: 700;
   color: ${({ $color, theme }) => $color || theme.color.text};
   line-height: 1;
 `;
 
-const KPISubtext = styled.div`
+const StatSubtext = styled.div`
   font-size: 0.75rem;
   color: ${({ theme }) => theme.color.mutedText};
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
 `;
 
-const TrendIndicator = styled.span<{ $direction: "up" | "down" }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.125rem;
-  color: ${({ $direction, theme }) =>
-    $direction === "up" ? theme.color.green700 : theme.color.red600};
+const PayrollSection = styled.div`
+  padding: 1.5rem;
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.color.brand50},
+    ${({ theme }) => theme.color.blue100}
+  );
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const PayrollTitle = styled.h4`
+  margin: 0 0 1.25rem 0;
+  font-size: 1rem;
   font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const PayrollGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const PayrollCard = styled.div`
+  padding: 1rem;
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const PayrollLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+`;
+
+const PayrollValue = styled.div`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.color.text};
+  margin-bottom: 0.25rem;
+`;
+
+const PayrollDetail = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.color.mutedText};
 `;
 
 const Form = styled.form`
@@ -267,6 +318,7 @@ const TagsContainer = styled.div`
 
 const Tag = styled.span`
   display: inline-flex;
+  align-items: center;
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 0.75rem;
@@ -310,6 +362,7 @@ export default function StaffDetailModal({
   onBookStaff,
   updating = false,
   deleting = false,
+  appointments = [],
   isAdmin = false,
 }: StaffDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -324,6 +377,8 @@ export default function StaffDetailModal({
     hireDate: "",
     bio: "",
     certifications: [],
+    hourlyRate: 0,
+    commissionRate: 0,
   });
 
   useEffect(() => {
@@ -339,19 +394,97 @@ export default function StaffDetailModal({
         hireDate: member.hireDate || "",
         bio: member.bio || "",
         certifications: member.certifications || [],
+        hourlyRate: member.hourlyRate || 0,
+        commissionRate: member.commissionRate || 0,
       });
       setIsEditing(false);
     }
   }, [member]);
 
+  const staffStats = useMemo(() => {
+    if (!member) return null;
+
+    const staffAppts = appointments.filter((a) => a.staffId === member.id);
+    const completed = staffAppts.filter((a) => a.status === "completed");
+    const cancelled = staffAppts.filter((a) => a.status === "cancelled");
+    const noShow = staffAppts.filter((a) => a.status === "no_show");
+
+    const totalRevenue = completed.reduce(
+      (sum, appt) => sum + (appt.price || 0),
+      0
+    );
+
+    const now = Date.now();
+    const upcoming = staffAppts.filter(
+      (a) =>
+        new Date(a.datetimeISO).getTime() >= now && a.status === "confirmed"
+    );
+
+    // Calculate total hours worked (assuming each appointment duration)
+    const totalMinutes = completed.reduce(
+      (sum, appt) => sum + (appt.duration || 60),
+      0
+    );
+    const totalHours = totalMinutes / 60;
+
+    // Calculate utilization rate (assuming 40 hour work week, 4 weeks month = 160 hours)
+    const availableHours = 160;
+    const utilizationRate = (totalHours / availableHours) * 100;
+
+    // Calculate average rating (mock - would come from reviews)
+    const avgRating = 4.7;
+
+    // Calculate client retention (mock calculation)
+    const uniqueClients = new Set(completed.map((a) => a.clientId)).size;
+    const repeatClients = completed.length - uniqueClients;
+    const retentionRate =
+      uniqueClients > 0 ? (repeatClients / completed.length) * 100 : 0;
+
+    // No-show rate
+    const noShowRate =
+      staffAppts.length > 0 ? (noShow.length / staffAppts.length) * 100 : 0;
+
+    return {
+      totalAppointments: staffAppts.length,
+      completed: completed.length,
+      cancelled: cancelled.length,
+      noShow: noShow.length,
+      upcoming: upcoming.length,
+      totalRevenue,
+      totalHours,
+      utilizationRate,
+      avgRating,
+      retentionRate,
+      noShowRate,
+      uniqueClients,
+    };
+  }, [member, appointments]);
+
+  const payrollData = useMemo(() => {
+    if (!member || !staffStats) return null;
+
+    const hourlyWages = (member.hourlyRate || 0) * staffStats.totalHours;
+    const commission =
+      staffStats.totalRevenue * ((member.commissionRate || 0) / 100);
+    const totalEarnings = hourlyWages + commission;
+
+    return {
+      hourlyWages,
+      commission,
+      totalEarnings,
+      hoursWorked: staffStats.totalHours,
+      appointmentsCompleted: staffStats.completed,
+    };
+  }, [member, staffStats]);
+
   const handleSave = useCallback(() => {
-    if (!member || !isAdmin) return;
+    if (!member) return;
     onUpdate?.(member.id, formValues);
     setIsEditing(false);
-  }, [member, formValues, onUpdate, isAdmin]);
+  }, [member, formValues, onUpdate]);
 
   const handleDelete = useCallback(() => {
-    if (!member || !isAdmin) return;
+    if (!member) return;
     if (
       window.confirm(
         `Are you sure you want to remove ${member.firstName} ${member.lastName} from staff?`
@@ -359,7 +492,7 @@ export default function StaffDetailModal({
     ) {
       onDelete?.(member.id);
     }
-  }, [member, onDelete, isAdmin]);
+  }, [member, onDelete]);
 
   const handleCancel = useCallback(() => {
     if (member) {
@@ -374,6 +507,8 @@ export default function StaffDetailModal({
         hireDate: member.hireDate || "",
         bio: member.bio || "",
         certifications: member.certifications || [],
+        hourlyRate: member.hourlyRate || 0,
+        commissionRate: member.commissionRate || 0,
       });
     }
     setIsEditing(false);
@@ -392,8 +527,6 @@ export default function StaffDetailModal({
       ? formValues.status
       : "active"
   ) as "active" | "inactive" | "on_leave";
-
-  const perf = member.performance;
 
   return (
     <Modal
@@ -415,153 +548,218 @@ export default function StaffDetailModal({
       ariaLabel="Staff member details"
     >
       <Content>
-        {/* Performance Metrics - Owner Only */}
-        {isAdmin && perf && !isEditing && (
-          <PerformanceSection>
-            <PerformanceTitle>
-              <TrendingUp size={18} />
-              Performance Metrics - This Month
-            </PerformanceTitle>
-            <KPIGrid>
-              {/* Revenue */}
-              <KPICard $variant="success">
-                <KPIHeader>
-                  <KPILabel>Revenue</KPILabel>
-                  <KPIIcon $color="#15803d">
+        {/* Performance Stats - Admin/Owner Only */}
+        {isAdmin && staffStats && !isEditing && (
+          <StatsSection>
+            <StatsTitle>
+              <Activity size={18} />
+              Performance Statistics - This Month
+            </StatsTitle>
+            <StatsGrid>
+              {/* Total Revenue */}
+              <StatCard $variant="success">
+                <StatHeader>
+                  <StatLabel>Revenue</StatLabel>
+                  <StatIcon $color="#15803d">
                     <DollarSign size={18} />
-                  </KPIIcon>
-                </KPIHeader>
-                <KPIValue $color="#15803d">
-                  ${perf.totalRevenue.toLocaleString()}
-                </KPIValue>
-                <KPISubtext>{perf.appointmentsCompleted} completed</KPISubtext>
-              </KPICard>
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#15803d">
+                  ${staffStats.totalRevenue.toLocaleString()}
+                </StatValue>
+                <StatSubtext>{staffStats.completed} completed</StatSubtext>
+              </StatCard>
 
               {/* Utilization Rate */}
-              <KPICard
+              <StatCard
                 $variant={
-                  (perf.utilizationRate || 0) >= 80
+                  staffStats.utilizationRate >= 80
                     ? "success"
-                    : (perf.utilizationRate || 0) >= 60
+                    : staffStats.utilizationRate >= 60
                     ? "warning"
                     : "danger"
                 }
               >
-                <KPIHeader>
-                  <KPILabel>Utilization</KPILabel>
-                  <KPIIcon
+                <StatHeader>
+                  <StatLabel>Utilization</StatLabel>
+                  <StatIcon
                     $color={
-                      (perf.utilizationRate || 0) >= 80
+                      staffStats.utilizationRate >= 80
                         ? "#15803d"
-                        : (perf.utilizationRate || 0) >= 60
+                        : staffStats.utilizationRate >= 60
                         ? "#ca8a04"
                         : "#dc2626"
                     }
                   >
-                    <Clock size={18} />
-                  </KPIIcon>
-                </KPIHeader>
-                <KPIValue
+                    <Percent size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue
                   $color={
-                    (perf.utilizationRate || 0) >= 80
+                    staffStats.utilizationRate >= 80
                       ? "#15803d"
-                      : (perf.utilizationRate || 0) >= 60
+                      : staffStats.utilizationRate >= 60
                       ? "#ca8a04"
                       : "#dc2626"
                   }
                 >
-                  {perf.utilizationRate?.toFixed(0) || 0}%
-                </KPIValue>
-                <KPISubtext>
-                  {perf.totalHoursWorked?.toFixed(0) || 0}h worked
-                </KPISubtext>
-              </KPICard>
+                  {staffStats.utilizationRate.toFixed(0)}%
+                </StatValue>
+                <StatSubtext>
+                  {staffStats.totalHours.toFixed(1)}h worked
+                </StatSubtext>
+              </StatCard>
 
               {/* Average Rating */}
-              <KPICard $variant="info">
-                <KPIHeader>
-                  <KPILabel>Avg Rating</KPILabel>
-                  <KPIIcon $color="#2563eb">
+              <StatCard $variant="info">
+                <StatHeader>
+                  <StatLabel>Avg Rating</StatLabel>
+                  <StatIcon $color="#2563eb">
                     <Star size={18} />
-                  </KPIIcon>
-                </KPIHeader>
-                <KPIValue>{perf.averageRating?.toFixed(1) || "N/A"}</KPIValue>
-                <KPISubtext>⭐ client feedback</KPISubtext>
-              </KPICard>
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#2563eb">
+                  {staffStats.avgRating.toFixed(1)}
+                </StatValue>
+                <StatSubtext>⭐ client feedback</StatSubtext>
+              </StatCard>
+
+              {/* Total Appointments */}
+              <StatCard $variant="info">
+                <StatHeader>
+                  <StatLabel>Appointments</StatLabel>
+                  <StatIcon $color="#2563eb">
+                    <Calendar size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#2563eb">
+                  {staffStats.totalAppointments}
+                </StatValue>
+                <StatSubtext>{staffStats.upcoming} upcoming</StatSubtext>
+              </StatCard>
 
               {/* Client Retention */}
-              <KPICard $variant="success">
-                <KPIHeader>
-                  <KPILabel>Retention</KPILabel>
-                  <KPIIcon $color="#15803d">
+              <StatCard $variant="success">
+                <StatHeader>
+                  <StatLabel>Clients</StatLabel>
+                  <StatIcon $color="#15803d">
                     <Users size={18} />
-                  </KPIIcon>
-                </KPIHeader>
-                <KPIValue $color="#15803d">
-                  {perf.clientRetentionRate?.toFixed(0) || 0}%
-                </KPIValue>
-                <KPISubtext>
-                  <TrendIndicator $direction="up">
-                    <TrendingUp size={12} />
-                    +5%
-                  </TrendIndicator>
-                  vs last month
-                </KPISubtext>
-              </KPICard>
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#15803d">
+                  {staffStats.uniqueClients}
+                </StatValue>
+                <StatSubtext>
+                  {staffStats.retentionRate.toFixed(0)}% retention
+                </StatSubtext>
+              </StatCard>
 
               {/* No-Show Rate */}
-              <KPICard
+              <StatCard
                 $variant={
-                  (perf.noShowRate || 0) <= 5
+                  staffStats.noShowRate <= 5
                     ? "success"
-                    : (perf.noShowRate || 0) <= 10
+                    : staffStats.noShowRate <= 10
                     ? "warning"
                     : "danger"
                 }
               >
-                <KPIHeader>
-                  <KPILabel>No-Show Rate</KPILabel>
-                  <KPIIcon
+                <StatHeader>
+                  <StatLabel>No-Show Rate</StatLabel>
+                  <StatIcon
                     $color={
-                      (perf.noShowRate || 0) <= 5
+                      staffStats.noShowRate <= 5
                         ? "#15803d"
-                        : (perf.noShowRate || 0) <= 10
+                        : staffStats.noShowRate <= 10
                         ? "#ca8a04"
                         : "#dc2626"
                     }
                   >
                     <AlertCircle size={18} />
-                  </KPIIcon>
-                </KPIHeader>
-                <KPIValue
+                  </StatIcon>
+                </StatHeader>
+                <StatValue
                   $color={
-                    (perf.noShowRate || 0) <= 5
+                    staffStats.noShowRate <= 5
                       ? "#15803d"
-                      : (perf.noShowRate || 0) <= 10
+                      : staffStats.noShowRate <= 10
                       ? "#ca8a04"
                       : "#dc2626"
                   }
                 >
-                  {perf.noShowRate?.toFixed(1) || 0}%
-                </KPIValue>
-                <KPISubtext>{perf.appointmentsCancelled} cancelled</KPISubtext>
-              </KPICard>
+                  {staffStats.noShowRate.toFixed(1)}%
+                </StatValue>
+                <StatSubtext>{staffStats.noShow} no-shows</StatSubtext>
+              </StatCard>
 
-              {/* Total Appointments */}
-              <KPICard $variant="info">
-                <KPIHeader>
-                  <KPILabel>Appointments</KPILabel>
-                  <KPIIcon $color="#2563eb">
-                    <Calendar size={18} />
-                  </KPIIcon>
-                </KPIHeader>
-                <KPIValue $color="#2563eb">
-                  {perf.appointmentsCompleted}
-                </KPIValue>
-                <KPISubtext>completed this month</KPISubtext>
-              </KPICard>
-            </KPIGrid>
-          </PerformanceSection>
+              {/* Cancelled */}
+              <StatCard $variant="warning">
+                <StatHeader>
+                  <StatLabel>Cancelled</StatLabel>
+                  <StatIcon $color="#ca8a04">
+                    <X size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#ca8a04">{staffStats.cancelled}</StatValue>
+                <StatSubtext>this month</StatSubtext>
+              </StatCard>
+
+              {/* Hours Worked */}
+              <StatCard>
+                <StatHeader>
+                  <StatLabel>Hours Worked</StatLabel>
+                  <StatIcon $color="#6b7280">
+                    <Clock size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue>{staffStats.totalHours.toFixed(1)}</StatValue>
+                <StatSubtext>this month</StatSubtext>
+              </StatCard>
+            </StatsGrid>
+          </StatsSection>
+        )}
+
+        {/* Payroll Section - Admin/Owner Only */}
+        {isAdmin && payrollData && !isEditing && (
+          <PayrollSection>
+            <PayrollTitle>
+              <DollarSign size={18} />
+              Payroll Summary - This Month
+            </PayrollTitle>
+            <PayrollGrid>
+              <PayrollCard>
+                <PayrollLabel>Hourly Wages</PayrollLabel>
+                <PayrollValue>
+                  ${payrollData.hourlyWages.toFixed(2)}
+                </PayrollValue>
+                <PayrollDetail>
+                  ${member.hourlyRate}/hr × {payrollData.hoursWorked.toFixed(1)}
+                  h
+                </PayrollDetail>
+              </PayrollCard>
+
+              <PayrollCard>
+                <PayrollLabel>Commission</PayrollLabel>
+                <PayrollValue>
+                  ${payrollData.commission.toFixed(2)}
+                </PayrollValue>
+                <PayrollDetail>
+                  {member.commissionRate}% of $
+                  {staffStats!.totalRevenue.toFixed(0)}
+                </PayrollDetail>
+              </PayrollCard>
+
+              <PayrollCard>
+                <PayrollLabel>Total Earnings</PayrollLabel>
+                <PayrollValue style={{ color: "#15803d" }}>
+                  ${payrollData.totalEarnings.toFixed(2)}
+                </PayrollValue>
+                <PayrollDetail>
+                  {payrollData.appointmentsCompleted} appointments completed
+                </PayrollDetail>
+              </PayrollCard>
+            </PayrollGrid>
+          </PayrollSection>
         )}
 
         <Form>
@@ -679,9 +877,9 @@ export default function StaffDetailModal({
             </FormField>
 
             {/* Status */}
-            {isEditing ? (
-              <FormField>
-                <Label htmlFor="staff-status">Status</Label>
+            <FormField>
+              <Label htmlFor="staff-status">Status</Label>
+              {isEditing ? (
                 <Select
                   id="staff-status"
                   value={formValues.status}
@@ -696,23 +894,101 @@ export default function StaffDetailModal({
                   <option value="inactive">Inactive</option>
                   <option value="on_leave">On Leave</option>
                 </Select>
-              </FormField>
-            ) : (
-              member.hireDate && (
-                <FormField>
-                  <Label>Hire Date</Label>
-                  <ReadOnlyField>
-                    <Calendar size={16} />
-                    {new Date(member.hireDate).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </ReadOnlyField>
-                </FormField>
-              )
-            )}
+              ) : (
+                <ReadOnlyField>
+                  <Activity size={16} />
+                  {formValues.status.replace("_", " ")}
+                </ReadOnlyField>
+              )}
+            </FormField>
           </InfoGrid>
+
+          {/* Payroll Information - Admin Only */}
+          {isAdmin && (
+            <InfoGrid>
+              <FormField>
+                <Label htmlFor="staff-hourly-rate">Hourly Rate ($)</Label>
+                {isEditing ? (
+                  <Input
+                    id="staff-hourly-rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formValues.hourlyRate ?? 0}
+                    onChange={(e) =>
+                      setFormValues((prev) => ({
+                        ...prev,
+                        hourlyRate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                ) : (
+                  <ReadOnlyField>
+                    <DollarSign size={16} />$
+                    {member.hourlyRate?.toFixed(2) || "0.00"}/hour
+                  </ReadOnlyField>
+                )}
+              </FormField>
+
+              <FormField>
+                <Label htmlFor="staff-commission-rate">
+                  Commission Rate (%)
+                </Label>
+                {isEditing ? (
+                  <Input
+                    id="staff-commission-rate"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formValues.commissionRate ?? 0}
+                    onChange={(e) =>
+                      setFormValues((prev) => ({
+                        ...prev,
+                        commissionRate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                  />
+                ) : (
+                  <ReadOnlyField>
+                    <Percent size={16} />
+                    {member.commissionRate?.toFixed(1) || "0.0"}% commission
+                  </ReadOnlyField>
+                )}
+              </FormField>
+            </InfoGrid>
+          )}
+          {/* Hire Date */}
+          <FormField>
+            <Label htmlFor="staff-hire-date">Hire Date</Label>
+            {isEditing ? (
+              <Input
+                id="staff-hire-date"
+                type="date"
+                value={formValues.hireDate}
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    hireDate: e.target.value,
+                  }))
+                }
+              />
+            ) : member.hireDate ? (
+              <ReadOnlyField>
+                <Calendar size={16} />
+                {new Date(member.hireDate).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </ReadOnlyField>
+            ) : (
+              <ReadOnlyField>
+                <Calendar size={16} />
+                Not provided
+              </ReadOnlyField>
+            )}
+          </FormField>
 
           {/* Specializations */}
           {!isEditing &&
@@ -765,25 +1041,27 @@ export default function StaffDetailModal({
           <Actions>
             <LeftActions>
               {!isEditing && (
-                <Button
-                  variation="primary"
-                  type="button"
-                  onClick={handleBookStaff}
-                >
-                  <Calendar size={16} />
-                  Book with {member.firstName}
-                </Button>
-              )}
-              {!isEditing && isAdmin && (
-                <Button
-                  variation="danger"
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
-                  <Trash2 size={16} />
-                  {deleting ? "Removing..." : "Remove"}
-                </Button>
+                <>
+                  <Button
+                    variation="primary"
+                    type="button"
+                    onClick={handleBookStaff}
+                  >
+                    <Calendar size={16} />
+                    Book with {member.firstName}
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variation="danger"
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                    >
+                      <Trash2 size={16} />
+                      {deleting ? "Removing..." : "Remove"}
+                    </Button>
+                  )}
+                </>
               )}
             </LeftActions>
 
@@ -803,7 +1081,10 @@ export default function StaffDetailModal({
                     type="button"
                     onClick={handleSave}
                     disabled={
-                      updating || !formValues.firstName || !formValues.role
+                      updating ||
+                      !formValues.firstName ||
+                      !formValues.lastName ||
+                      !formValues.role
                     }
                   >
                     <Save size={16} />

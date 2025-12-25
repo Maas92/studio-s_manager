@@ -12,6 +12,8 @@ export const StaffPerformanceSchema = z.object({
   utilizationRate: z.number().optional(), // Percentage of available hours booked
   clientRetentionRate: z.number().optional(), // Percentage of returning clients
   noShowRate: z.number().optional(),
+  hourlyRate: z.number().nullable().optional(),
+  commissionRate: z.number().nullable().optional(),
 });
 
 export const StaffMemberSchema = z.object({
@@ -22,13 +24,15 @@ export const StaffMemberSchema = z.object({
   phone: z.string().optional(),
   role: z.string(),
   specializations: z.array(z.string()).optional(),
-  status: z.enum(["active", "inactive", "on_leave"]).optional(),
+  status: z.enum(["active", "inactive", "on_leave"]).default("active"),
   hireDate: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   certifications: z.array(z.string()).optional(),
   schedule: z.record(z.string(), z.string()).nullable().optional(), // e.g., { "monday": "9am-5pm" }
   avatar: z.string().nullable().optional(),
   performance: StaffPerformanceSchema.optional(),
+  hourlyRate: z.number().nullable().optional(),
+  commissionRate: z.number().nullable().optional(),
 });
 
 export const CreateStaffMemberSchema = z.object({
@@ -43,6 +47,8 @@ export const CreateStaffMemberSchema = z.object({
   bio: z.string().optional(),
   certifications: z.array(z.string()).optional(),
   schedule: z.record(z.string(), z.string()).optional(),
+  hourlyRate: z.number().nullable().optional(),
+  commissionRate: z.number().nullable().optional(),
 });
 
 // Types

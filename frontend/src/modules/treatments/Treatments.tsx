@@ -21,6 +21,7 @@ import { useTreatments } from "./useTreatments";
 import { useListFilter } from "../../hooks/useListFilter";
 import CreateTreatmentModal from "./CreateTreatmentModal";
 import TreatmentDetailModal from "./TreatmentDetailModal";
+import { useAppointments } from "../appointments/useAppointments";
 import useAuth from "../../hooks/useAuth";
 
 import type { Treatment } from "./TreatmentSchema";
@@ -201,6 +202,8 @@ export default function TreatmentsPage() {
   const isLoading = listQuery.isLoading;
   const isError = listQuery.isError;
   const error = listQuery.error;
+  const { listQuery: apptQuery } = useAppointments();
+  const appointments = apptQuery.data ?? [];
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -417,6 +420,7 @@ export default function TreatmentsPage() {
         onBook={handleBook}
         updating={updateMutation.isPending}
         deleting={deleteMutation.isPending}
+        appointments={appointments} // ADD THIS
         isAdmin={canManageTreatments}
       />
 

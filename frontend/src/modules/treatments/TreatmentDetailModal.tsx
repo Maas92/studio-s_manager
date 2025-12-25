@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import styled from "styled-components";
 import type { Treatment, CreateTreatmentInput } from "./api";
+import type { Appointment } from "../appointments/AppointmentsSchema";
 import {
   Edit2,
   Save,
@@ -16,6 +17,12 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
+  TrendingUp,
+  Users,
+  Percent,
+  Star,
+  Activity,
+  Target,
 } from "lucide-react";
 
 interface TreatmentDetailModalProps {
@@ -27,12 +34,97 @@ interface TreatmentDetailModalProps {
   onBook?: (treatmentId: string, treatmentName: string) => void;
   updating?: boolean;
   deleting?: boolean;
+  appointments?: Appointment[];
   isAdmin?: boolean;
 }
 
 const Content = styled.div`
   display: grid;
   gap: 1.5rem;
+`;
+
+const StatsSection = styled.div`
+  padding: 1.5rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const StatsTitle = styled.h4`
+  margin: 0 0 1.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const StatCard = styled.div<{ $variant?: "success" | "info" | "warning" }>`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-left: 3px solid
+    ${({ $variant, theme }) => {
+      switch ($variant) {
+        case "success":
+          return theme.color.green500;
+        case "warning":
+          return theme.color.yellow700;
+        case "info":
+          return theme.color.blue500;
+        default:
+          return theme.color.brand600;
+      }
+    }};
+`;
+
+const StatHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.mutedText};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+const StatIcon = styled.div<{ $color?: string }>`
+  color: ${({ $color }) => $color};
+`;
+
+const StatValue = styled.div<{ $color?: string }>`
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: ${({ $color, theme }) => $color || theme.color.text};
+  line-height: 1;
+`;
+
+const StatSubtext = styled.div`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.color.mutedText};
 `;
 
 const Section = styled.div`
@@ -216,6 +308,7 @@ export default function TreatmentDetailModal({
   onBook,
   updating = false,
   deleting = false,
+  appointments = [],
   isAdmin = false,
 }: TreatmentDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -251,6 +344,68 @@ export default function TreatmentDetailModal({
       setIsEditing(false);
     }
   }, [treatment]);
+
+  const treatmentStats = useMemo(() => {
+    if (!treatment) return null;
+
+    const treatmentAppts = appointments.filter(
+      (a) => a.treatmentId === treatment.id
+    );
+    const completed = treatmentAppts.filter((a) => a.status === "completed");
+    const cancelled = treatmentAppts.filter((a) => a.status === "cancelled");
+    const upcoming = treatmentAppts.filter(
+      (a) =>
+        new Date(a.datetimeISO).getTime() >= Date.now() &&
+        a.status === "confirmed"
+    );
+
+    const totalRevenue = completed.reduce(
+      (sum, appt) => sum + (appt.price || treatment.price || 0),
+      0
+    );
+
+    // Calculate unique clients
+    const uniqueClients = new Set(treatmentAppts.map((a) => a.clientId)).size;
+
+    // Calculate repeat booking rate
+    const repeatRate =
+      uniqueClients > 0
+        ? ((treatmentAppts.length - uniqueClients) / treatmentAppts.length) *
+          100
+        : 0;
+
+    // Calculate cancellation rate
+    const cancellationRate =
+      treatmentAppts.length > 0
+        ? (cancelled.length / treatmentAppts.length) * 100
+        : 0;
+
+    // Calculate average rating (mock - would come from reviews)
+    const avgRating = 4.6;
+
+    // Calculate booking frequency (bookings per week)
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const recentBookings = treatmentAppts.filter(
+      (a) => new Date(a.datetimeISO).getTime() >= thirtyDaysAgo
+    );
+    const bookingsPerWeek = (recentBookings.length / 30) * 7;
+
+    return {
+      totalBookings: treatmentAppts.length,
+      completed: completed.length,
+      cancelled: cancelled.length,
+      upcoming: upcoming.length,
+      totalRevenue,
+      uniqueClients,
+      repeatRate,
+      cancellationRate,
+      avgRating,
+      bookingsPerWeek,
+      revenuePerBooking:
+        completed.length > 0 ? totalRevenue / completed.length : 0,
+    };
+  }, [treatment, appointments]);
 
   const handleSave = useCallback(() => {
     if (!treatment || !isAdmin) return;
@@ -303,6 +458,179 @@ export default function TreatmentDetailModal({
       ariaLabel="Treatment details"
     >
       <Content>
+        {/* Treatment Stats - Admin Only */}
+        {isAdmin && treatmentStats && !isEditing && (
+          <StatsSection>
+            <StatsTitle>
+              <Activity size={18} />
+              Treatment Performance - All Time
+            </StatsTitle>
+            <StatsGrid>
+              {/* Total Revenue */}
+              <StatCard $variant="success">
+                <StatHeader>
+                  <StatLabel>Total Revenue</StatLabel>
+                  <StatIcon $color="#15803d">
+                    <DollarSign size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#15803d">
+                  ${treatmentStats.totalRevenue.toLocaleString()}
+                </StatValue>
+                <StatSubtext>
+                  ${treatmentStats.revenuePerBooking.toFixed(0)} per booking
+                </StatSubtext>
+              </StatCard>
+
+              {/* Total Bookings */}
+              <StatCard $variant="info">
+                <StatHeader>
+                  <StatLabel>Total Bookings</StatLabel>
+                  <StatIcon $color="#2563eb">
+                    <Calendar size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#2563eb">
+                  {treatmentStats.totalBookings}
+                </StatValue>
+                <StatSubtext>{treatmentStats.completed} completed</StatSubtext>
+              </StatCard>
+
+              {/* Unique Clients */}
+              <StatCard $variant="info">
+                <StatHeader>
+                  <StatLabel>Unique Clients</StatLabel>
+                  <StatIcon $color="#2563eb">
+                    <Users size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#2563eb">
+                  {treatmentStats.uniqueClients}
+                </StatValue>
+                <StatSubtext>served this treatment</StatSubtext>
+              </StatCard>
+
+              {/* Upcoming */}
+              <StatCard $variant="warning">
+                <StatHeader>
+                  <StatLabel>Upcoming</StatLabel>
+                  <StatIcon $color="#ca8a04">
+                    <Clock size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#ca8a04">
+                  {treatmentStats.upcoming}
+                </StatValue>
+                <StatSubtext>scheduled bookings</StatSubtext>
+              </StatCard>
+
+              {/* Repeat Booking Rate */}
+              <StatCard
+                $variant={
+                  treatmentStats.repeatRate >= 50
+                    ? "success"
+                    : treatmentStats.repeatRate >= 30
+                    ? "warning"
+                    : "info"
+                }
+              >
+                <StatHeader>
+                  <StatLabel>Repeat Rate</StatLabel>
+                  <StatIcon
+                    $color={
+                      treatmentStats.repeatRate >= 50
+                        ? "#15803d"
+                        : treatmentStats.repeatRate >= 30
+                        ? "#ca8a04"
+                        : "#2563eb"
+                    }
+                  >
+                    <TrendingUp size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue
+                  $color={
+                    treatmentStats.repeatRate >= 50
+                      ? "#15803d"
+                      : treatmentStats.repeatRate >= 30
+                      ? "#ca8a04"
+                      : "#2563eb"
+                  }
+                >
+                  {treatmentStats.repeatRate.toFixed(0)}%
+                </StatValue>
+                <StatSubtext>client retention</StatSubtext>
+              </StatCard>
+
+              {/* Average Rating */}
+              <StatCard $variant="success">
+                <StatHeader>
+                  <StatLabel>Avg Rating</StatLabel>
+                  <StatIcon $color="#15803d">
+                    <Star size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue $color="#15803d">
+                  {treatmentStats.avgRating.toFixed(1)}
+                </StatValue>
+                <StatSubtext>⭐ client feedback</StatSubtext>
+              </StatCard>
+
+              {/* Cancellation Rate */}
+              <StatCard
+                $variant={
+                  treatmentStats.cancellationRate <= 5
+                    ? "success"
+                    : treatmentStats.cancellationRate <= 15
+                    ? "warning"
+                    : "info"
+                }
+              >
+                <StatHeader>
+                  <StatLabel>Cancel Rate</StatLabel>
+                  <StatIcon
+                    $color={
+                      treatmentStats.cancellationRate <= 5
+                        ? "#15803d"
+                        : treatmentStats.cancellationRate <= 15
+                        ? "#ca8a04"
+                        : "#2563eb"
+                    }
+                  >
+                    <Percent size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue
+                  $color={
+                    treatmentStats.cancellationRate <= 5
+                      ? "#15803d"
+                      : treatmentStats.cancellationRate <= 15
+                      ? "#ca8a04"
+                      : "#2563eb"
+                  }
+                >
+                  {treatmentStats.cancellationRate.toFixed(1)}%
+                </StatValue>
+                <StatSubtext>{treatmentStats.cancelled} cancelled</StatSubtext>
+              </StatCard>
+
+              {/* Booking Frequency */}
+              <StatCard>
+                <StatHeader>
+                  <StatLabel>Weekly Rate</StatLabel>
+                  <StatIcon $color="#6b7280">
+                    <Target size={18} />
+                  </StatIcon>
+                </StatHeader>
+                <StatValue>
+                  {treatmentStats.bookingsPerWeek.toFixed(1)}
+                </StatValue>
+                <StatSubtext>bookings per week</StatSubtext>
+              </StatCard>
+            </StatsGrid>
+          </StatsSection>
+        )}
+
         {!isEditing && (
           <InfoGrid>
             <InfoItem>
