@@ -16,6 +16,8 @@ import Spinner from "../../ui/components/Spinner";
 import SearchBar from "../../ui/components/SearchBar";
 import EmptyState from "../../ui/components/EmptyState";
 import Card from "../../ui/components/Card";
+import Badge from "../../ui/components/Badge";
+import Tag from "../../ui/components/Tag";
 
 import { useTreatments } from "./useTreatments";
 import { useListFilter } from "../../hooks/useListFilter";
@@ -117,23 +119,6 @@ const TreatmentTitle = styled.h3`
   flex: 1;
 `;
 
-const PopularBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  background: linear-gradient(
-    135deg,
-    ${({ theme }) => theme.color.brand100},
-    ${({ theme }) => theme.color.brand200}
-  );
-  color: ${({ theme }) => theme.color.brand800};
-  border-radius: ${({ theme }) => theme.radii.round};
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid ${({ theme }) => theme.color.brand300};
-`;
-
 const Description = styled.p`
   margin: 0;
   color: ${({ theme }) => theme.color.mutedText};
@@ -172,24 +157,6 @@ const TagsList = styled.div`
   flex-wrap: wrap;
   gap: 0.375rem;
   margin-top: 0.5rem;
-`;
-
-const Tag = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  background: ${({ theme }) => theme.color.grey100};
-  color: ${({ theme }) => theme.color.grey700};
-  border-radius: ${({ theme }) => theme.radii.sm};
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid ${({ theme }) => theme.color.border};
-
-  svg {
-    width: 12px;
-    height: 12px;
-  }
 `;
 
 export default function TreatmentsPage() {
@@ -372,10 +339,10 @@ export default function TreatmentsPage() {
                 <TreatmentTitle>{treatment.name}</TreatmentTitle>
                 {treatment.popularityScore &&
                   treatment.popularityScore > 80 && (
-                    <PopularBadge>
+                    <Badge variant="success">
                       <TrendingUp size={12} />
                       Popular
-                    </PopularBadge>
+                    </Badge>
                   )}
               </TreatmentHeader>
 

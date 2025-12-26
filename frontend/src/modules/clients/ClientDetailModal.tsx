@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
+import InfoGrid from "../../ui/components/InfoGrid";
 import styled from "styled-components";
 import type { Client, CreateClientInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
@@ -199,16 +200,6 @@ const RightActions = styled.div`
   gap: 0.75rem;
 `;
 
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
 export default function ClientDetailModal({
   isOpen,
   onClose,
@@ -403,53 +394,31 @@ export default function ClientDetailModal({
             )}
           </FormField>
 
-          <InfoGrid>
-            {/* Email */}
-            <FormField>
-              <Label htmlFor="client-email">Email</Label>
-              {isEditing ? (
-                <Input
-                  id="client-email"
-                  type="email"
-                  value={formValues.email ?? ""}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                />
-              ) : (
-                <ReadOnlyField>
-                  <Mail size={16} />
-                  {client.email || "Not provided"}
-                </ReadOnlyField>
-              )}
-            </FormField>
-
-            {/* Phone */}
-            <FormField>
-              <Label htmlFor="client-phone">Phone</Label>
-              {isEditing ? (
-                <Input
-                  id="client-phone"
-                  type="tel"
-                  value={formValues.phone ?? ""}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      phone: e.target.value,
-                    }))
-                  }
-                />
-              ) : (
-                <ReadOnlyField>
-                  <Phone size={16} />
-                  {client.phone || "Not provided"}
-                </ReadOnlyField>
-              )}
-            </FormField>
-          </InfoGrid>
+          <InfoGrid
+            items={[
+              {
+                label: "Email",
+                value: client.email || "Not provided",
+                icon: <Mail size={20} />,
+              },
+              {
+                label: "Phone",
+                value: client.phone || "Not provided",
+                icon: <Phone size={20} />,
+              },
+              {
+                label: "Address",
+                value: client.address || "Not provided",
+                icon: <MapPin size={20} />,
+              },
+              {
+                label: "Loyalty Points",
+                value: `${client.loyaltyPoints || 0} points`,
+                icon: <Gift size={20} />,
+              },
+            ]}
+            columns={2}
+          />
 
           {/* Address */}
           <FormField>

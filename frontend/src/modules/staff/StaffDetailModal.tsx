@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
+import InfoGrid from "../../ui/components/InfoGrid";
 import styled from "styled-components";
 import type { StaffMember, CreateStaffMemberInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
@@ -265,16 +266,6 @@ const LeftActions = styled.div`
 const RightActions = styled.div`
   display: flex;
   gap: 0.75rem;
-`;
-
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const Badge = styled.span<{ $variant: "active" | "inactive" | "on_leave" }>`
@@ -904,7 +895,7 @@ export default function StaffDetailModal({
           </InfoGrid>
 
           {/* Payroll Information - Admin Only */}
-          {isAdmin && (
+          {isAdmin && !isEditing && (
             <InfoGrid>
               <FormField>
                 <Label htmlFor="staff-hourly-rate">Hourly Rate ($)</Label>

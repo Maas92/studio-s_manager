@@ -1,7 +1,11 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
-import Input from "../../ui/components/Input";
+import StatsSection from "../../ui/components/StatsSection";
+import StatCard from "../../ui/components/StatCard";
+import ModalActions from "../../ui/components/ModalActions";
+import FormField from "../../ui/components/FormField";
+import InfoGrid from "../../ui/components/InfoGrid";
 import styled from "styled-components";
 import type { Treatment, CreateTreatmentInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
@@ -43,90 +47,6 @@ const Content = styled.div`
   gap: 1.5rem;
 `;
 
-const StatsSection = styled.div`
-  padding: 1.5rem;
-  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.border};
-`;
-
-const StatsTitle = styled.h4`
-  margin: 0 0 1.25rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.text};
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const StatCard = styled.div<{ $variant?: "success" | "info" | "warning" }>`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: ${({ theme }) => theme.color.panel};
-  border-radius: ${({ theme }) => theme.radii.sm};
-  border: 1px solid ${({ theme }) => theme.color.border};
-  border-left: 3px solid
-    ${({ $variant, theme }) => {
-      switch ($variant) {
-        case "success":
-          return theme.color.green500;
-        case "warning":
-          return theme.color.yellow700;
-        case "info":
-          return theme.color.blue500;
-        default:
-          return theme.color.brand600;
-      }
-    }};
-`;
-
-const StatHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const StatLabel = styled.div`
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.mutedText};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const StatIcon = styled.div<{ $color?: string }>`
-  color: ${({ $color }) => $color};
-`;
-
-const StatValue = styled.div<{ $color?: string }>`
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: ${({ $color, theme }) => $color || theme.color.text};
-  line-height: 1;
-`;
-
-const StatSubtext = styled.div`
-  font-size: 0.75rem;
-  color: ${({ theme }) => theme.color.mutedText};
-`;
-
 const Section = styled.div`
   display: grid;
   gap: 1rem;
@@ -144,38 +64,11 @@ const SectionTitle = styled.h4`
   gap: 0.5rem;
 `;
 
-const FormField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const Label = styled.label`
-  display: block;
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: ${({ theme }) => theme.color.text};
-`;
-
 const ReadOnlyField = styled.div`
   padding: 0.8rem 0;
   color: ${({ theme }) => theme.color.text};
   font-size: 0.95rem;
   line-height: 1.6;
-`;
-
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  padding: 1.5rem;
-  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.border};
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
 `;
 
 const InfoItem = styled.div`
@@ -246,29 +139,6 @@ const Tag = styled.span<{ $variant?: "default" | "benefit" | "warning" }>`
           return theme.color.brand200 || "#bfdbfe";
       }
     }};
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  min-height: 100px;
-  padding: 0.8rem 1.2rem;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  border: 1px solid ${({ theme }) => theme.color.border};
-  background-color: ${({ theme }) => theme.color.panel};
-  color: ${({ theme }) => theme.color.text};
-  box-shadow: ${({ theme }) => theme.shadowSm};
-  font-size: 1rem;
-  font-family: inherit;
-  line-height: 1.5;
-  outline: none;
-  resize: vertical;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
-  box-sizing: border-box;
-
-  &:focus {
-    box-shadow: 0 0 0 4px ${({ theme }) => theme.color.brand100};
-    border-color: ${({ theme }) => theme.color.brand600};
-  }
 `;
 
 const Actions = styled.div`
@@ -459,304 +329,249 @@ export default function TreatmentDetailModal({
     >
       <Content>
         {/* Treatment Stats - Admin Only */}
+
         {isAdmin && treatmentStats && !isEditing && (
-          <StatsSection>
-            <StatsTitle>
-              <Activity size={18} />
-              Treatment Performance - All Time
-            </StatsTitle>
-            <StatsGrid>
-              {/* Total Revenue */}
-              <StatCard $variant="success">
-                <StatHeader>
-                  <StatLabel>Total Revenue</StatLabel>
-                  <StatIcon $color="#15803d">
-                    <DollarSign size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#15803d">
-                  ${treatmentStats.totalRevenue.toLocaleString()}
-                </StatValue>
-                <StatSubtext>
-                  ${treatmentStats.revenuePerBooking.toFixed(0)} per booking
-                </StatSubtext>
-              </StatCard>
+          <StatsSection
+            title="Treatment Performance - All Time"
+            icon={<Activity size={18} />}
+            columns={4}
+          >
+            {/* Total Revenue */}
+            <StatCard
+              label="Total Revenue"
+              value={`$${treatmentStats.totalRevenue.toLocaleString()}`}
+              subtext={`${treatmentStats.completed} completed`}
+              icon={<DollarSign size={18} />}
+              variant="success"
+              iconColor="#15803d"
+              valueColor="#15803d"
+            />
 
-              {/* Total Bookings */}
-              <StatCard $variant="info">
-                <StatHeader>
-                  <StatLabel>Total Bookings</StatLabel>
-                  <StatIcon $color="#2563eb">
-                    <Calendar size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#2563eb">
-                  {treatmentStats.totalBookings}
-                </StatValue>
-                <StatSubtext>{treatmentStats.completed} completed</StatSubtext>
-              </StatCard>
+            {/* Total Bookings */}
+            <StatCard
+              label="Total Bookings"
+              value={treatmentStats.totalBookings}
+              subtext={`${treatmentStats.completed} completed`}
+              icon={<Calendar size={18} />}
+              variant="info"
+              iconColor="#2563eb"
+              valueColor="#2563eb"
+            />
 
-              {/* Unique Clients */}
-              <StatCard $variant="info">
-                <StatHeader>
-                  <StatLabel>Unique Clients</StatLabel>
-                  <StatIcon $color="#2563eb">
-                    <Users size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#2563eb">
-                  {treatmentStats.uniqueClients}
-                </StatValue>
-                <StatSubtext>served this treatment</StatSubtext>
-              </StatCard>
+            {/* Unique Clients */}
+            <StatCard
+              label="Unique Clients"
+              value={treatmentStats.uniqueClients}
+              subtext="served this treatment"
+              icon={<Users size={18} />}
+              variant="info"
+              iconColor="#2563eb"
+              valueColor="#2563eb"
+            />
 
-              {/* Upcoming */}
-              <StatCard $variant="warning">
-                <StatHeader>
-                  <StatLabel>Upcoming</StatLabel>
-                  <StatIcon $color="#ca8a04">
-                    <Clock size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#ca8a04">
-                  {treatmentStats.upcoming}
-                </StatValue>
-                <StatSubtext>scheduled bookings</StatSubtext>
-              </StatCard>
+            {/* Upcoming */}
+            <StatCard
+              label="Upcoming"
+              value={treatmentStats.upcoming}
+              subtext="scheduled bookings"
+              icon={<Clock size={18} />}
+              variant="warning"
+              iconColor="#ca8a04"
+              valueColor="#ca8a04"
+            />
 
-              {/* Repeat Booking Rate */}
-              <StatCard
-                $variant={
-                  treatmentStats.repeatRate >= 50
-                    ? "success"
-                    : treatmentStats.repeatRate >= 30
-                    ? "warning"
-                    : "info"
-                }
-              >
-                <StatHeader>
-                  <StatLabel>Repeat Rate</StatLabel>
-                  <StatIcon
-                    $color={
-                      treatmentStats.repeatRate >= 50
-                        ? "#15803d"
-                        : treatmentStats.repeatRate >= 30
-                        ? "#ca8a04"
-                        : "#2563eb"
-                    }
-                  >
-                    <TrendingUp size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue
-                  $color={
-                    treatmentStats.repeatRate >= 50
-                      ? "#15803d"
-                      : treatmentStats.repeatRate >= 30
-                      ? "#ca8a04"
-                      : "#2563eb"
-                  }
-                >
-                  {treatmentStats.repeatRate.toFixed(0)}%
-                </StatValue>
-                <StatSubtext>client retention</StatSubtext>
-              </StatCard>
+            {/* Repeat Booking Rate */}
+            <StatCard
+              label="Repeat Rate"
+              value={`${treatmentStats.repeatRate.toFixed(0)}%`}
+              subtext="client retention"
+              icon={<TrendingUp size={18} />}
+              variant={
+                treatmentStats.repeatRate >= 50
+                  ? "success"
+                  : treatmentStats.repeatRate >= 30
+                  ? "warning"
+                  : "info"
+              }
+              iconColor={
+                treatmentStats.repeatRate >= 50
+                  ? "#15803d"
+                  : treatmentStats.repeatRate >= 30
+                  ? "#ca8a04"
+                  : "#2563eb"
+              }
+              valueColor={
+                treatmentStats.repeatRate >= 50
+                  ? "#15803d"
+                  : treatmentStats.repeatRate >= 30
+                  ? "#ca8a04"
+                  : "#2563eb"
+              }
+            />
 
-              {/* Average Rating */}
-              <StatCard $variant="success">
-                <StatHeader>
-                  <StatLabel>Avg Rating</StatLabel>
-                  <StatIcon $color="#15803d">
-                    <Star size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#15803d">
-                  {treatmentStats.avgRating.toFixed(1)}
-                </StatValue>
-                <StatSubtext>⭐ client feedback</StatSubtext>
-              </StatCard>
+            {/* Average Rating */}
+            <StatCard
+              label="Avg Rating"
+              value={treatmentStats.avgRating.toFixed(1)}
+              subtext="⭐ client feedback"
+              icon={<Star size={18} />}
+              variant="success"
+              iconColor="#15803d"
+              valueColor="#15803d"
+            />
 
-              {/* Cancellation Rate */}
-              <StatCard
-                $variant={
-                  treatmentStats.cancellationRate <= 5
-                    ? "success"
-                    : treatmentStats.cancellationRate <= 15
-                    ? "warning"
-                    : "info"
-                }
-              >
-                <StatHeader>
-                  <StatLabel>Cancel Rate</StatLabel>
-                  <StatIcon
-                    $color={
-                      treatmentStats.cancellationRate <= 5
-                        ? "#15803d"
-                        : treatmentStats.cancellationRate <= 15
-                        ? "#ca8a04"
-                        : "#2563eb"
-                    }
-                  >
-                    <Percent size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue
-                  $color={
-                    treatmentStats.cancellationRate <= 5
-                      ? "#15803d"
-                      : treatmentStats.cancellationRate <= 15
-                      ? "#ca8a04"
-                      : "#2563eb"
-                  }
-                >
-                  {treatmentStats.cancellationRate.toFixed(1)}%
-                </StatValue>
-                <StatSubtext>{treatmentStats.cancelled} cancelled</StatSubtext>
-              </StatCard>
+            {/* Cancellation Rate */}
+            <StatCard
+              label="Cancel Rate"
+              value={`${treatmentStats.cancellationRate.toFixed(1)}%`}
+              subtext={`${treatmentStats.cancelled} cancelled`}
+              icon={<Percent size={18} />}
+              variant={
+                treatmentStats.cancellationRate <= 5
+                  ? "success"
+                  : treatmentStats.cancellationRate <= 15
+                  ? "warning"
+                  : "info"
+              }
+              iconColor={
+                treatmentStats.cancellationRate <= 5
+                  ? "#15803d"
+                  : treatmentStats.cancellationRate <= 15
+                  ? "#ca8a04"
+                  : "#2563eb"
+              }
+              valueColor={
+                treatmentStats.cancellationRate <= 5
+                  ? "#15803d"
+                  : treatmentStats.cancellationRate <= 15
+                  ? "#ca8a04"
+                  : "#2563eb"
+              }
+            />
 
-              {/* Booking Frequency */}
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Weekly Rate</StatLabel>
-                  <StatIcon $color="#6b7280">
-                    <Target size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue>
-                  {treatmentStats.bookingsPerWeek.toFixed(1)}
-                </StatValue>
-                <StatSubtext>bookings per week</StatSubtext>
-              </StatCard>
-            </StatsGrid>
+            {/* Booking Frequency */}
+            <StatCard
+              label="Weekly Rate"
+              value={treatmentStats.bookingsPerWeek.toFixed(1)}
+              subtext="bookings per week"
+              icon={<Target size={18} />}
+              variant="info"
+              iconColor="#6b7280"
+              valueColor="#2563eb"
+            />
           </StatsSection>
         )}
 
         {!isEditing && (
-          <InfoGrid>
-            <InfoItem>
-              <InfoLabel>Duration</InfoLabel>
-              <InfoValue>
-                <Clock size={20} />
-                {treatment.durationMinutes} min
-              </InfoValue>
-            </InfoItem>
-            <InfoItem>
-              <InfoLabel>Price</InfoLabel>
-              <InfoValue>
-                <DollarSign size={20} />${treatment.price.toFixed(2)}
-              </InfoValue>
-            </InfoItem>
-            {treatment.category && (
-              <InfoItem>
-                <InfoLabel>Category</InfoLabel>
-                <InfoValue>
-                  <Tags size={20} />
-                  {treatment.category}
-                </InfoValue>
-              </InfoItem>
-            )}
-          </InfoGrid>
+          <InfoGrid
+            items={[
+              {
+                label: "Duration",
+                value: `${treatment.durationMinutes} min`,
+                icon: <Clock size={20} />,
+              },
+              {
+                label: "Price",
+                value: `$${treatment.price.toFixed(2)}`,
+                icon: <DollarSign size={20} />,
+              },
+              {
+                label: "Category",
+                value: treatment.category || "Uncategorized",
+                icon: <Tags size={20} />,
+              },
+            ]}
+            columns={3}
+          />
         )}
 
         {isEditing ? (
           <>
-            <FormField>
-              <Label htmlFor="treatment-name">Name</Label>
-              <Input
-                id="treatment-name"
-                value={formValues.name}
+            <FormField
+              label="Name"
+              id="treatment-name"
+              value={formValues.name}
+              onChange={(e) =>
+                setFormValues((prev) => ({ ...prev, name: e.target.value }))
+              }
+              required
+            />
+
+            <FormField
+              label="Description"
+              id="treatment-description"
+              value={formValues.description ?? ""}
+              onChange={(e) =>
+                setFormValues((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="Describe this treatment..."
+            />
+
+            <EditModeGrid>
+              <FormField
+                label="Duration (minutes)"
+                id="treatment-duration"
+                type="number"
+                min="1"
+                value={formValues.durationMinutes}
                 onChange={(e) =>
-                  setFormValues((prev) => ({ ...prev, name: e.target.value }))
+                  setFormValues((prev) => ({
+                    ...prev,
+                    durationMinutes: Number(e.target.value),
+                  }))
                 }
                 required
               />
-            </FormField>
 
-            <FormField>
-              <Label htmlFor="treatment-description">Description</Label>
-              <TextArea
-                id="treatment-description"
-                value={formValues.description ?? ""}
+              <FormField
+                label="Price ($)"
+                id="treatment-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formValues.price}
                 onChange={(e) =>
                   setFormValues((prev) => ({
                     ...prev,
-                    description: e.target.value,
+                    price: Number(e.target.value),
                   }))
                 }
-                placeholder="Describe this treatment..."
+                required
               />
-            </FormField>
 
-            <EditModeGrid>
-              <FormField>
-                <Label htmlFor="treatment-duration">Duration (minutes)</Label>
-                <Input
-                  id="treatment-duration"
-                  type="number"
-                  min="1"
-                  value={formValues.durationMinutes}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      durationMinutes: Number(e.target.value),
-                    }))
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField>
-                <Label htmlFor="treatment-price">Price ($)</Label>
-                <Input
-                  id="treatment-price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formValues.price}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      price: Number(e.target.value),
-                    }))
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField>
-                <Label htmlFor="treatment-category">Category</Label>
-                <Input
-                  id="treatment-category"
-                  value={formValues.category ?? ""}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      category: e.target.value,
-                    }))
-                  }
-                />
-              </FormField>
+              <FormField
+                label="Category"
+                id="treatment-category"
+                value={formValues.category ?? ""}
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    category: e.target.value,
+                  }))
+                }
+              />
             </EditModeGrid>
 
-            <FormField>
-              <Label htmlFor="treatment-tags">Tags (comma separated)</Label>
-              <Input
-                id="treatment-tags"
-                value={(formValues.tags || []).join(", ")}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    tags: e.target.value
-                      ? e.target.value
-                          .split(",")
-                          .map((t) => t.trim())
-                          .filter(Boolean)
-                      : [],
-                  }))
-                }
-                placeholder="relaxing, facial, popular"
-              />
-            </FormField>
+            <FormField
+              label="Tags (comma separated)"
+              id="treatment-tags"
+              value={(formValues.tags || []).join(", ")}
+              onChange={(e) =>
+                setFormValues((prev) => ({
+                  ...prev,
+                  tags: e.target.value
+                    ? e.target.value
+                        .split(",")
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                    : [],
+                }))
+              }
+              placeholder="relaxing, facial, popular"
+            />
           </>
         ) : (
           <>

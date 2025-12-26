@@ -1,29 +1,35 @@
-import React from "react";
 import styled from "styled-components";
 
 interface InfoGridProps {
-  children: React.ReactNode;
-  columns?: number;
-  className?: string;
+  items: Array<{
+    label: string;
+    value: string | number;
+    icon: React.ReactNode;
+  }>;
+  columns?: 2 | 3 | 4;
 }
 
-export const InfoGrid = styled.div<{ $columns?: number }>`
+const Grid = styled.div<{ $columns: number }>`
   display: grid;
-  grid-template-columns: repeat(${({ $columns = 2 }) => $columns}, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(${({ $columns }) => $columns}, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border-radius: ${({ theme }) => theme.radii.md};
+  border: 1px solid ${({ theme }) => theme.color.border};
 
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
   }
 `;
 
-export const InfoItem = styled.div`
+const Item = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 `;
 
-export const InfoLabel = styled.div`
+const Label = styled.div`
   font-size: 0.75rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.mutedText};
@@ -31,12 +37,27 @@ export const InfoLabel = styled.div`
   letter-spacing: 0.05em;
 `;
 
-export const InfoValue = styled.div`
-  font-size: 0.95rem;
+const Value = styled.div`
+  font-size: 1.25rem;
+  font-weight: 700;
   color: ${({ theme }) => theme.color.text};
   display: flex;
   align-items: center;
   gap: 0.5rem;
 `;
 
-export default InfoGrid;
+export default function InfoGrid({ items, columns = 3 }: InfoGridProps) {
+  return (
+    <Grid $columns={columns}>
+      {items.map((item, idx) => (
+        <Item key={idx}>
+          <Label>{item.label}</Label>
+          <Value>
+            {item.icon}
+            {item.value}
+          </Value>
+        </Item>
+      ))}
+    </Grid>
+  );
+}

@@ -1,56 +1,49 @@
 import styled from "styled-components";
 
-export type BadgeVariant =
-  | "default"
-  | "success"
-  | "warning"
-  | "danger"
-  | "info"
-  | "active"
-  | "inactive"
-  | "on_leave"
-  | "retail"
-  | "treatment"
-  | "storage"
-  | "confirmed"
-  | "pending"
-  | "cancelled"
-  | "completed";
+type BadgeVariant = "success" | "warning" | "danger" | "info" | "default";
 
 interface BadgeProps {
-  $variant?: BadgeVariant;
+  children: React.ReactNode;
+  variant?: BadgeVariant;
 }
 
-const variantStyles: Record<BadgeVariant, { bg: string; color: string }> = {
-  default: { bg: "#f3f4f6", color: "#374151" },
-  success: { bg: "#dcfce7", color: "#15803d" },
-  warning: { bg: "#fef3c7", color: "#a16207" },
-  danger: { bg: "#fee2e2", color: "#b91c1c" },
-  info: { bg: "#dbeafe", color: "#1d4ed8" },
-  active: { bg: "#dcfce7", color: "#15803d" },
-  inactive: { bg: "#f3f4f6", color: "#374151" },
-  on_leave: { bg: "#fef3c7", color: "#a16207" },
-  retail: { bg: "#dbeafe", color: "#1d4ed8" },
-  treatment: { bg: "#dcfce7", color: "#15803d" },
-  storage: { bg: "#fef3c7", color: "#a16207" },
-  confirmed: { bg: "#dcfce7", color: "#15803d" },
-  pending: { bg: "#fef3c7", color: "#a16207" },
-  cancelled: { bg: "#fee2e2", color: "#b91c1c" },
-  completed: { bg: "#dbeafe", color: "#1d4ed8" },
-};
-
-export const Badge = styled.span<BadgeProps>`
+const StyledBadge = styled.span<{ $variant: BadgeVariant }>`
   display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: ${({ theme }) => theme.radii.round};
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
-  white-space: nowrap;
-  background: ${({ $variant = "default" }) => variantStyles[$variant].bg};
-  color: ${({ $variant = "default" }) => variantStyles[$variant].color};
+  background: ${({ $variant, theme }) => {
+    switch ($variant) {
+      case "success":
+        return theme.color.green100 || "#dcfce7";
+      case "warning":
+        return theme.color.yellow100 || "#fef3c7";
+      case "danger":
+        return theme.color.red100 || "#fee2e2";
+      case "info":
+        return theme.color.blue100 || "#dbeafe";
+      default:
+        return theme.color.grey100 || "#f3f4f6";
+    }
+  }};
+  color: ${({ $variant, theme }) => {
+    switch ($variant) {
+      case "success":
+        return theme.color.green700 || "#15803d";
+      case "warning":
+        return theme.color.yellow700 || "#a16207";
+      case "danger":
+        return theme.color.red600 || "#dc2626";
+      case "info":
+        return theme.color.blue500 || "#1d4ed8";
+      default:
+        return theme.color.grey700 || "#374151";
+    }
+  }};
 `;
 
-export default Badge;
+export default function Badge({ children, variant = "default" }: BadgeProps) {
+  return <StyledBadge $variant={variant}>{children}</StyledBadge>;
+}
