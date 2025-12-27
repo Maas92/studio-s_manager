@@ -93,6 +93,12 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - AUTH_SERVICE_URL=http://auth:5002
       - GATEWAY_SECRET=${GATEWAY_SECRET}
+      
+      # mTLS Settings for communication with Google Contacts Service
+      - MTLS_ENABLED=true
+      - MTLS_CA_CERT=/app/certs/ca-cert.pem
+      - MTLS_CERT=/app/certs/backend-cert.pem
+      - MTLS_KEY=/app/certs/backend-key.pem
     expose:
       - "5003"
     networks:
@@ -295,6 +301,78 @@ services:
     networks:
       - studio-s-network
     command: -config.file=/etc/promtail/config.yml
+  
+  # Google Contacts Service
+  # Add this service to your existing docker-compose.yml
+
+  # Google Contacts Sync Service
+  google-contacts:
+    build:
+      context: ./google-contacts-service
+      dockerfile: Dockerfile
+    container_name: studio-s-google-contacts
+    environment:
+      # Service
+      - SERVICE_NAME=google-contacts-service
+      - PORT=5004
+      - LOG_LEVEL=info
+      - ENVIRONMENT=production
+
+      # Database (Supabase PostgreSQL)
+      - DATABASE_URL=${DATABASE_URL}
+
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
+
+      # Backend Service (mTLS)
+      - BACKEND_SERVICE_URL=http://backend:5003
+      - BACKEND_MTLS_CERT=/app/certs/google-contacts-cert.pem
+      - BACKEND_MTLS_KEY=/app/certs/google-contacts-key.pem
+      - BACKEND_CA_CERT=/app/certs/ca-cert.pem
+
+      # Gateway Authentication
+      - GATEWAY_SECRET=${GATEWAY_SECRET}
+
+      # Encryption
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+
+      # CORS
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4000
+    
+    volumes:
+      # Mount certificates (read-only)
+      - ./certs:/app/certs:ro
+      # Mount logs
+      - ./google-contacts-service/logs:/app/logs
+    
+    expose:
+      - "5004"
+    
+    networks:
+      - studio-s-network
+    
+    depends_on:
+      backend:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   studio-s-network:

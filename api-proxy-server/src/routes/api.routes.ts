@@ -14,6 +14,15 @@ router.use(
   })
 );
 
+// Google Contacts Sync Service routes
+router.use(
+  "/google-contacts",
+  createProxy({
+    target: env.GOOGLE_CONTACTS_SERVICE_URL, // http://google-contacts:5004
+    isBackendService: true, // Will add x-gateway-key
+  })
+);
+
 // Inventory service routes - ALL need GATEWAY_SECRET
 const inventoryRoutes = [
   "products",

@@ -2,7 +2,8 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
-import InfoGrid from "../../ui/components/InfoGrid";
+import StatsSection from "../../ui/components/StatsSection";
+import StatCard from "../../ui/components/StatCard";
 import styled from "styled-components";
 import type { StaffMember, CreateStaffMemberInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
@@ -47,13 +48,6 @@ const Content = styled.div`
   gap: 1.5rem;
 `;
 
-const StatsSection = styled.div`
-  padding: 1.5rem;
-  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.border};
-`;
-
 const StatsTitle = styled.h4`
   margin: 0 0 1.25rem 0;
   font-size: 1rem;
@@ -78,7 +72,7 @@ const StatsGrid = styled.div`
   }
 `;
 
-const StatCard = styled.div<{
+const StatsCard = styled.div<{
   $variant?: "success" | "info" | "warning" | "danger";
 }>`
   display: flex;
@@ -266,6 +260,16 @@ const LeftActions = styled.div`
 const RightActions = styled.div`
   display: flex;
   gap: 0.75rem;
+`;
+
+const InfoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const Badge = styled.span<{ $variant: "active" | "inactive" | "on_leave" }>`
@@ -541,172 +545,134 @@ export default function StaffDetailModal({
       <Content>
         {/* Performance Stats - Admin/Owner Only */}
         {isAdmin && staffStats && !isEditing && (
-          <StatsSection>
-            <StatsTitle>
-              <Activity size={18} />
-              Performance Statistics - This Month
-            </StatsTitle>
-            <StatsGrid>
-              {/* Total Revenue */}
-              <StatCard $variant="success">
-                <StatHeader>
-                  <StatLabel>Revenue</StatLabel>
-                  <StatIcon $color="#15803d">
-                    <DollarSign size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#15803d">
-                  ${staffStats.totalRevenue.toLocaleString()}
-                </StatValue>
-                <StatSubtext>{staffStats.completed} completed</StatSubtext>
-              </StatCard>
+          <StatsSection
+            title="Performance Statistics - This Month"
+            icon={<Activity size={18} />}
+            columns={4}
+          >
+            {/* Total Revenue */}
+            <StatCard
+              label="Revenue"
+              icon={<DollarSign size={18} />}
+              iconColor="#15803d"
+              value={`$${staffStats.totalRevenue.toLocaleString()}`}
+              subtext={`${staffStats.completed} completed`}
+              valueColor="#15803d"
+              variant="success"
+            />
 
-              {/* Utilization Rate */}
-              <StatCard
-                $variant={
-                  staffStats.utilizationRate >= 80
-                    ? "success"
-                    : staffStats.utilizationRate >= 60
-                    ? "warning"
-                    : "danger"
-                }
-              >
-                <StatHeader>
-                  <StatLabel>Utilization</StatLabel>
-                  <StatIcon
-                    $color={
-                      staffStats.utilizationRate >= 80
-                        ? "#15803d"
-                        : staffStats.utilizationRate >= 60
-                        ? "#ca8a04"
-                        : "#dc2626"
-                    }
-                  >
-                    <Percent size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue
-                  $color={
-                    staffStats.utilizationRate >= 80
-                      ? "#15803d"
-                      : staffStats.utilizationRate >= 60
-                      ? "#ca8a04"
-                      : "#dc2626"
-                  }
-                >
-                  {staffStats.utilizationRate.toFixed(0)}%
-                </StatValue>
-                <StatSubtext>
-                  {staffStats.totalHours.toFixed(1)}h worked
-                </StatSubtext>
-              </StatCard>
+            {/* Utilization Rate */}
+            <StatCard
+              label="Utilization"
+              icon={<Percent size={18} />}
+              iconColor={
+                staffStats.utilizationRate >= 80
+                  ? "#15803d"
+                  : staffStats.utilizationRate >= 60
+                  ? "#ca8a04"
+                  : "#dc2626"
+              }
+              value={`${staffStats.utilizationRate.toFixed(0)}%`}
+              subtext={`${staffStats.totalHours.toFixed(1)}h worked`}
+              variant={
+                staffStats.utilizationRate >= 80
+                  ? "success"
+                  : staffStats.utilizationRate >= 60
+                  ? "warning"
+                  : "danger"
+              }
+              valueColor={
+                staffStats.utilizationRate >= 80
+                  ? "#15803d"
+                  : staffStats.utilizationRate >= 60
+                  ? "#ca8a04"
+                  : "#dc2626"
+              }
+            />
 
-              {/* Average Rating */}
-              <StatCard $variant="info">
-                <StatHeader>
-                  <StatLabel>Avg Rating</StatLabel>
-                  <StatIcon $color="#2563eb">
-                    <Star size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#2563eb">
-                  {staffStats.avgRating.toFixed(1)}
-                </StatValue>
-                <StatSubtext>⭐ client feedback</StatSubtext>
-              </StatCard>
+            {/* Average Rating */}
+            <StatCard
+              label="Avg Rating"
+              icon={<Star size={18} />}
+              iconColor="#2563eb"
+              value={staffStats.avgRating.toFixed(1)}
+              subtext="⭐ client feedback"
+              valueColor="#2563eb"
+              variant="info"
+            />
 
-              {/* Total Appointments */}
-              <StatCard $variant="info">
-                <StatHeader>
-                  <StatLabel>Appointments</StatLabel>
-                  <StatIcon $color="#2563eb">
-                    <Calendar size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#2563eb">
-                  {staffStats.totalAppointments}
-                </StatValue>
-                <StatSubtext>{staffStats.upcoming} upcoming</StatSubtext>
-              </StatCard>
+            {/* Total Appointments */}
+            <StatCard
+              label="Appointments"
+              icon={<Calendar size={18} />}
+              iconColor="#2563eb"
+              value={staffStats.totalAppointments}
+              subtext={`${staffStats.upcoming} upcoming`}
+              valueColor="#2563eb"
+              variant="info"
+            />
 
-              {/* Client Retention */}
-              <StatCard $variant="success">
-                <StatHeader>
-                  <StatLabel>Clients</StatLabel>
-                  <StatIcon $color="#15803d">
-                    <Users size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#15803d">
-                  {staffStats.uniqueClients}
-                </StatValue>
-                <StatSubtext>
-                  {staffStats.retentionRate.toFixed(0)}% retention
-                </StatSubtext>
-              </StatCard>
+            {/* Client Retention */}
+            <StatCard
+              label="Clients"
+              icon={<Users size={18} />}
+              iconColor="#15803d"
+              value={staffStats.uniqueClients}
+              subtext={`${staffStats.retentionRate.toFixed(0)}% retention`}
+              valueColor="#15803d"
+              variant="success"
+            />
 
-              {/* No-Show Rate */}
-              <StatCard
-                $variant={
-                  staffStats.noShowRate <= 5
-                    ? "success"
-                    : staffStats.noShowRate <= 10
-                    ? "warning"
-                    : "danger"
-                }
-              >
-                <StatHeader>
-                  <StatLabel>No-Show Rate</StatLabel>
-                  <StatIcon
-                    $color={
-                      staffStats.noShowRate <= 5
-                        ? "#15803d"
-                        : staffStats.noShowRate <= 10
-                        ? "#ca8a04"
-                        : "#dc2626"
-                    }
-                  >
-                    <AlertCircle size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue
-                  $color={
-                    staffStats.noShowRate <= 5
-                      ? "#15803d"
-                      : staffStats.noShowRate <= 10
-                      ? "#ca8a04"
-                      : "#dc2626"
-                  }
-                >
-                  {staffStats.noShowRate.toFixed(1)}%
-                </StatValue>
-                <StatSubtext>{staffStats.noShow} no-shows</StatSubtext>
-              </StatCard>
+            {/* No-Show Rate */}
+            <StatCard
+              label="No-Show Rate"
+              icon={<AlertCircle size={18} />}
+              iconColor={
+                staffStats.noShowRate <= 5
+                  ? "#15803d"
+                  : staffStats.noShowRate <= 10
+                  ? "#ca8a04"
+                  : "#dc2626"
+              }
+              value={`${staffStats.noShowRate.toFixed(1)}%`}
+              subtext={`${staffStats.noShow} no-shows`}
+              valueColor={
+                staffStats.noShowRate <= 5
+                  ? "#15803d"
+                  : staffStats.noShowRate <= 10
+                  ? "#ca8a04"
+                  : "#dc2626"
+              }
+              variant={
+                staffStats.noShowRate <= 5
+                  ? "success"
+                  : staffStats.noShowRate <= 10
+                  ? "warning"
+                  : "danger"
+              }
+            />
 
-              {/* Cancelled */}
-              <StatCard $variant="warning">
-                <StatHeader>
-                  <StatLabel>Cancelled</StatLabel>
-                  <StatIcon $color="#ca8a04">
-                    <X size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#ca8a04">{staffStats.cancelled}</StatValue>
-                <StatSubtext>this month</StatSubtext>
-              </StatCard>
+            {/* Cancelled */}
+            <StatCard
+              label="Cancelled"
+              icon={<X size={18} />}
+              iconColor="#ca8a04"
+              value={staffStats.cancelled}
+              valueColor="#ca8a04"
+              variant="warning"
+              subtext="this month"
+            />
 
-              {/* Hours Worked */}
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Hours Worked</StatLabel>
-                  <StatIcon $color="#6b7280">
-                    <Clock size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue>{staffStats.totalHours.toFixed(1)}</StatValue>
-                <StatSubtext>this month</StatSubtext>
-              </StatCard>
-            </StatsGrid>
+            {/* Hours Worked */}
+            <StatCard
+              label="Hours Worked"
+              icon={<Clock size={18} />}
+              iconColor="#6b7280"
+              value={staffStats.totalHours.toFixed(1)}
+              subtext="this month"
+              valueColor="#6b7280"
+              variant="info"
+            />
           </StatsSection>
         )}
 
@@ -895,7 +861,7 @@ export default function StaffDetailModal({
           </InfoGrid>
 
           {/* Payroll Information - Admin Only */}
-          {isAdmin && !isEditing && (
+          {isAdmin && (
             <InfoGrid>
               <FormField>
                 <Label htmlFor="staff-hourly-rate">Hourly Rate ($)</Label>

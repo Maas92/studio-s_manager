@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Development
+bin/
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificates (will be mounted)
+certs/backup-*
+
+# Scripts (not needed in container)
+scripts/
+
+# Test files
+*_test.go

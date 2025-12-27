@@ -27,6 +27,7 @@ const envSchema = z.object({
     .string()
     .url()
     .default("http://localhost:5002/.well-known/jwks.json"),
+  GOOGLE_CONTACTS_SERVICE_URL: z.string().url(),
 });
 
 export type Env = z.infer<typeof envSchema>;

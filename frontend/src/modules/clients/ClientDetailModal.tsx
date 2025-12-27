@@ -3,6 +3,8 @@ import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import InfoGrid from "../../ui/components/InfoGrid";
+import StatsSection from "../../ui/components/StatsSection";
+import StatCard from "../../ui/components/StatCard";
 import styled from "styled-components";
 import type { Client, CreateClientInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
@@ -39,90 +41,6 @@ interface ClientDetailModalProps {
 const Content = styled.div`
   display: grid;
   gap: 1.5rem;
-`;
-
-const StatsSection = styled.div`
-  padding: 1.5rem;
-  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
-  border-radius: ${({ theme }) => theme.radii.md};
-  border: 1px solid ${({ theme }) => theme.color.border};
-`;
-
-const StatsTitle = styled.h4`
-  margin: 0 0 1.25rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.text};
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const StatCard = styled.div<{ $variant?: "success" | "info" | "warning" }>`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: ${({ theme }) => theme.color.panel};
-  border-radius: ${({ theme }) => theme.radii.sm};
-  border: 1px solid ${({ theme }) => theme.color.border};
-  border-left: 3px solid
-    ${({ $variant, theme }) => {
-      switch ($variant) {
-        case "success":
-          return theme.color.green500;
-        case "warning":
-          return theme.color.yellow700;
-        case "info":
-          return theme.color.blue500;
-        default:
-          return theme.color.brand600;
-      }
-    }};
-`;
-
-const StatHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const StatLabel = styled.div`
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.mutedText};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const StatIcon = styled.div<{ $color?: string }>`
-  color: ${({ $color }) => $color};
-`;
-
-const StatValue = styled.div<{ $color?: string }>`
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: ${({ $color, theme }) => $color || theme.color.text};
-  line-height: 1;
-`;
-
-const StatSubtext = styled.div`
-  font-size: 0.75rem;
-  color: ${({ theme }) => theme.color.mutedText};
 `;
 
 const Form = styled.form`
@@ -313,66 +231,54 @@ export default function ClientDetailModal({
       <Content>
         {/* Client Stats - Owner Only */}
         {isAdmin && clientStats && !isEditing && (
-          <StatsSection>
-            <StatsTitle>
-              <TrendingUp size={18} />
-              Client Statistics
-            </StatsTitle>
-            <StatsGrid>
-              {/* Total Appointments */}
-              <StatCard $variant="info">
-                <StatHeader>
-                  <StatLabel>Appointments</StatLabel>
-                  <StatIcon $color="#2563eb">
-                    <Calendar size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#2563eb">
-                  {clientStats.totalAppointments}
-                </StatValue>
-                <StatSubtext>{clientStats.completed} completed</StatSubtext>
-              </StatCard>
+          <StatsSection
+            title="Client Statistics"
+            icon={<TrendingUp size={18} />}
+            columns={4}
+          >
+            {/* Total Appointments */}
+            <StatCard
+              label="Appointments"
+              icon={<Calendar size={18} />}
+              iconColor="#2563eb"
+              variant="info"
+              valueColor="#2563eb"
+              value={clientStats.totalAppointments}
+              subtext={`${clientStats.completed} completed`}
+            />
 
-              {/* Total Spent */}
-              <StatCard $variant="success">
-                <StatHeader>
-                  <StatLabel>Lifetime Value</StatLabel>
-                  <StatIcon $color="#15803d">
-                    <DollarSign size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#15803d">
-                  ${clientStats.totalSpent.toLocaleString()}
-                </StatValue>
-                <StatSubtext>total revenue</StatSubtext>
-              </StatCard>
+            {/* Total Spent */}
+            <StatCard
+              label="Lifetime Value"
+              icon={<DollarSign size={18} />}
+              iconColor="#15803d"
+              value={clientStats.totalSpent.toLocaleString()}
+              valueColor="#15803d"
+              subtext="total revenue"
+              variant="success"
+            />
 
-              {/* Upcoming */}
-              <StatCard $variant="warning">
-                <StatHeader>
-                  <StatLabel>Upcoming</StatLabel>
-                  <StatIcon $color="#ca8a04">
-                    <Clock size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#ca8a04">{clientStats.upcoming}</StatValue>
-                <StatSubtext>appointments</StatSubtext>
-              </StatCard>
+            {/* Upcoming */}
+            <StatCard
+              label="Upcoming"
+              icon={<Clock size={18} />}
+              iconColor="#ca8a04"
+              value={clientStats.upcoming}
+              valueColor="#ca8a04"
+              subtext="appointments"
+              variant="warning"
+            />
 
-              {/* Loyalty Points */}
-              <StatCard>
-                <StatHeader>
-                  <StatLabel>Loyalty Points</StatLabel>
-                  <StatIcon $color="#c2a56f">
-                    <Gift size={18} />
-                  </StatIcon>
-                </StatHeader>
-                <StatValue $color="#c2a56f">
-                  {client.loyaltyPoints || 0}
-                </StatValue>
-                <StatSubtext>points earned</StatSubtext>
-              </StatCard>
-            </StatsGrid>
+            {/* Loyalty Points */}
+            <StatCard
+              label="Loyalty Points"
+              icon={<Gift size={18} />}
+              iconColor="#c2a56f"
+              value={client.loyaltyPoints || 0}
+              valueColor="#c2a56f"
+              subtext="points earned"
+              variant="info"
+            />
           </StatsSection>
         )}
 

@@ -67,3 +67,7 @@ backend/tmp/
 backend/coverage/
 backend/build/
 backend/.parcel-cache/
+
+# Google Contacts Service
+client_secret*
+google-contacts-service/certs/*

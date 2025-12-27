@@ -6,6 +6,7 @@ import StatCard from "../../ui/components/StatCard";
 import ModalActions from "../../ui/components/ModalActions";
 import FormField from "../../ui/components/FormField";
 import InfoGrid from "../../ui/components/InfoGrid";
+import Tag from "../../ui/components/Tag";
 import styled from "styled-components";
 import type { Treatment, CreateTreatmentInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
@@ -71,92 +72,10 @@ const ReadOnlyField = styled.div`
   line-height: 1.6;
 `;
 
-const InfoItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-`;
-
-const InfoLabel = styled.div`
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${({ theme }) => theme.color.mutedText};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const InfoValue = styled.div`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${({ theme }) => theme.color.text};
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
 const TagsContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-`;
-
-const Tag = styled.span<{ $variant?: "default" | "benefit" | "warning" }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  background: ${({ $variant, theme }) => {
-    switch ($variant) {
-      case "benefit":
-        return theme.color.green100 || "#dcfce7";
-      case "warning":
-        return theme.color.red100 || "#fee2e2";
-      default:
-        return theme.color.brand100 || "#dbeafe";
-    }
-  }};
-  color: ${({ $variant, theme }) => {
-    switch ($variant) {
-      case "benefit":
-        return theme.color.green700 || "#15803d";
-      case "warning":
-        return theme.color.red600 || "#b91c1c";
-      default:
-        return theme.color.brand700 || "#1d4ed8";
-    }
-  }};
-  border: 1px solid
-    ${({ $variant, theme }) => {
-      switch ($variant) {
-        case "benefit":
-          return theme.color.green100 || "#bbf7d0";
-        case "warning":
-          return theme.color.red200 || "#fecaca";
-        default:
-          return theme.color.brand200 || "#bfdbfe";
-      }
-    }};
-`;
-
-const Actions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-  justify-content: space-between;
-  padding-top: 1rem;
-  border-top: 1px solid ${({ theme }) => theme.color.border};
-`;
-
-const LeftActions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-`;
-
-const RightActions = styled.div`
-  display: flex;
-  gap: 0.75rem;
 `;
 
 const EditModeGrid = styled.div`
@@ -589,7 +508,7 @@ export default function TreatmentDetailModal({
                 </SectionTitle>
                 <TagsContainer>
                   {treatment.benefits.map((benefit, idx) => (
-                    <Tag key={idx} $variant="benefit">
+                    <Tag key={idx} variant="benefit">
                       <CheckCircle size={12} />
                       {benefit}
                     </Tag>
@@ -607,8 +526,11 @@ export default function TreatmentDetailModal({
                   </SectionTitle>
                   <TagsContainer>
                     {treatment.contraindications.map((contra, idx) => (
-                      <Tag key={idx} $variant="warning">
-                        <AlertTriangle size={12} />
+                      <Tag
+                        key={idx}
+                        variant="warning"
+                        icon={<AlertTriangle size={12} />}
+                      >
                         {contra}
                       </Tag>
                     ))}
@@ -649,68 +571,31 @@ export default function TreatmentDetailModal({
             )}
           </>
         )}
-
-        <Actions>
-          <LeftActions>
-            {!isEditing && isAdmin && (
-              <Button
-                variation="danger"
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                <Trash2 size={16} />
-                {deleting ? "Deleting..." : "Delete"}
+        <ModalActions
+          isEditing={isEditing}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          onEdit={() => setIsEditing(true)}
+          onDelete={handleDelete}
+          onClose={onClose}
+          saving={updating}
+          deleting={deleting}
+          canEdit={isAdmin}
+          canDelete={isAdmin}
+          saveDisabled={
+            !formValues.name ||
+            !formValues.durationMinutes ||
+            formValues.price < 0
+          }
+          leftActions={
+            !isEditing && (
+              <Button variation="primary" type="button" onClick={handleBook}>
+                <Calendar size={16} />
+                Book This Treatment
               </Button>
-            )}
-          </LeftActions>
-
-          <RightActions>
-            {isEditing ? (
-              <>
-                <Button
-                  variation="secondary"
-                  type="button"
-                  onClick={handleCancel}
-                >
-                  <X size={16} />
-                  Cancel
-                </Button>
-                <Button
-                  variation="primary"
-                  type="button"
-                  onClick={handleSave}
-                  disabled={
-                    updating ||
-                    !formValues.name ||
-                    !formValues.durationMinutes ||
-                    formValues.price < 0
-                  }
-                >
-                  <Save size={16} />
-                  {updating ? "Saving..." : "Save Changes"}
-                </Button>
-              </>
-            ) : (
-              <>
-                {isAdmin && (
-                  <Button
-                    variation="secondary"
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <Edit2 size={16} />
-                    Edit
-                  </Button>
-                )}
-                <Button variation="primary" type="button" onClick={handleBook}>
-                  <Calendar size={16} />
-                  Book This Treatment
-                </Button>
-              </>
-            )}
-          </RightActions>
-        </Actions>
+            )
+          }
+        />
       </Content>
     </Modal>
   );

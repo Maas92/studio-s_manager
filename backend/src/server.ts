@@ -1,11 +1,25 @@
-import http from "http";
+import https from "https";
+import fs from "fs";
 import app from "./app.js";
 import { env } from "./config/env.js";
 import { testConnection, closePool } from "./config/database.js";
 import { logger } from "./utils/logger.js";
 
 const port = env.PORT;
-// let server: http.Server;
+
+// if (process.env.MTLS_ENABLED === 'true') {
+//   const options = {
+//     cert: fs.readFileSync(process.env.MTLS_CERT),
+//     key: fs.readFileSync(process.env.MTLS_KEY),
+//     ca: fs.readFileSync(process.env.MTLS_CA_CERT),
+//     requestCert: true,
+//     rejectUnauthorized: true,
+//   };
+
+//   https.createServer(options, app).listen(5003);
+// } else {
+//   app.listen(5003); // HTTP for now
+// }
 
 /**
  * Start the Express server
