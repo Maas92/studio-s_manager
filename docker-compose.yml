@@ -250,6 +250,36 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+      
+  # WhatsApp Notification Service
+  whatsapp-service:
+    build: .
+    container_name: beauty-salon-whatsapp
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER}
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
+      - WHATSAPP_PHONE_NUMBER=${WHATSAPP_PHONE_NUMBER}
+      - CHAKRA_API_KEY=${CHAKRA_API_KEY}
+      - CHAKRA_BASE_URL=${CHAKRA_BASE_URL}
+      - BUSINESS_NAME=${BUSINESS_NAME}
+      - BUSINESS_ADDRESS=${BUSINESS_ADDRESS}
+      - BUSINESS_PHONE=${BUSINESS_PHONE}
+      - SUPPORT_EMAIL=${SUPPORT_EMAIL}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - studio-s-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   studio-s-network:

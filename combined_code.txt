@@ -1,0 +1,1432 @@
+================================================================================
+FILE: ./whatsapp-notification-service\main.py
+================================================================================
+
+import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from typing import Optional
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from config import settings
+from database import get_db, init_db
+from fastapi import Depends, FastAPI, HTTPException
+from models.schemas import NotificationStats, SendMessageRequest, SendMessageResponse
+from services.notification_service import NotificationService
+from services.whatsapp_provider import get_whatsapp_provider
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Initialize scheduler
+scheduler = AsyncIOScheduler()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle - startup and shutdown"""
+    # Startup
+    logger.info("Starting WhatsApp Notification Service...")
+    init_db()
+
+    # Initialize notification service
+    provider = get_whatsapp_provider()
+    notification_service = NotificationService(provider)
+    app.state.notification_service = notification_service
+
+    # Schedule jobs
+    scheduler.add_job(
+        notification_service.send_confirmations,
+        CronTrigger(minute="*/5"),  # Every 5 minutes
+        id="send_confirmations",
+        name="Send appointment confirmations",
+    )
+
+    scheduler.add_job(
+        notification_service.send_24h_reminders,
+        CronTrigger(hour="9", minute="0"),  # Daily at 9 AM
+        id="send_24h_reminders",
+        name="Send 24-hour reminders",
+    )
+
+    scheduler.add_job(
+        notification_service.send_1h_reminders,
+        CronTrigger(minute="0"),  # Every hour
+        id="send_1h_reminders",
+        name="Send 1-hour reminders",
+    )
+
+    scheduler.add_job(
+        notification_service.send_aftercare_messages,
+        CronTrigger(hour="10", minute="0"),  # Daily at 10 AM
+        id="send_aftercare",
+        name="Send aftercare messages",
+    )
+
+    scheduler.start()
+    logger.info("Scheduler started with all jobs")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down WhatsApp Notification Service...")
+    scheduler.shutdown()
+
+
+app = FastAPI(
+    title="WhatsApp Notification Service",
+    description="Beauty Salon appointment notifications via WhatsApp",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+
+@app.get("/")
+async def root():
+    """Health check endpoint"""
+    return {
+        "service": "WhatsApp Notification Service",
+        "status": "healthy",
+        "version": "1.0.0",
+    }
+
+
+@app.get("/health")
+async def health():
+    """Detailed health check"""
+    return {
+        "status": "healthy",
+        "scheduler": scheduler.running,
+        "jobs": [
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run": (
+                    job.next_run_time.isoformat() if job.next_run_time else None
+                ),
+            }
+            for job in scheduler.get_jobs()
+        ],
+    }
+
+
+@app.post("/send-message", response_model=SendMessageResponse)
+async def send_message(request: SendMessageRequest):
+    """
+    Manually send a WhatsApp message
+    Useful for testing or manual notifications
+    """
+    try:
+        notification_service = app.state.notification_service
+        success = await notification_service.send_manual_message(
+            phone_number=request.phone_number,
+            message=request.message,
+            message_type=request.message_type,
+        )
+
+        return SendMessageResponse(
+            success=success,
+            message=(
+                "Message sent successfully" if success else "Failed to send message"
+            ),
+        )
+    except Exception as e:
+        logger.error(f"Error sending manual message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/send-confirmation/{booking_id}")
+async def send_confirmation(booking_id: int):
+    """Manually trigger confirmation for a specific booking"""
+    try:
+        notification_service = app.state.notification_service
+        success = await notification_service.send_confirmation_for_booking(booking_id)
+
+        return {
+            "success": success,
+            "booking_id": booking_id,
+            "message": (
+                "Confirmation sent" if success else "Failed to send confirmation"
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Error sending confirmation for booking {booking_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/send-cancellation/{booking_id}")
+async def send_cancellation(booking_id: int):
+    """Manually trigger cancellation notification for a specific booking"""
+    try:
+        notification_service = app.state.notification_service
+        success = await notification_service.send_cancellation_for_booking(booking_id)
+
+        return {
+            "success": success,
+            "booking_id": booking_id,
+            "message": (
+                "Cancellation sent" if success else "Failed to send cancellation"
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Error sending cancellation for booking {booking_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stats", response_model=NotificationStats)
+async def get_stats(days: int = 7):
+    """Get notification statistics for the last N days"""
+    try:
+        notification_service = app.state.notification_service
+        stats = await notification_service.get_stats(days)
+        return stats
+    except Exception as e:
+        logger.error(f"Error fetching stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/trigger-job/{job_id}")
+async def trigger_job(job_id: str):
+    """Manually trigger a scheduled job (for testing)"""
+    job = scheduler.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    try:
+        job.modify(next_run_time=datetime.now())
+        return {"success": True, "message": f"Job {job_id} triggered successfully"}
+    except Exception as e:
+        logger.error(f"Error triggering job {job_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+================================================================================
+FILE: ./whatsapp-notification-service\config.py
+================================================================================
+
+"""
+Configuration management for WhatsApp Notification Service
+"""
+
+import os
+from typing import Optional
+
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+class Settings(BaseSettings):
+    # Database Configuration
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    DB_POOL_SIZE = os.getenv("DB_POOL_SIZE")
+    DB_MAX_OVERFLOW = os.getenv("DB_MAX_OVERFLOW")
+
+    # WhatsApp Provider Configuration
+    WHATSAPP_PROVIDER: str = os.getenv("WHATSAPP_PROVIDER", "chakra")
+    WHATSAPP_API_KEY: str = os.getenv("WHATSAPP_API_KEY", "")
+    WHATSAPP_API_URL: Optional[str] = None
+    WHATSAPP_PHONE_NUMBER = os.getenv("WHATSAPP_PHONE_NUMBER")
+
+    # ChakraHQ Specific (if using)
+    CHAKRA_API_KEY: str = os.getenv("CHAKRA_API_KEY", "")
+    CHAKRA_BASE_URL: str = os.getenv("CHAKRA_BASE_URL", "https://api.chakrahq.com/v1")
+
+    # Message Configuration
+    BUSINESS_NAME = os.getenv("BUSINESS_NAME")
+    BUSINESS_ADDRESS = os.getenv("BUSINESS_ADDRESS")
+    BUSINESS_PHONE = os.getenv("BUSINESS_PHONE")
+    SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL")
+
+    # Timing Configuration
+    REMINDER_24H_ENABLED = os.getenv("REMINDER_24H_ENABLED")
+    REMINDER_1H_ENABLED = os.getenv("REMINDER_1H_ENABLED")
+    AFTERCARE_DELAY_HOURS = os.getenv("AFTERCARE_DELAY_HOURS")
+
+    # Retry Configuration
+    MAX_RETRIES = os.getenv("MAX_RETRIES")
+    RETRY_DELAY_SECONDS = os.getenv("RETRY_DELAY_SECONDS")
+
+    # Rate Limiting
+    RATE_LIMIT_PER_MINUTE = os.getenv("RATE_LIMIT_PER_MINUTE")
+
+    # Logging
+    LOG_LEVEL = os.getenv("LOG_LEVEL")
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+settings = Settings()
+
+
+================================================================================
+FILE: ./whatsapp-notification-service\database.py
+================================================================================
+
+"""
+Database models and connection management
+"""
+
+from datetime import datetime
+from typing import Generator
+
+from config import settings
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    create_engine,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, relationship, sessionmaker
+
+Base = declarative_base()
+
+# Create engine
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_pre_ping=True,  # Verify connections before using
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+class Booking(Base):
+    """Booking table model (read-only for this service)"""
+
+    __tablename__ = "bookings"
+
+    id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, ForeignKey("clients.id"))
+    treatment_id = Column(Integer)
+    staff_id = Column(Integer)
+    booking_date = Column(DateTime)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    status = Column(String)
+    treatment_location_id = Column(Integer)
+    total_price = Column(Numeric)
+    deposit_paid = Column(Boolean)
+    loyalty_points_earned = Column(Integer)
+    notes = Column(Text)
+    internal_notes = Column(Text)
+    cancellation_reason = Column(Text)
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+    confirmed_at = Column(DateTime)
+    completed_at = Column(DateTime)
+    cancelled_at = Column(DateTime)
+    deposit_required = Column(Boolean)
+    deposit_amount = Column(Numeric)
+    payment_status = Column(String)
+    amount_paid = Column(Numeric)
+    cancellation_policy_id = Column(Integer)
+    recurring_appointment_id = Column(Integer)
+    confirmation_sent_at = Column(DateTime)
+    reminder_sent_at = Column(DateTime)
+    no_show = Column(Boolean)
+    checked_in_at = Column(DateTime)
+    checked_out_at = Column(DateTime)
+    duration_minutes = Column(Integer)
+
+    # Relationship
+    client = relationship("Client", back_populates="bookings")
+
+
+class Client(Base):
+    """Client table model (read-only for this service)"""
+
+    __tablename__ = "clients"
+
+    id = Column(Integer, primary_key=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    email = Column(String)
+    phone = Column(String, default="")
+    whatsapp = Column(String, default="")
+    date_of_birth = Column(DateTime)
+    gender = Column(String)
+    address = Column(Text)
+    city = Column(String)
+    postal_code = Column(String)
+    emergency_contact_name = Column(String)
+    emergency_contact_phone = Column(String)
+    allergies = Column(Text)
+    skin_type = Column(String)
+    medical_conditions = Column(Text)
+    notes = Column(Text)
+    marketing_consent = Column(Boolean)
+    is_active = Column(Boolean)
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+    last_visit_date = Column(DateTime)
+    source = Column(String)
+    referral_source = Column(String)
+    customer_segment = Column(String)
+    total_lifetime_value = Column(Numeric)
+    total_visits = Column(Integer)
+    average_spend = Column(Numeric)
+    last_communication_date = Column(DateTime)
+    status = Column(String)
+    blocked_reason = Column(Text)
+    blocked_at = Column(DateTime)
+    blocked_by = Column(Integer)
+    loyalty_points = Column(Integer)
+    whatsapp_verified = Column(Boolean)
+
+    # Relationship
+    bookings = relationship("Booking", back_populates="client")
+
+
+class NotificationLog(Base):
+    """
+    Track all sent notifications
+    This table will be created by this service
+    """
+
+    __tablename__ = "notification_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
+    phone_number = Column(String, nullable=False)
+    message_type = Column(
+        String, nullable=False
+    )  # confirmation, reminder_24h, reminder_1h, cancellation, aftercare, marketing
+    message_content = Column(Text, nullable=False)
+    sent_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="pending")  # pending, sent, failed, delivered, read
+    provider_message_id = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+def init_db():
+    """Initialize database - create notification_logs table if it doesn't exist"""
+    Base.metadata.create_all(bind=engine, tables=[NotificationLog.__table__])
+
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependency to get database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+================================================================================
+FILE: ./whatsapp-notification-service/services\message_templates.py
+================================================================================
+
+"""
+WhatsApp message templates for different notification types
+"""
+
+from datetime import datetime
+from typing import Any, Dict
+
+from config import settings
+
+
+class MessageTemplates:
+    """Message template generator for various notification types"""
+
+    @staticmethod
+    def format_datetime(dt: datetime) -> str:
+        """Format datetime for display"""
+        return dt.strftime("%A, %B %d, %Y at %I:%M %p")
+
+    @staticmethod
+    def format_date(dt: datetime) -> str:
+        """Format date only"""
+        return dt.strftime("%A, %B %d, %Y")
+
+    @staticmethod
+    def format_time(dt: datetime) -> str:
+        """Format time only"""
+        return dt.strftime("%I:%M %p")
+
+    @staticmethod
+    def confirmation(booking_data: Dict[str, Any]) -> str:
+        """
+        Booking confirmation message
+
+        Args:
+            booking_data: Dict containing booking and client information
+        """
+        client_name = booking_data.get("client_name", "Valued Client")
+        booking_date = booking_data.get("booking_date", datetime.now())
+        start_time = booking_data.get("start_time", datetime.now())
+        treatment_name = booking_data.get("treatment_name", "your treatment")
+        staff_name = booking_data.get("staff_name", "our staff")
+        location = booking_data.get(
+            "location", settings.BUSINESS_ADDRESS or "our salon"
+        )
+
+        message = f"""✨ {settings.BUSINESS_NAME} - Booking Confirmed ✨
+
+Hello {client_name}!
+
+Your appointment has been confirmed:
+
+📅 Date: {MessageTemplates.format_date(booking_date)}
+🕐 Time: {MessageTemplates.format_time(start_time)}
+💆 Treatment: {treatment_name}
+👤 With: {staff_name}
+📍 Location: {location}
+"""
+
+        if booking_data.get("deposit_required"):
+            deposit = booking_data.get("deposit_amount", 0)
+            message += f"\n💳 Deposit Required: R{deposit:.2f}"
+
+        message += f"""
+
+We look forward to seeing you! 
+
+If you need to reschedule or cancel, please contact us at least 24 hours in advance.
+
+{settings.BUSINESS_PHONE or ''}
+{settings.SUPPORT_EMAIL or ''}
+"""
+        return message.strip()
+
+    @staticmethod
+    def reminder_24h(booking_data: Dict[str, Any]) -> str:
+        """24-hour reminder message"""
+        client_name = booking_data.get("client_name", "Valued Client")
+        start_time = booking_data.get("start_time", datetime.now())
+        treatment_name = booking_data.get("treatment_name", "your treatment")
+        location = booking_data.get(
+            "location", settings.BUSINESS_ADDRESS or "our salon"
+        )
+
+        message = f"""⏰ {settings.BUSINESS_NAME} - Appointment Reminder
+
+Hello {client_name}!
+
+This is a friendly reminder that your appointment is tomorrow:
+
+🕐 Time: {MessageTemplates.format_time(start_time)}
+💆 Treatment: {treatment_name}
+📍 Location: {location}
+
+Please arrive 5-10 minutes early to complete any necessary forms.
+
+Looking forward to seeing you!
+
+To cancel or reschedule: {settings.BUSINESS_PHONE or 'Contact us'}
+"""
+        return message.strip()
+
+    @staticmethod
+    def reminder_1h(booking_data: Dict[str, Any]) -> str:
+        """1-hour reminder message"""
+        client_name = booking_data.get("client_name", "Valued Client")
+        start_time = booking_data.get("start_time", datetime.now())
+        treatment_name = booking_data.get("treatment_name", "your treatment")
+        location = booking_data.get(
+            "location", settings.BUSINESS_ADDRESS or "our salon"
+        )
+
+        message = f"""⏰ {settings.BUSINESS_NAME} - Starting Soon!
+
+Hello {client_name}!
+
+Your appointment starts in 1 hour:
+
+🕐 Time: {MessageTemplates.format_time(start_time)}
+💆 Treatment: {treatment_name}
+📍 Location: {location}
+
+See you soon! 💖
+"""
+        return message.strip()
+
+    @staticmethod
+    def cancellation(booking_data: Dict[str, Any]) -> str:
+        """Appointment cancellation message"""
+        client_name = booking_data.get("client_name", "Valued Client")
+        booking_date = booking_data.get("booking_date")
+        start_time = booking_data.get("start_time", datetime.now())
+        cancellation_reason = booking_data.get("cancellation_reason", "")
+
+        message = f"""❌ {settings.BUSINESS_NAME} - Appointment Cancelled
+
+Hello {client_name},
+
+Your appointment has been cancelled:
+
+📅 Was scheduled for: {MessageTemplates.format_datetime(start_time)}
+"""
+
+        if cancellation_reason:
+            message += f"\nReason: {cancellation_reason}"
+
+        message += f"""
+
+We hope to see you again soon! To book a new appointment, please contact us.
+
+{settings.BUSINESS_PHONE or ''}
+{settings.SUPPORT_EMAIL or ''}
+"""
+        return message.strip()
+
+    @staticmethod
+    def reschedule(booking_data: Dict[str, Any]) -> str:
+        """Appointment reschedule message"""
+        client_name = booking_data.get("client_name", "Valued Client")
+        old_time = booking_data.get("old_start_time", datetime.now())
+        new_time = booking_data.get("start_time", datetime.now())
+        treatment_name = booking_data.get("treatment_name", "your treatment")
+
+        message = f"""🔄 {settings.BUSINESS_NAME} - Appointment Rescheduled
+
+Hello {client_name}!
+
+Your appointment has been rescheduled:
+
+❌ Previous time: {MessageTemplates.format_datetime(old_time)}
+✅ New time: {MessageTemplates.format_datetime(new_time)}
+💆 Treatment: {treatment_name}
+
+We look forward to seeing you at your new appointment time!
+
+Questions? Contact us:
+{settings.BUSINESS_PHONE or ''}
+"""
+        return message.strip()
+
+    @staticmethod
+    def aftercare(booking_data: Dict[str, Any]) -> str:
+        """Post-appointment aftercare message"""
+        client_name = booking_data.get("client_name", "Valued Client")
+        treatment_name = booking_data.get("treatment_name", "treatment")
+        aftercare_instructions = booking_data.get("aftercare_instructions", "")
+
+        message = f"""💖 {settings.BUSINESS_NAME} - Aftercare Tips
+
+Hello {client_name}!
+
+Thank you for visiting us! We hope you enjoyed your {treatment_name}.
+
+"""
+
+        if aftercare_instructions:
+            message += f"Aftercare instructions:\n{aftercare_instructions}\n\n"
+        else:
+            message += """General aftercare tips:
+• Keep the treated area clean
+• Avoid direct sunlight for 24-48 hours
+• Stay hydrated
+• Avoid heavy exercise for 24 hours
+
+"""
+
+        message += f"""If you have any concerns or questions, please don't hesitate to contact us.
+
+We'd love to see you again! Book your next appointment:
+{settings.BUSINESS_PHONE or ''}
+
+Rate your experience: [feedback_link]
+"""
+        return message.strip()
+
+    @staticmethod
+    def marketing(client_name: str, offer_details: str) -> str:
+        """Marketing/promotional message"""
+        message = f"""✨ {settings.BUSINESS_NAME} - Special Offer! ✨
+
+Hello {client_name}!
+
+{offer_details}
+
+Book now to take advantage of this limited-time offer!
+
+{settings.BUSINESS_PHONE or ''}
+{settings.SUPPORT_EMAIL or ''}
+
+Reply STOP to unsubscribe from promotional messages.
+"""
+        return message.strip()
+
+
+================================================================================
+FILE: ./whatsapp-notification-service/services\notification_service.py
+================================================================================
+
+"""
+Core notification service - handles all notification logic
+"""
+
+import logging
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from config import settings
+from database import Booking, Client, NotificationLog, SessionLocal
+from models.schemas import NotificationStats
+from services.message_templates import MessageTemplates
+from services.whatsapp_provider import WhatsAppProvider
+from sqlalchemy import Column, DateTime, and_, or_
+from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+
+
+class NotificationService:
+    """Service for managing WhatsApp notifications"""
+
+    def __init__(self, whatsapp_provider: WhatsAppProvider):
+        self.provider = whatsapp_provider
+        self.templates = MessageTemplates()
+
+    def _get_db(self) -> Session:
+        """Get database session"""
+        return SessionLocal()
+
+    def _should_send_to_client(self, client: Client) -> bool:
+        """Check if client should receive WhatsApp messages"""
+        if client.is_active is False:
+            return False
+
+        if client.marketing_consent is False and settings.REMINDER_24H_ENABLED:
+            # If no marketing consent, only send transactional messages
+            # This is a business decision - adjust as needed
+            pass
+
+        # Prefer WhatsApp number, fall back to phone
+        phone: Column[str] = client.whatsapp or client.phone
+        if phone is False:
+            return False
+
+        return True
+
+    def _get_phone_number(self, client: Client) -> Column[str]:
+        """Get the best phone number to use for WhatsApp"""
+        return client.whatsapp or client.phone
+
+    def _prepare_booking_data(self, booking: Booking, db: Session) -> Dict[str, Any]:
+        """Prepare booking data for message templates"""
+        client = booking.client
+
+        # You would fetch treatment and staff names from their respective tables
+        # For now, using placeholders
+        treatment_name = (
+            f"Treatment #{booking.treatment_id}"  # TODO: Join with treatments table
+        )
+        staff_name = f"Staff Member #{booking.staff_id}"  # TODO: Join with staff table
+        location = "Our Salon"  # TODO: Join with locations table
+
+        return {
+            "client_name": f"{client.first_name} {client.last_name}",
+            "booking_date": booking.booking_date,
+            "start_time": booking.start_time,
+            "end_time": booking.end_time,
+            "treatment_name": treatment_name,
+            "staff_name": staff_name,
+            "location": location,
+            "deposit_required": booking.deposit_required,
+            "deposit_amount": booking.deposit_amount,
+            "total_price": booking.total_price,
+            "notes": booking.notes,
+            "cancellation_reason": booking.cancellation_reason,
+        }
+
+    async def _send_and_log(
+        self,
+        phone_number: str,
+        message: str,
+        message_type: str,
+        booking_id: Column[int],
+        client_id: Column[int],
+    ) -> bool:
+        """Send message and log to database"""
+        db = self._get_db()
+
+        try:
+            # Send message
+            result = await self.provider.send_message(phone_number, message)
+
+            # Log to database
+            log = NotificationLog(
+                booking_id=booking_id,
+                client_id=client_id,
+                phone_number=phone_number,
+                message_type=message_type,
+                message_content=message,
+                status="sent" if result["success"] else "failed",
+                provider_message_id=result.get("message_id"),
+                error_message=result.get("error"),
+            )
+            db.add(log)
+            db.commit()
+
+            return result["success"]
+
+        except Exception as e:
+            logger.error(f"Error sending message: {e}")
+            # Log failed attempt
+            log = NotificationLog(
+                booking_id=booking_id,
+                client_id=client_id,
+                phone_number=phone_number,
+                message_type=message_type,
+                message_content=message,
+                status="failed",
+                error_message=str(e),
+            )
+            db.add(log)
+            db.commit()
+            return False
+        finally:
+            db.close()
+
+    async def send_confirmations(self):
+        """Send confirmations for bookings that haven't received one"""
+        logger.info("Running confirmation job...")
+        db = self._get_db()
+
+        try:
+            # Find bookings that need confirmation
+            # - Created in last 24 hours
+            # - Status is 'confirmed' or 'pending'
+            # - No confirmation sent yet
+            # - Appointment is in the future
+            cutoff_time = datetime.now() - timedelta(hours=24)
+
+            bookings = (
+                db.query(Booking)
+                .join(Client)
+                .filter(
+                    and_(
+                        Booking.created_at >= cutoff_time,
+                        Booking.confirmation_sent_at.is_(None),
+                        Booking.status.in_(["confirmed", "pending"]),
+                        Booking.start_time > datetime.now(),
+                        Client.is_active == True,
+                    )
+                )
+                .all()
+            )
+
+            sent_count = 0
+            for booking in bookings:
+                if not self._should_send_to_client(booking.client):
+                    continue
+
+                phone = self._get_phone_number(booking.client)
+                if phone is False:
+                    continue
+
+                booking_data = self._prepare_booking_data(booking, db)
+                message = self.templates.confirmation(booking_data)
+
+                success = await self._send_and_log(
+                    phone_number=str(phone),
+                    message=message,
+                    message_type="confirmation",
+                    booking_id=booking.id,
+                    client_id=booking.client_id,
+                )
+
+                if success:
+                    booking.confirmation_sent_at = datetime.now()
+                    db.commit()
+                    sent_count += 1
+
+            logger.info(f"Sent {sent_count} confirmations")
+
+        except Exception as e:
+            logger.error(f"Error in send_confirmations: {e}")
+        finally:
+            db.close()
+
+    async def send_24h_reminders(self):
+        """Send 24-hour reminders"""
+        logger.info("Running 24-hour reminder job...")
+        db = self._get_db()
+
+        try:
+            # Find appointments 23-25 hours from now that haven't received 24h reminder
+            now = datetime.now()
+            window_start = now + timedelta(hours=23)
+            window_end = now + timedelta(hours=25)
+
+            bookings = (
+                db.query(Booking)
+                .join(Client)
+                .filter(
+                    and_(
+                        Booking.start_time.between(window_start, window_end),
+                        Booking.status.in_(["confirmed"]),
+                        Client.is_active == True,
+                    )
+                )
+                .all()
+            )
+
+            sent_count = 0
+            for booking in bookings:
+                # Check if 24h reminder already sent
+                existing_log = (
+                    db.query(NotificationLog)
+                    .filter(
+                        and_(
+                            NotificationLog.booking_id == booking.id,
+                            NotificationLog.message_type == "reminder_24h",
+                            NotificationLog.status == "sent",
+                        )
+                    )
+                    .first()
+                )
+
+                if existing_log:
+                    continue
+
+                if not self._should_send_to_client(booking.client):
+                    continue
+
+                phone = self._get_phone_number(booking.client)
+                if phone is False:
+                    continue
+
+                booking_data = self._prepare_booking_data(booking, db)
+                message = self.templates.reminder_24h(booking_data)
+
+                success = await self._send_and_log(
+                    phone_number=str(phone),
+                    message=message,
+                    message_type="reminder_24h",
+                    booking_id=booking.id,
+                    client_id=booking.client_id,
+                )
+
+                if success:
+                    sent_count += 1
+
+            logger.info(f"Sent {sent_count} 24-hour reminders")
+
+        except Exception as e:
+            logger.error(f"Error in send_24h_reminders: {e}")
+        finally:
+            db.close()
+
+    async def send_1h_reminders(self):
+        """Send 1-hour reminders"""
+        logger.info("Running 1-hour reminder job...")
+        db = self._get_db()
+
+        try:
+            # Find appointments 50-70 minutes from now
+            now = datetime.now()
+            window_start = now + timedelta(minutes=50)
+            window_end = now + timedelta(minutes=70)
+
+            bookings = (
+                db.query(Booking)
+                .join(Client)
+                .filter(
+                    and_(
+                        Booking.start_time.between(window_start, window_end),
+                        Booking.status.in_(["confirmed"]),
+                        Client.is_active == True,
+                    )
+                )
+                .all()
+            )
+
+            sent_count = 0
+            for booking in bookings:
+                # Check if 1h reminder already sent
+                existing_log = (
+                    db.query(NotificationLog)
+                    .filter(
+                        and_(
+                            NotificationLog.booking_id == booking.id,
+                            NotificationLog.message_type == "reminder_1h",
+                            NotificationLog.status == "sent",
+                        )
+                    )
+                    .first()
+                )
+
+                if existing_log:
+                    continue
+
+                if not self._should_send_to_client(booking.client):
+                    continue
+
+                phone = self._get_phone_number(booking.client)
+                if phone is False:
+                    continue
+
+                booking_data = self._prepare_booking_data(booking, db)
+                message = self.templates.reminder_1h(booking_data)
+
+                success = await self._send_and_log(
+                    phone_number=str(phone),
+                    message=message,
+                    message_type="reminder_1h",
+                    booking_id=booking.id,
+                    client_id=booking.client_id,
+                )
+
+                if success:
+                    sent_count += 1
+
+            logger.info(f"Sent {sent_count} 1-hour reminders")
+
+        except Exception as e:
+            logger.error(f"Error in send_1h_reminders: {e}")
+        finally:
+            db.close()
+
+    async def send_aftercare_messages(self):
+        """Send aftercare messages after completed appointments"""
+        logger.info("Running aftercare job...")
+        db = self._get_db()
+
+        try:
+            # Find completed appointments from yesterday
+            cutoff_hours: float = float(settings.AFTERCARE_DELAY_HOURS or 3)
+            now = datetime.now()
+            window_start = now - timedelta(hours=cutoff_hours + 1)
+            window_end = now - timedelta(hours=cutoff_hours - 1)
+
+            bookings = (
+                db.query(Booking)
+                .join(Client)
+                .filter(
+                    and_(
+                        Booking.completed_at.between(window_start, window_end),
+                        Booking.status == "completed",
+                        Client.is_active == True,
+                    )
+                )
+                .all()
+            )
+
+            sent_count = 0
+            for booking in bookings:
+                # Check if aftercare already sent
+                existing_log = (
+                    db.query(NotificationLog)
+                    .filter(
+                        and_(
+                            NotificationLog.booking_id == booking.id,
+                            NotificationLog.message_type == "aftercare",
+                            NotificationLog.status == "sent",
+                        )
+                    )
+                    .first()
+                )
+
+                if existing_log:
+                    continue
+
+                if not self._should_send_to_client(booking.client):
+                    continue
+
+                phone = self._get_phone_number(booking.client)
+                if phone is False:
+                    continue
+
+                booking_data = self._prepare_booking_data(booking, db)
+                message = self.templates.aftercare(booking_data)
+
+                success = await self._send_and_log(
+                    phone_number=str(phone),
+                    message=message,
+                    message_type="aftercare",
+                    booking_id=booking.id,
+                    client_id=booking.client_id,
+                )
+
+                if success:
+                    sent_count += 1
+
+            logger.info(f"Sent {sent_count} aftercare messages")
+
+        except Exception as e:
+            logger.error(f"Error in send_aftercare_messages: {e}")
+        finally:
+            db.close()
+
+    async def send_confirmation_for_booking(self, booking_id: int) -> bool:
+        """Manually send confirmation for a specific booking"""
+        db = self._get_db()
+
+        try:
+            booking = db.query(Booking).filter(Booking.id == booking_id).first()
+            if not booking:
+                logger.error(f"Booking {booking_id} not found")
+                return False
+
+            if not self._should_send_to_client(booking.client):
+                logger.warning(
+                    f"Client {booking.client_id} should not receive messages"
+                )
+                return False
+
+            phone = self._get_phone_number(booking.client)
+            if phone is False:
+                logger.error(f"No phone number for client {booking.client_id}")
+                return False
+
+            booking_data = self._prepare_booking_data(booking, db)
+            message = self.templates.confirmation(booking_data)
+
+            return await self._send_and_log(
+                phone_number=str(phone),
+                message=message,
+                message_type="confirmation",
+                booking_id=booking.id,
+                client_id=booking.client_id,
+            )
+
+        finally:
+            db.close()
+
+    async def send_cancellation_for_booking(self, booking_id: int) -> bool:
+        """Manually send cancellation for a specific booking"""
+        db = self._get_db()
+
+        try:
+            booking = db.query(Booking).filter(Booking.id == booking_id).first()
+            if not booking:
+                return False
+
+            if not self._should_send_to_client(booking.client):
+                return False
+
+            phone = self._get_phone_number(booking.client)
+            if phone is False:
+                return False
+
+            booking_data = self._prepare_booking_data(booking, db)
+            message = self.templates.cancellation(booking_data)
+
+            return await self._send_and_log(
+                phone_number=str(phone),
+                message=message,
+                message_type="cancellation",
+                booking_id=booking.id,
+                client_id=booking.client_id,
+            )
+
+        finally:
+            db.close()
+
+    async def send_manual_message(
+        self, phone_number: str, message: str, message_type: str = "manual"
+    ) -> bool:
+        """Send a manual message (for testing or ad-hoc notifications)"""
+        return await self._send_and_log(
+            phone_number=phone_number, message=message, message_type=message_type
+        )
+
+    async def get_stats(self, days: int = 7) -> NotificationStats:
+        """Get notification statistics"""
+        db = self._get_db()
+
+        try:
+            cutoff_date = datetime.now() - timedelta(days=days)
+
+            logs = (
+                db.query(NotificationLog)
+                .filter(NotificationLog.created_at >= cutoff_date)
+                .all()
+            )
+
+            total_sent = len([l for l in logs if l.status == "sent"])
+            total_failed = len([l for l in logs if l.status == "failed"])
+
+            by_type = {}
+            for log in logs:
+                if log.message_type not in by_type:
+                    by_type[log.message_type] = {"sent": 0, "failed": 0}
+
+                if log.status == "sent":
+                    by_type[log.message_type]["sent"] += 1
+                elif log.status == "failed":
+                    by_type[log.message_type]["failed"] += 1
+
+            return NotificationStats(
+                total_sent=total_sent,
+                total_failed=total_failed,
+                by_type=by_type,
+                period_days=days,
+            )
+
+        finally:
+            db.close()
+
+
+================================================================================
+FILE: ./whatsapp-notification-service/services\whatsapp_provider.py
+================================================================================
+
+"""
+Provider-agnostic WhatsApp API interface
+Easily swap between different WhatsApp providers
+"""
+
+import logging
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
+
+import httpx
+from config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class WhatsAppProvider(ABC):
+    """Abstract base class for WhatsApp providers"""
+
+    @abstractmethod
+    async def send_message(self, phone_number: str, message: str) -> Dict:
+        """
+        Send a WhatsApp message
+
+        Returns:
+            Dict with keys: success (bool), message_id (str), error (str)
+        """
+        pass
+
+    @abstractmethod
+    async def send_template_message(
+        self, phone_number: str, template_name: str, parameters: Dict
+    ) -> Dict:
+        """
+        Send a WhatsApp template message
+        Templates are pre-approved by WhatsApp for business messaging
+        """
+        pass
+
+
+class ChakraHQProvider(WhatsAppProvider):
+    """ChakraHQ WhatsApp provider implementation"""
+
+    def __init__(self, api_key: str, base_url: str):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.client = httpx.AsyncClient(timeout=30.0)
+
+    def _format_phone(self, phone: str) -> str:
+        """Format phone number to E.164 format"""
+        # Remove all non-numeric characters
+        phone = "".join(filter(str.isdigit, phone))
+
+        # Add country code if not present (assuming South Africa +27)
+        if not phone.startswith("27") and len(phone) == 10:
+            phone = "27" + phone[1:]  # Remove leading 0
+
+        return phone
+
+    async def send_message(self, phone_number: str, message: str) -> Dict:
+        """
+        Send message via ChakraHQ API
+        Refer to: https://apidocs.chakrahq.com/api-11312774
+        """
+        try:
+            formatted_phone = self._format_phone(phone_number)
+
+            # Adjust this payload based on ChakraHQ's actual API structure
+            payload = {"to": formatted_phone, "type": "text", "text": {"body": message}}
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            response = await self.client.post(
+                f"{self.base_url}/messages", json=payload, headers=headers
+            )
+
+            response.raise_for_status()
+            data = response.json()
+
+            return {"success": True, "message_id": data.get("id", ""), "error": None}
+
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"ChakraHQ API error: {e.response.status_code} - {e.response.text}"
+            )
+            return {
+                "success": False,
+                "message_id": None,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+            }
+        except Exception as e:
+            logger.error(f"Error sending message via ChakraHQ: {e}")
+            return {"success": False, "message_id": None, "error": str(e)}
+
+    async def send_template_message(
+        self, phone_number: str, template_name: str, parameters: Dict
+    ) -> Dict:
+        """Send template message via ChakraHQ"""
+        try:
+            formatted_phone = self._format_phone(phone_number)
+
+            # Adjust based on ChakraHQ's template message format
+            payload = {
+                "to": formatted_phone,
+                "type": "template",
+                "template": {
+                    "name": template_name,
+                    "language": {"code": "en"},
+                    "components": [
+                        {
+                            "type": "body",
+                            "parameters": [
+                                {"type": "text", "text": str(value)}
+                                for value in parameters.values()
+                            ],
+                        }
+                    ],
+                },
+            }
+
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            response = await self.client.post(
+                f"{self.base_url}/messages", json=payload, headers=headers
+            )
+
+            response.raise_for_status()
+            data = response.json()
+
+            return {"success": True, "message_id": data.get("id", ""), "error": None}
+
+        except Exception as e:
+            logger.error(f"Error sending template via ChakraHQ: {e}")
+            return {"success": False, "message_id": None, "error": str(e)}
+
+
+def get_whatsapp_provider() -> WhatsAppProvider:
+    """Factory function to get the configured WhatsApp provider"""
+    provider_name = settings.WHATSAPP_PROVIDER.lower()
+
+    if provider_name == "chakra":
+        return ChakraHQProvider(
+            api_key=settings.CHAKRA_API_KEY or settings.WHATSAPP_API_KEY,
+            base_url=settings.CHAKRA_BASE_URL,
+        )
+    elif provider_name == "twilio":
+        # Return Twilio provider when implemented
+        raise NotImplementedError("Twilio provider not yet implemented")
+    else:
+        raise ValueError(f"Unknown WhatsApp provider: {provider_name}")
+
+
+================================================================================
+FILE: ./whatsapp-notification-service/services\__init__.py
+================================================================================
+
+"""
+Services package initialization
+"""
+from services.notification_service import NotificationService
+from services.whatsapp_provider import get_whatsapp_provider, WhatsAppProvider
+from services.message_templates import MessageTemplates
+
+__all__ = [
+    'NotificationService',
+    'get_whatsapp_provider',
+    'WhatsAppProvider',
+    'MessageTemplates'
+]
+
+
+================================================================================
+FILE: ./whatsapp-notification-service/models\schemas.py
+================================================================================
+
+from datetime import datetime
+from typing import Dict, Optional
+
+from pydantic import BaseModel, Field
+
+
+class SendMessageRequest(BaseModel):
+    """Request schema for manual message sending"""
+
+    phone_number: str = Field(..., description="Phone number in E.164 format")
+    message: str = Field(..., description="Message content")
+    message_type: str = Field(default="manual", description="Type of message")
+
+
+class SendMessageResponse(BaseModel):
+    """Response schema for message sending"""
+
+    success: bool
+    message: str
+    message_id: Optional[str] = None
+
+
+class NotificationStats(BaseModel):
+    """Notification statistics response"""
+
+    total_sent: int
+    total_failed: int
+    by_type: Dict[str, Dict[str, int]]
+    period_days: int
+
+
+class JobStatus(BaseModel):
+    """Job status information"""
+
+    job_id: str
+    name: str
+    next_run_time: Optional[datetime]
+    is_running: bool
+
+
+================================================================================
+FILE: ./whatsapp-notification-service/models\__init__.py
+================================================================================
+
+"""
+Models package initialization
+"""
+from models.schemas import (
+    SendMessageRequest,
+    SendMessageResponse,
+    NotificationStats,
+    JobStatus
+)
+
+__all__ = [
+    'SendMessageRequest',
+    'SendMessageResponse',
+    'NotificationStats',
+    'JobStatus'
+]
