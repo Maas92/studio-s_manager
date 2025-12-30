@@ -64,8 +64,29 @@ class ChakraHQProvider(WhatsAppProvider):
         try:
             formatted_phone = self._format_phone(phone_number)
 
-            # Adjust this payload based on ChakraHQ's actual API structure
-            payload = {"to": formatted_phone, "type": "text", "text": {"body": message}}
+            payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": formatted_phone,
+                "type": "template",
+                "template": {
+                    "name": "reminder",
+                    "language": {"policy": "deterministic", "code": "en"},
+                    "components": [
+                        {
+                            "type": "body",
+                            "parameters": [
+                                {
+                                    "type": "text",
+                                    "parameter_name": "customer_name",
+                                    "text": str(message),
+                                }
+                                # for value in parameters.values()
+                            ],
+                        }
+                    ],
+                },
+            }
 
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -103,16 +124,22 @@ class ChakraHQProvider(WhatsAppProvider):
 
             # Adjust based on ChakraHQ's template message format
             payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
                 "to": formatted_phone,
                 "type": "template",
                 "template": {
-                    "name": template_name,
-                    "language": {"code": "en"},
+                    "name": "reminder",
+                    "language": {"policy": "deterministic", "code": "en"},
                     "components": [
                         {
                             "type": "body",
                             "parameters": [
-                                {"type": "text", "text": str(value)}
+                                {
+                                    "type": "text",
+                                    "parameter_name": "customer_name",
+                                    "text": str(value),
+                                }
                                 for value in parameters.values()
                             ],
                         }

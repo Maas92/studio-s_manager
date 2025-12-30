@@ -440,15 +440,9 @@ class NotificationService:
 
     async def send_manual_message(
         self, phone_number: str, message: str, message_type: str = "manual"
-    ) -> bool:
+    ) -> dict:
         """Send a manual message"""
-        return await self._send_and_log(
-            phone_number=phone_number,
-            message=message,
-            message_type=message_type,
-            booking_id=None,
-            client_id=None,
-        )
+        return await self.provider.send_message(phone_number, message)
 
     async def get_stats(self, days: int = 7) -> NotificationStats:
         """Get notification statistics"""

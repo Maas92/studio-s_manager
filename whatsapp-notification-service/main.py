@@ -118,16 +118,19 @@ async def send_message(request: SendMessageRequest):
     """
     try:
         notification_service = app.state.notification_service
-        success = await notification_service.send_manual_message(
+
+        result = await notification_service.send_manual_message(
             phone_number=request.phone_number,
             message=request.message,
-            message_type=request.message_type,
+            # message_type=request.message_type,
         )
 
         return SendMessageResponse(
-            success=success,
+            success=result["success"],
             message=(
-                "Message sent successfully" if success else "Failed to send message"
+                "Message sent successfully"
+                if result["success"]
+                else f"Failed to send message - {result['error']}"
             ),
         )
     except Exception as e:

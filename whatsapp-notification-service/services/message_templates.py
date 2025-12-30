@@ -45,16 +45,16 @@ class MessageTemplates:
 
         message = f"""✨ {settings.BUSINESS_NAME} - Booking Confirmed ✨
 
-Hello {client_name}!
-
-Your appointment has been confirmed:
-
-📅 Date: {MessageTemplates.format_date(booking_date)}
-🕐 Time: {MessageTemplates.format_time(start_time)}
-💆 Treatment: {treatment_name}
-👤 With: {staff_name}
-📍 Location: {location}
-"""
+        Hello {client_name}!
+        
+        Your appointment has been confirmed:
+        
+        📅 Date: {MessageTemplates.format_date(booking_date)}
+        🕐 Time: {MessageTemplates.format_time(start_time)}
+        💆 Treatment: {treatment_name}
+        👤 With: {staff_name}
+        📍 Location: {location}
+        """
 
         if booking_data.get("deposit_required"):
             deposit = booking_data.get("deposit_amount", 0)
@@ -62,13 +62,13 @@ Your appointment has been confirmed:
 
         message += f"""
 
-We look forward to seeing you! 
-
-If you need to reschedule or cancel, please contact us at least 24 hours in advance.
-
-{settings.BUSINESS_PHONE or ''}
-{settings.SUPPORT_EMAIL or ''}
-"""
+        We look forward to seeing you! 
+        
+        If you need to reschedule or cancel, please contact us at least 24 hours in advance.
+        
+        {settings.BUSINESS_PHONE or ''}
+        {settings.SUPPORT_EMAIL or ''}
+        """
         return message.strip()
 
     @staticmethod
@@ -83,20 +83,20 @@ If you need to reschedule or cancel, please contact us at least 24 hours in adva
 
         message = f"""⏰ {settings.BUSINESS_NAME} - Appointment Reminder
 
-Hello {client_name}!
-
-This is a friendly reminder that your appointment is tomorrow:
-
-🕐 Time: {MessageTemplates.format_time(start_time)}
-💆 Treatment: {treatment_name}
-📍 Location: {location}
-
-Please arrive 5-10 minutes early to complete any necessary forms.
-
-Looking forward to seeing you!
-
-To cancel or reschedule: {settings.BUSINESS_PHONE or 'Contact us'}
-"""
+        Hello {client_name}!
+        
+        This is a friendly reminder that your appointment is tomorrow:
+        
+        🕐 Time: {MessageTemplates.format_time(start_time)}
+        💆 Treatment: {treatment_name}
+        📍 Location: {location}
+        
+        Please arrive 5-10 minutes early to complete any necessary forms.
+        
+        Looking forward to seeing you!
+        
+        To cancel or reschedule: {settings.BUSINESS_PHONE or 'Contact us'}
+        """
         return message.strip()
 
     @staticmethod
@@ -111,16 +111,16 @@ To cancel or reschedule: {settings.BUSINESS_PHONE or 'Contact us'}
 
         message = f"""⏰ {settings.BUSINESS_NAME} - Starting Soon!
 
-Hello {client_name}!
-
-Your appointment starts in 1 hour:
-
-🕐 Time: {MessageTemplates.format_time(start_time)}
-💆 Treatment: {treatment_name}
-📍 Location: {location}
-
-See you soon! 💖
-"""
+        Hello {client_name}!
+        
+        Your appointment starts in 1 hour:
+        
+        🕐 Time: {MessageTemplates.format_time(start_time)}
+        💆 Treatment: {treatment_name}
+        📍 Location: {location}
+        
+        See you soon! 💖
+        """
         return message.strip()
 
     @staticmethod
@@ -133,23 +133,23 @@ See you soon! 💖
 
         message = f"""❌ {settings.BUSINESS_NAME} - Appointment Cancelled
 
-Hello {client_name},
-
-Your appointment has been cancelled:
-
-📅 Was scheduled for: {MessageTemplates.format_datetime(start_time)}
-"""
+        Hello {client_name},
+        
+        Your appointment has been cancelled:
+        
+        📅 Was scheduled for: {MessageTemplates.format_datetime(start_time)}
+        """
 
         if cancellation_reason:
             message += f"\nReason: {cancellation_reason}"
 
         message += f"""
-
-We hope to see you again soon! To book a new appointment, please contact us.
-
-{settings.BUSINESS_PHONE or ''}
-{settings.SUPPORT_EMAIL or ''}
-"""
+        
+        We hope to see you again soon! To book a new appointment, please contact us.
+        
+        {settings.BUSINESS_PHONE or ''}
+        {settings.SUPPORT_EMAIL or ''}
+        """
         return message.strip()
 
     @staticmethod
@@ -162,19 +162,19 @@ We hope to see you again soon! To book a new appointment, please contact us.
 
         message = f"""🔄 {settings.BUSINESS_NAME} - Appointment Rescheduled
 
-Hello {client_name}!
-
-Your appointment has been rescheduled:
-
-❌ Previous time: {MessageTemplates.format_datetime(old_time)}
-✅ New time: {MessageTemplates.format_datetime(new_time)}
-💆 Treatment: {treatment_name}
-
-We look forward to seeing you at your new appointment time!
-
-Questions? Contact us:
-{settings.BUSINESS_PHONE or ''}
-"""
+        Hello {client_name}!
+        
+        Your appointment has been rescheduled:
+        
+        ❌ Previous time: {MessageTemplates.format_datetime(old_time)}
+        ✅ New time: {MessageTemplates.format_datetime(new_time)}
+        💆 Treatment: {treatment_name}
+        
+        We look forward to seeing you at your new appointment time!
+        
+        Questions? Contact us:
+        {settings.BUSINESS_PHONE or ''}
+        """
         return message.strip()
 
     @staticmethod
@@ -186,30 +186,28 @@ Questions? Contact us:
 
         message = f"""💖 {settings.BUSINESS_NAME} - Aftercare Tips
 
-Hello {client_name}!
-
-Thank you for visiting us! We hope you enjoyed your {treatment_name}.
-
-"""
+        Hello {client_name}!
+        
+        Thank you for visiting us! We hope you enjoyed your {treatment_name}.
+        """
 
         if aftercare_instructions:
             message += f"Aftercare instructions:\n{aftercare_instructions}\n\n"
         else:
             message += """General aftercare tips:
-• Keep the treated area clean
-• Avoid direct sunlight for 24-48 hours
-• Stay hydrated
-• Avoid heavy exercise for 24 hours
-
-"""
+            • Keep the treated area clean
+            • Avoid direct sunlight for 24-48 hours
+            • Stay hydrated
+            • Avoid heavy exercise for 24 hours
+            """
 
         message += f"""If you have any concerns or questions, please don't hesitate to contact us.
 
-We'd love to see you again! Book your next appointment:
-{settings.BUSINESS_PHONE or ''}
-
-Rate your experience: [feedback_link]
-"""
+        We'd love to see you again! Book your next appointment:
+        {settings.BUSINESS_PHONE or ''}
+        
+        Rate your experience: [feedback_link]
+        """
         return message.strip()
 
     @staticmethod
@@ -217,15 +215,15 @@ Rate your experience: [feedback_link]
         """Marketing/promotional message"""
         message = f"""✨ {settings.BUSINESS_NAME} - Special Offer! ✨
 
-Hello {client_name}!
-
-{offer_details}
-
-Book now to take advantage of this limited-time offer!
-
-{settings.BUSINESS_PHONE or ''}
-{settings.SUPPORT_EMAIL or ''}
-
-Reply STOP to unsubscribe from promotional messages.
-"""
+        Hello {client_name}!
+        
+        {offer_details}
+        
+        Book now to take advantage of this limited-time offer!
+        
+        {settings.BUSINESS_PHONE or ''}
+        {settings.SUPPORT_EMAIL or ''}
+        
+        Reply STOP to unsubscribe from promotional messages.
+        """
         return message.strip()
