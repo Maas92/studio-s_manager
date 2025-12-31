@@ -14,7 +14,7 @@ export const AppointmentSchema = z.object({
   staffId: z.string().nullable().optional(),
   staffName: z.string().optional(),
   notes: z.string().nullable().optional(),
-  duration: z.number().optional(),
+  duration: z.coerce.number().optional(),
   price: z.number().optional(),
   time: z.string().optional(),
 });
@@ -40,7 +40,7 @@ export const ClientSchema = z.object({
 export const TreatmentSchema = z.object({
   id: z.string(),
   name: z.string(),
-  durationMinutes: z.number(),
+  durationMinutes: z.coerce.number(),
   price: z.number().optional(),
 });
 

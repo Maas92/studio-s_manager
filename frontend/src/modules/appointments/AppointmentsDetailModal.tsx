@@ -287,12 +287,12 @@ function joinDateTimeLocal(date: string, time: string): string {
   return `${date}T${time}`;
 }
 
-function mapToSimpleOptions<T extends { id: string; name: string }>(
+function mapToSimpleOptions<T extends { id: string; firstName: string }>(
   items: T[]
 ): SimpleOption[] {
   return items.map((item) => ({
     id: item.id,
-    label: item.name,
+    label: item.firstName,
   }));
 }
 
@@ -397,18 +397,12 @@ export default function AppointmentDetailModal({
   }, [appointment, onDelete]);
 
   const handleCancel = useCallback(() => {
-    if (appointment) {
-      setFormValues({
-        client: appointment.clientId,
-        treatment: appointment.treatmentId,
-        staff: appointment.staffId || "",
-        datetimeLocal: appointment.datetimeISO,
-        status: appointment.status || "confirmed",
-        notes: appointment.notes || "",
-      });
+    if (!appointment) return;
+    if (window.confirm("Are you sure you want to cancel this appointment?")) {
+      onUpdate?.(appointment.id, { status: "cancelled" });
     }
     setIsEditing(false);
-  }, [appointment]);
+  }, [appointment, onUpdate]);
 
   if (!appointment) return null;
 
@@ -419,7 +413,8 @@ export default function AppointmentDetailModal({
     treatments.find((t) => t.id === formValues.treatment)?.name ||
     appointment.treatmentName;
   const staffName =
-    staff.find((s) => s.id === formValues.staff)?.name || appointment.staffName;
+    staff.find((s) => s.id === formValues.staff)?.firstName ||
+    appointment.staffName;
 
   const statusVariant = (
     ["confirmed", "pending", "cancelled", "completed"].includes(
@@ -607,11 +602,11 @@ export default function AppointmentDetailModal({
               <Button
                 variation="danger"
                 type="button"
-                onClick={handleDelete}
+                onClick={handleCancel}
                 disabled={deleting}
               >
                 <Trash2 size={16} />
-                {deleting ? "Deleting..." : "Delete"}
+                {deleting ? "Cancelling..." : "Cancel"}
               </Button>
             )}
           </LeftActions>

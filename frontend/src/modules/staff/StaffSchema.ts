@@ -27,7 +27,7 @@ export const StaffMemberSchema = z.object({
   status: z.enum(["active", "inactive", "on_leave"]).default("active"),
   hireDate: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
-  certifications: z.array(z.string()).optional(),
+  certifications: z.array(z.string()).nullable().optional(),
   schedule: z.record(z.string(), z.string()).nullable().optional(), // e.g., { "monday": "9am-5pm" }
   avatar: z.string().nullable().optional(),
   performance: StaffPerformanceSchema.optional(),
@@ -45,7 +45,7 @@ export const CreateStaffMemberSchema = z.object({
   status: z.enum(["active", "inactive", "on_leave"]).default("active"),
   hireDate: z.string().optional(),
   bio: z.string().optional(),
-  certifications: z.array(z.string()).optional(),
+  certifications: z.array(z.string()).nullable().optional(),
   schedule: z.record(z.string(), z.string()).optional(),
   hourlyRate: z.number().nullable().optional(),
   commissionRate: z.number().nullable().optional(),

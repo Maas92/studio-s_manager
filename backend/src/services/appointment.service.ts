@@ -60,6 +60,16 @@ export class AppointmentService {
     let paramIndex = 1;
     const conditions: string[] = [];
 
+    // Default: exclude cancelled
+    if (!status) {
+      conditions.push(`b.status != 'cancelled'`);
+    }
+
+    if (status) {
+      conditions.push(`b.status = $${paramIndex++}`);
+      params.push(status);
+    }
+
     if (client_id) {
       conditions.push(`b.client_id = $${paramIndex++}`);
       params.push(client_id);
@@ -73,11 +83,6 @@ export class AppointmentService {
     if (treatment_id) {
       conditions.push(`b.treatment_id = $${paramIndex++}`);
       params.push(treatment_id);
-    }
-
-    if (status) {
-      conditions.push(`b.status = $${paramIndex++}`);
-      params.push(status);
     }
 
     if (date_from) {
@@ -95,6 +100,8 @@ export class AppointmentService {
 
     const offset = (page - 1) * limit;
     params.push(limit, offset);
+
+    console.log(whereClause);
 
     const query = `
       SELECT 
@@ -116,6 +123,8 @@ export class AppointmentService {
     const countQuery = `
       SELECT COUNT(*) 
       FROM bookings b
+      LEFT JOIN clients c ON b.client_id = c.id
+      LEFT JOIN treatments t ON b.treatment_id = t.id
       ${whereClause}
     `;
 
@@ -465,13 +474,14 @@ export class AppointmentService {
         b.end_time,
         b.status,
         c.first_name || ' ' || c.last_name as client_name,
-        s.name as treatment_name,
-        s.price as treatment_price
+        t.name as treatment_name,
+        t.price as treatment_price
       FROM bookings b
       LEFT JOIN clients c ON b.client_id = c.id
-      LEFT JOIN services s ON b.treatment_id = s.id
+      LEFT JOIN treatments t ON b.treatment_id = t.id
       WHERE b.booking_date >= $1
         AND b.booking_date <= $2
+        AND b.status NOT IN ('cancelled')
         ${staffCondition}
       ORDER BY b.booking_date, b.start_time
     `,

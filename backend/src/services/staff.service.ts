@@ -2,14 +2,15 @@ import { pool } from "../config/database.js";
 import AppError from "../utils/appError.js";
 import { logger } from "../utils/logger.js";
 
-interface CreateStaffData {
-  name: string;
+export interface CreateStaffData {
+  firstName: string;
+  lastName: string;
   email?: string;
   phone?: string;
   role: string;
   specializations?: string[];
   status?: "active" | "inactive" | "on_leave";
-  hire_date?: string;
+  hireDate?: string;
   bio?: string;
   certifications?: string[];
   schedule?: Record<string, string>;
@@ -18,38 +19,45 @@ interface CreateStaffData {
 
 export class StaffService {
   /**
-   * Format staff object for response
+   * Format DB row → API response
    */
-  private formatStaff(staff: any) {
-    // Parse name into firstName and lastName
-    const nameParts = staff.name?.trim().split(/\s+/) || ["", ""];
-
+  private formatStaff(row: any) {
     return {
-      id: staff.id,
-      name: staff.name,
-      firstName: nameParts[0] || "",
-      lastName: nameParts.slice(1).join(" ") || "",
-      email: staff.email,
-      phone: staff.phone,
-      role: staff.role,
-      specializations: staff.specializations || [],
-      status: staff.status,
-      hireDate: staff.hire_date,
-      bio: staff.bio,
-      certifications: staff.certifications || [],
-      schedule: staff.schedule
-        ? typeof staff.schedule === "string"
-          ? JSON.parse(staff.schedule)
-          : staff.schedule
-        : null,
-      avatar: staff.avatar,
-      createdAt: staff.created_at,
-      updatedAt: staff.updated_at,
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      email: row.email,
+      phone: row.phone,
+      role: row.role,
+      specializations: row.specializations ?? [],
+      status: row.status,
+      hireDate: row.hire_date,
+      bio: row.bio,
+      certifications: (() => {
+        if (Array.isArray(row.certifications)) return row.certifications;
+        if (typeof row.certifications === "string") {
+          try {
+            const parsed = JSON.parse(row.certifications);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      })(),
+
+      schedule:
+        row.schedule && typeof row.schedule === "string"
+          ? JSON.parse(row.schedule)
+          : row.schedule,
+      avatar: row.avatar,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
   /**
-   * Find all staff members
+   * Find all staff
    */
   async findAll(filters: {
     role?: string;
@@ -61,53 +69,50 @@ export class StaffService {
     const { role, status, search, page = 1, limit = 50 } = filters;
     const offset = (page - 1) * limit;
 
-    const params: any[] = [];
-    let paramIndex = 1;
     const conditions: string[] = [];
+    const params: any[] = [];
+    let i = 1;
 
     if (role) {
-      conditions.push(`role = $${paramIndex++}`);
+      conditions.push(`role = $${i++}`);
       params.push(role);
     }
 
     if (status) {
-      conditions.push(`status = $${paramIndex++}`);
+      conditions.push(`status = $${i++}`);
       params.push(status);
     }
 
     if (search) {
       conditions.push(
-        `(name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`
+        `(first_name ILIKE $${i} OR last_name ILIKE $${i} OR email ILIKE $${i})`
       );
       params.push(`%${search}%`);
-      paramIndex++;
+      i++;
     }
 
-    const whereClause =
-      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-
-    params.push(limit, offset);
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const query = `
       SELECT * FROM staff
-      ${whereClause}
-      ORDER BY name ASC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      ${where}
+      ORDER BY first_name ASC
+      LIMIT $${i} OFFSET $${i + 1}
     `;
 
-    const countQuery = `SELECT COUNT(*) FROM staff ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) FROM staff ${where}`;
 
-    const [dataResult, countResult] = await Promise.all([
-      pool.query(query, params),
-      pool.query(countQuery, params.slice(0, -2)),
+    const [rows, count] = await Promise.all([
+      pool.query(query, [...params, limit, offset]),
+      pool.query(countQuery, params),
     ]);
 
     return {
-      staff: dataResult.rows.map(this.formatStaff.bind(this)),
-      total: parseInt(countResult.rows[0].count),
+      staff: rows.rows.map(this.formatStaff),
+      total: Number(count.rows[0].count),
       page,
       limit,
-      totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit),
+      totalPages: Math.ceil(Number(count.rows[0].count) / limit),
     };
   }
 
@@ -115,9 +120,9 @@ export class StaffService {
    * Find staff by ID
    */
   async findById(id: string) {
-    const result = await pool.query("SELECT * FROM staff WHERE id = $1", [id]);
+    const result = await pool.query(`SELECT * FROM staff WHERE id = $1`, [id]);
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       throw AppError.notFound("Staff member not found");
     }
 
@@ -125,27 +130,45 @@ export class StaffService {
   }
 
   /**
-   * Create new staff member
+   * Create staff
    */
   async create(data: CreateStaffData) {
+    if (!data.firstName || !data.lastName) {
+      throw AppError.badRequest("firstName and lastName are required");
+    }
+
     const result = await pool.query(
-      `INSERT INTO staff (
-        name, email, phone, role, specializations, status,
-        hire_date, bio, certifications, schedule, avatar
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *`,
+      `
+      INSERT INTO staff (
+        first_name,
+        last_name,
+        email,
+        phone,
+        role,
+        specializations,
+        status,
+        hire_date,
+        bio,
+        certifications,
+        schedule,
+        avatar
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      RETURNING *
+      `,
       [
-        data.name,
-        data.email || null,
-        data.phone || null,
+        data.firstName,
+        data.lastName,
+        data.email ?? null,
+        data.phone ?? null,
         data.role,
-        data.specializations || [],
-        data.status || "active",
-        data.hire_date || null,
-        data.bio || null,
-        data.certifications || [],
+        data.specializations ?? [],
+        data.status ?? "active",
+        data.hireDate && data.hireDate !== "" ? data.hireDate : null,
+        data.bio ?? null,
+        data.certifications ?? [],
         data.schedule ? JSON.stringify(data.schedule) : null,
-        data.avatar || null,
+        data.avatar ?? null,
       ]
     );
 
@@ -154,53 +177,90 @@ export class StaffService {
   }
 
   /**
-   * Update staff member
+   * Update staff
    */
   async update(id: string, data: Partial<CreateStaffData>) {
     const fields: string[] = [];
     const values: any[] = [];
-    let paramIndex = 1;
+    let i = 1;
 
-    const fieldMap: Record<string, string> = {
-      name: "name",
-      email: "email",
-      phone: "phone",
-      role: "role",
-      specializations: "specializations",
-      status: "status",
-      hire_date: "hire_date",
-      bio: "bio",
-      certifications: "certifications",
-      schedule: "schedule",
-      avatar: "avatar",
-    };
-
-    for (const [key, dbField] of Object.entries(fieldMap)) {
-      if (data[key as keyof CreateStaffData] !== undefined) {
-        let value = data[key as keyof CreateStaffData];
-        if (key === "schedule" && value) {
-          value = JSON.stringify(value);
-        }
-        fields.push(`${dbField} = $${paramIndex++}`);
-        values.push(value);
-      }
+    if (data.firstName !== undefined) {
+      fields.push(`first_name = $${i++}`);
+      values.push(data.firstName);
     }
 
-    if (fields.length === 0) {
+    if (data.lastName !== undefined) {
+      fields.push(`last_name = $${i++}`);
+      values.push(data.lastName);
+    }
+
+    if (data.email !== undefined) {
+      fields.push(`email = $${i++}`);
+      values.push(data.email);
+    }
+
+    if (data.phone !== undefined) {
+      fields.push(`phone = $${i++}`);
+      values.push(data.phone);
+    }
+
+    if (data.role !== undefined) {
+      fields.push(`role = $${i++}`);
+      values.push(data.role);
+    }
+
+    if (data.specializations !== undefined) {
+      fields.push(`specializations = $${i++}`);
+      values.push(data.specializations);
+    }
+
+    if (data.status !== undefined) {
+      fields.push(`status = $${i++}`);
+      values.push(data.status);
+    }
+
+    if (data.hireDate !== undefined) {
+      fields.push(`hire_date = $${i++}`);
+      values.push(data.hireDate);
+    }
+
+    if (data.bio !== undefined) {
+      fields.push(`bio = $${i++}`);
+      values.push(data.bio);
+    }
+
+    if (data.certifications !== undefined) {
+      fields.push(`certifications = $${i++}`);
+      values.push(data.certifications);
+    }
+
+    if (data.schedule !== undefined) {
+      fields.push(`schedule = $${i++}`);
+      values.push(data.schedule ? JSON.stringify(data.schedule) : null);
+    }
+
+    if (data.avatar !== undefined) {
+      fields.push(`avatar = $${i++}`);
+      values.push(data.avatar);
+    }
+
+    if (!fields.length) {
       throw AppError.badRequest("No fields to update");
     }
 
     values.push(id);
 
     const result = await pool.query(
-      `UPDATE staff
-       SET ${fields.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIndex}
-       RETURNING *`,
+      `
+      UPDATE staff
+      SET ${fields.join(", ")}, updated_at = NOW()
+      WHERE id = $${i}
+      RETURNING *
+      `,
       values
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       throw AppError.notFound("Staff member not found");
     }
 
@@ -209,15 +269,15 @@ export class StaffService {
   }
 
   /**
-   * Delete staff member
+   * Soft delete
    */
   async delete(id: string) {
     const result = await pool.query(
-      "UPDATE staff SET status = 'inactive' WHERE id = $1 RETURNING id",
+      `UPDATE staff SET status = 'inactive' WHERE id = $1 RETURNING id`,
       [id]
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       throw AppError.notFound("Staff member not found");
     }
 
@@ -225,39 +285,40 @@ export class StaffService {
   }
 
   /**
-   * Get staff performance
+   * Performance metrics
    */
   async getPerformance(id: string, period: string) {
-    // Use 'bookings' table instead of 'appointments'
     const result = await pool.query(
-      `SELECT 
-        s.id as staff_id,
-        $2 as period,
-        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as appointments_completed,
-        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'cancelled') as appointments_cancelled,
-        COALESCE(SUM(sale.final_amount), 0) as total_revenue,
-        COUNT(DISTINCT b.id) FILTER (WHERE b.no_show = true) as no_shows
+      `
+      SELECT 
+        s.id AS staff_id,
+        $2 AS period,
+        COUNT(b.id) FILTER (WHERE b.status = 'completed') AS appointments_completed,
+        COUNT(b.id) FILTER (WHERE b.status = 'cancelled') AS appointments_cancelled,
+        COALESCE(SUM(sa.final_amount), 0) AS total_revenue,
+        COUNT(b.id) FILTER (WHERE b.no_show = true) AS no_shows
       FROM staff s
-      LEFT JOIN bookings b ON s.id = b.staff_id
-      LEFT JOIN sales sale ON b.id = sale.booking_id
+      LEFT JOIN bookings b ON b.staff_id = s.id
+      LEFT JOIN sales sa ON sa.booking_id = b.id
       WHERE s.id = $1
-      GROUP BY s.id`,
+      GROUP BY s.id
+      `,
       [id, period]
     );
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       throw AppError.notFound("Staff member not found");
     }
 
+    const row = result.rows[0];
+
     return {
-      staffId: result.rows[0].staff_id,
-      period: result.rows[0].period,
-      appointmentsCompleted:
-        parseInt(result.rows[0].appointments_completed) || 0,
-      appointmentsCancelled:
-        parseInt(result.rows[0].appointments_cancelled) || 0,
-      totalRevenue: parseFloat(result.rows[0].total_revenue) || 0,
-      noShows: parseInt(result.rows[0].no_shows) || 0,
+      staffId: row.staff_id,
+      period: row.period,
+      appointmentsCompleted: Number(row.appointments_completed) || 0,
+      appointmentsCancelled: Number(row.appointments_cancelled) || 0,
+      totalRevenue: Number(row.total_revenue) || 0,
+      noShows: Number(row.no_shows) || 0,
     };
   }
 }
