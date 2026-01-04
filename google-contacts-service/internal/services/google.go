@@ -11,8 +11,8 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/api/people/v1"
 
-	"github.com/yourusername/google-contacts-service/internal/config"
-	"github.com/yourusername/google-contacts-service/internal/models"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/config"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/models"
 )
 
 type GoogleService struct {

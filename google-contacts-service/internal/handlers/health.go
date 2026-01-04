@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/yourusername/google-contacts-service/internal/database"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/database"
 )
 
 type HealthHandler struct {

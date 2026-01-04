@@ -33,6 +33,25 @@ import {
 } from "./POSSchema";
 
 // ============================================================================
+// TAX CONFIGURATION
+// ============================================================================
+
+const TAX_CONFIG = {
+  rate: 0.15, // 15% - change to 0.155 for 15.5%
+  inclusive: true, // Tax is included in prices
+
+  // Calculate tax from tax-inclusive price
+  extractTax(amount: number): number {
+    return amount * (this.rate / (1 + this.rate));
+  },
+
+  // Get the base amount (before tax) from tax-inclusive price
+  getBaseAmount(amount: number): number {
+    return amount / (1 + this.rate);
+  },
+};
+
+// ============================================================================
 // RESOURCE CLIENTS
 // ============================================================================
 
@@ -300,6 +319,24 @@ export function calculateLoyaltyValue(points: number): number {
   return points / 100;
 }
 
+/**
+ * Get current tax configuration
+ */
+export function getTaxConfig() {
+  return {
+    rate: TAX_CONFIG.rate,
+    inclusive: TAX_CONFIG.inclusive,
+    displayRate: `${(TAX_CONFIG.rate * 100).toFixed(1)}%`,
+  };
+}
+
+/**
+ * Calculate tax from an amount based on configuration
+ */
+export function calculateTax(amount: number): number {
+  return TAX_CONFIG.extractTax(amount);
+}
+
 // ============================================================================
 // VALIDATION FUNCTIONS
 // ============================================================================
@@ -453,27 +490,39 @@ export async function createTransaction(
   try {
     const validatedInput = CreateTransactionSchema.parse(input);
 
-    // Calculate totals
+    // Calculate subtotal (already tax-inclusive from cart prices)
     const subtotal = validatedInput.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
 
+    // Calculate discount amount
     const discountAmount =
       validatedInput.discount.type === "percentage"
         ? (subtotal * validatedInput.discount.value) / 100
         : validatedInput.discount.value;
 
-    const afterDiscount = Math.max(0, subtotal - discountAmount);
-    const tax = afterDiscount * 0.15; // 15% tax
+    // Calculate loyalty value
+    const loyaltyValue = validatedInput.loyaltyPointsRedeemed
+      ? validatedInput.loyaltyPointsRedeemed * 0.01
+      : 0;
 
+    // Total after discounts (still tax-inclusive)
+    const afterDiscount = Math.max(0, subtotal - discountAmount - loyaltyValue);
+
+    // Extract tax from the tax-inclusive amount
+    const tax = TAX_CONFIG.extractTax(afterDiscount);
+
+    // Calculate tips total
     const tipsTotal = Object.values(validatedInput.tips || {}).reduce(
       (sum, tip) => sum + tip,
       0
     );
 
-    const total = afterDiscount + tax + tipsTotal;
+    // Final total = tax-inclusive amount + tips
+    const total = afterDiscount + tipsTotal;
 
+    // Calculate loyalty points earned based on final total
     const loyaltyPointsEarned = calculateLoyaltyPoints(total);
 
     // Determine primary payment method for display
@@ -486,7 +535,10 @@ export async function createTransaction(
       ...validatedInput,
       subtotal,
       discountAmount,
+      loyaltyValue, // Add this field
       tax,
+      taxRate: TAX_CONFIG.rate, // Store tax rate used
+      taxInclusive: TAX_CONFIG.inclusive, // Store tax method
       tipsTotal,
       total,
       loyaltyPointsEarned,

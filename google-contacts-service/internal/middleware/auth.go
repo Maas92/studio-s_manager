@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/google-contacts-service/internal/models"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/models"
 	"go.uber.org/zap"
 )
 

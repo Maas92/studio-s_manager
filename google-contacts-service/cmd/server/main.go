@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/google-contacts-service/internal/config"
-	"github.com/yourusername/google-contacts-service/internal/database"
-	"github.com/yourusername/google-contacts-service/internal/handlers"
-	"github.com/yourusername/google-contacts-service/internal/middleware"
-	"github.com/yourusername/google-contacts-service/internal/services"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/config"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/database"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/handlers"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/middleware"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/services"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

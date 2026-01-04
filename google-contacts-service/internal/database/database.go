@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/yourusername/google-contacts-service/internal/models"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/models"
 )
 
 type Postgres struct {

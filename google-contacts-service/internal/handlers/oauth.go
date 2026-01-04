@@ -12,12 +12,12 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/yourusername/google-contacts-service/internal/config"
-	"github.com/yourusername/google-contacts-service/internal/crypto"
-	"github.com/yourusername/google-contacts-service/internal/database"
-	"github.com/yourusername/google-contacts-service/internal/middleware"
-	"github.com/yourusername/google-contacts-service/internal/models"
-	"github.com/yourusername/google-contacts-service/internal/services"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/config"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/crypto"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/database"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/middleware"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/models"
+	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/services"
 )
 
 type OAuthHandler struct {

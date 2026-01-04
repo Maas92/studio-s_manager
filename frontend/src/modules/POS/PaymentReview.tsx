@@ -17,6 +17,13 @@ import Input from "../../ui/components/Input";
 import Card from "../../ui/components/Card";
 
 // ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const TAX_RATE = 0.15; // 15% - change to 0.155 for 15.5%
+const TAX_DIVISOR = TAX_RATE / (1 + TAX_RATE); // For extracting tax from inclusive price
+
+// ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
 
@@ -333,7 +340,7 @@ export default function PaymentReview({
   const [cashReceived, setCashReceived] = useState("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Calculate totals
+  // Calculate totals - TAX INCLUSIVE
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [cart]
@@ -351,21 +358,27 @@ export default function PaymentReview({
     [loyaltyPointsToRedeem]
   );
 
-  const afterDiscount = useMemo(
+  // Total after discounts (this is the tax-inclusive amount)
+  const totalAfterDiscounts = useMemo(
     () => Math.max(0, subtotal - discountAmount - loyaltyValue),
     [subtotal, discountAmount, loyaltyValue]
   );
 
-  const tax = useMemo(() => afterDiscount * 0.15, [afterDiscount]);
+  // Extract tax from the tax-inclusive total
+  const tax = useMemo(
+    () => totalAfterDiscounts * TAX_DIVISOR,
+    [totalAfterDiscounts]
+  );
 
   const tipsTotal = useMemo(
     () => Object.values(tips || {}).reduce((sum, tip) => sum + tip, 0),
     [tips]
   );
 
+  // Final total = tax-inclusive amount + tips
   const total = useMemo(
-    () => afterDiscount + tax + tipsTotal,
-    [afterDiscount, tax, tipsTotal]
+    () => totalAfterDiscounts + tipsTotal,
+    [totalAfterDiscounts, tipsTotal]
   );
 
   const cashChange = useMemo(() => {
@@ -573,7 +586,7 @@ export default function PaymentReview({
 
         <SummaryList>
           <SummaryRow>
-            <span>Subtotal:</span>
+            <span>Subtotal (incl. tax):</span>
             <span>${subtotal.toFixed(2)}</span>
           </SummaryRow>
           {discountAmount > 0 && (
@@ -593,7 +606,7 @@ export default function PaymentReview({
             </SummaryRow>
           )}
           <SummaryRow>
-            <span>Tax (15%):</span>
+            <span>Tax (included, {(TAX_RATE * 100).toFixed(1)}%):</span>
             <span>${tax.toFixed(2)}</span>
           </SummaryRow>
           {tipsTotal > 0 && (
