@@ -67,7 +67,8 @@ services:
       
     # NO external port exposure - only accessible via Docker network
     expose:
-      - "5003"
+      - "5003" # Main API
+      - "5005"  # For mTLS communication
     networks:
       - studio-s-network
     logging:
@@ -108,9 +109,13 @@ services:
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - JWT_EXPIRES_IN=90d
       - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
+      - GOOGLE_CONTACTS_SERVICE_URL=http://google-contacts:5004
     # NO external port exposure - only accessible via Docker network
     expose:
       - "4000"
+    ports:
+      # Expose gateway to host
+      - "4000:4000"
     networks:
       - studio-s-network
     depends_on:
@@ -162,26 +167,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # Redis (if you don't have it already)
-  redis:
-    image: redis:7-alpine
-    container_name: studio-s-redis
-    expose:
-      - "6379"
-    networks:
-      - studio-s-network
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      
-  # Google Contacts Service
-  # Add this service to your existing docker-compose.yml
-
   # Google Contacts Sync Service
   google-contacts:
     build:
@@ -192,16 +177,16 @@ services:
       # Service
       - SERVICE_NAME=google-contacts-service
       - PORT=5004
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
       - ENVIRONMENT=production
 
       # Database (Supabase PostgreSQL)
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://postgres.zwoirifwzsfvkqanjefh:0BCq7HCmU1diACQ8@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
 
       # Google OAuth
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
+      - GOOGLE_CLIENT_ID=189413657640-lddqon9tbhtkcefdi79rea3l5ll0u4oh.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - GOOGLE_REDIRECT_URL=http://localhost:4000/google-contacts/callback
 
       # Backend Service (mTLS)
       - BACKEND_SERVICE_URL=http://backend:5003
@@ -210,17 +195,17 @@ services:
       - BACKEND_CA_CERT=/app/certs/ca-cert.pem
 
       # Gateway Authentication
-      - GATEWAY_SECRET=${GATEWAY_SECRET}
+      - GATEWAY_SECRET=your-very-secure-gateway-secret-change-in-production
 
       # Encryption
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ENCRYPTION_KEY=12345678901234567890123456789012
 
       # CORS
-      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4000
+      - ALLOWED_ORIGINS=http://localhost:5173,http://gateway:4000
     
     volumes:
       # Mount certificates (read-only)
-      - ./certs:/app/certs:ro
+      - ./google-contacts-service/certs:/app/certs:ro
       # Mount logs
       - ./google-contacts-service/logs:/app/logs
     
@@ -252,34 +237,34 @@ services:
       start_period: 40s
       
   # WhatsApp Notification Service
-  whatsapp-service:
-    build: .
-    container_name: beauty-salon-whatsapp
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER}
-      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
-      - WHATSAPP_PHONE_NUMBER=${WHATSAPP_PHONE_NUMBER}
-      - CHAKRA_API_KEY=${CHAKRA_API_KEY}
-      - CHAKRA_BASE_URL=${CHAKRA_BASE_URL}
-      - BUSINESS_NAME=${BUSINESS_NAME}
-      - BUSINESS_ADDRESS=${BUSINESS_ADDRESS}
-      - BUSINESS_PHONE=${BUSINESS_PHONE}
-      - SUPPORT_EMAIL=${SUPPORT_EMAIL}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - studio-s-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # whatsapp-service:
+  #   build: .
+  #   container_name: beauty-salon-whatsapp
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL}
+  #     - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER}
+  #     - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
+  #     - WHATSAPP_PHONE_NUMBER=${WHATSAPP_PHONE_NUMBER}
+  #     - CHAKRA_API_KEY=${CHAKRA_API_KEY}
+  #     - CHAKRA_BASE_URL=${CHAKRA_BASE_URL}
+  #     - BUSINESS_NAME=${BUSINESS_NAME}
+  #     - BUSINESS_ADDRESS=${BUSINESS_ADDRESS}
+  #     - BUSINESS_PHONE=${BUSINESS_PHONE}
+  #     - SUPPORT_EMAIL=${SUPPORT_EMAIL}
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   volumes:
+  #     - ./logs:/app/logs
+  #   networks:
+  #     - studio-s-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
 networks:
   studio-s-network:

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/config"
@@ -26,7 +25,6 @@ type OAuthHandler struct {
 	googleService *services.GoogleService
 	encryptor     *crypto.Encryptor
 	logger        *zap.Logger
-	stateStore    map[string]string // In production, use Redis
 }
 
 func NewOAuthHandler(cfg *config.Config, db *database.Postgres, googleService *services.GoogleService, logger *zap.Logger) *OAuthHandler {
@@ -41,7 +39,6 @@ func NewOAuthHandler(cfg *config.Config, db *database.Postgres, googleService *s
 		googleService: googleService,
 		encryptor:     encryptor,
 		logger:        logger,
-		stateStore:    make(map[string]string), // TODO: Use Redis in production
 	}
 }
 
@@ -61,8 +58,16 @@ func (h *OAuthHandler) InitiateOAuth(c *gin.Context) {
 		return
 	}
 
-	// Store state with user ID (in production, use Redis with expiration)
-	h.stateStore[state] = userCtx.UserID
+	// Store state in database with expiration (10 minutes)
+	ctx := context.Background()
+	expiresAt := time.Now().Add(10 * time.Minute)
+	
+	_, err = h.db.SaveOAuthState(ctx, state, userCtx.UserID, expiresAt)
+	if err != nil {
+		h.logger.Error("Failed to store state", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store state"})
+		return
+	}
 
 	// Get authorization URL
 	authURL := h.googleService.GetAuthURL(state)
@@ -96,15 +101,16 @@ func (h *OAuthHandler) HandleCallback(c *gin.Context) {
 	}
 
 	// Verify state
-	userID, ok := h.stateStore[state]
-	if !ok {
-		h.logger.Warn("Invalid state in OAuth callback", zap.String("state", state))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid state"})
+	ctx := context.Background()
+	userID, err := h.db.GetAndDeleteOAuthState(ctx, state)
+	if err != nil || userID == "" {
+		h.logger.Warn("Invalid state in OAuth callback", 
+			zap.String("state", state),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired state. Please try connecting again."})
 		return
 	}
-
-	// Clean up state
-	delete(h.stateStore, state)
 
 	// Exchange code for tokens
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -132,17 +138,9 @@ func (h *OAuthHandler) HandleCallback(c *gin.Context) {
 		return
 	}
 
-	// Parse user ID
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		h.logger.Error("Invalid user ID", zap.String("user_id", userID), zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	// Save to database
+	// Save to database - use string userID directly (MongoDB ObjectId)
 	oauthToken := &models.OAuthToken{
-		UserID:       userUUID,
+		UserID:       userID,  // String, no UUID parsing needed
 		AccessToken:  encryptedAccess,
 		RefreshToken: encryptedRefresh,
 		TokenType:    token.TokenType,
@@ -175,17 +173,11 @@ func (h *OAuthHandler) Disconnect(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userCtx.UserID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Delete OAuth token
-	if err := h.db.DeleteOAuthToken(ctx, userUUID); err != nil {
+	// Delete OAuth token - use string userID directly (MongoDB ObjectId)
+	if err := h.db.DeleteOAuthToken(ctx, userCtx.UserID); err != nil {
 		h.logger.Error("Failed to delete OAuth token", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disconnect"})
 		return
@@ -209,16 +201,11 @@ func (h *OAuthHandler) GetConnectionStatus(c *gin.Context) {
 		return
 	}
 
-	userUUID, err := uuid.Parse(userCtx.UserID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	token, err := h.db.GetOAuthToken(ctx, userUUID)
+	// Get OAuth token - use string userID directly (MongoDB ObjectId)
+	token, err := h.db.GetOAuthToken(ctx, userCtx.UserID)
 	if err != nil {
 		h.logger.Error("Failed to get OAuth token", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check status"})

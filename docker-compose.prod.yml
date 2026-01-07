@@ -100,7 +100,8 @@ services:
       - MTLS_CERT=/app/certs/backend-cert.pem
       - MTLS_KEY=/app/certs/backend-key.pem
     expose:
-      - "5003"
+      - "5003" # Main API
+      - "5004"  # For mTLS communication
     networks:
       - studio-s-network
     logging:
@@ -209,23 +210,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  # Redis
-  redis:
-    image: redis:7-alpine
-    container_name: studio-s-redis
-    expose:
-      - "6379"
-    networks:
-      - studio-s-network
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   # Prometheus - Metrics Collection
   prometheus:

@@ -60,7 +60,6 @@ func (e *Encryptor) Decrypt(ciphertext string) (string, error) {
 		return "", nil
 	}
 
-	// Decode from base64
 	data, err := base64.StdEncoding.DecodeString(ciphertext)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode base64: %w", err)
@@ -81,8 +80,10 @@ func (e *Encryptor) Decrypt(ciphertext string) (string, error) {
 		return "", fmt.Errorf("ciphertext too short")
 	}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, []byte(ciphertext), nil)
+	nonce := data[:nonceSize]
+	cipherData := data[nonceSize:]
+
+	plaintext, err := gcm.Open(nil, nonce, cipherData, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to decrypt: %w", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/models"
@@ -56,30 +55,26 @@ func (p *Postgres) Ping(ctx context.Context) error {
 
 func (p *Postgres) SaveOAuthToken(ctx context.Context, token *models.OAuthToken) error {
 	query := `
-		INSERT INTO google_oauth_tokens (id, user_id, access_token, refresh_token, token_type, expiry, scopes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO oauth_tokens (user_id, access_token, refresh_token, token_type, expiry, scopes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 		ON CONFLICT (user_id) 
 		DO UPDATE SET 
 			access_token = EXCLUDED.access_token,
 			refresh_token = EXCLUDED.refresh_token,
+			token_type = EXCLUDED.token_type,
 			expiry = EXCLUDED.expiry,
 			scopes = EXCLUDED.scopes,
-			updated_at = EXCLUDED.updated_at
-		RETURNING id
+			updated_at = NOW()
 	`
 
-	now := time.Now()
-	token.CreatedAt = now
-	token.UpdatedAt = now
-
-	if token.ID == uuid.Nil {
-		token.ID = uuid.New()
-	}
-
-	err := p.pool.QueryRow(ctx, query,
-		token.ID, token.UserID, token.AccessToken, token.RefreshToken,
-		token.TokenType, token.Expiry, token.Scopes, token.CreatedAt, token.UpdatedAt,
-	).Scan(&token.ID)
+	_, err := p.pool.Exec(ctx, query,
+		token.UserID,        // STRING - MongoDB ObjectId
+		token.AccessToken,
+		token.RefreshToken,
+		token.TokenType,
+		token.Expiry,
+		token.Scopes,
+	)
 
 	if err != nil {
 		return fmt.Errorf("failed to save oauth token: %w", err)
@@ -88,19 +83,25 @@ func (p *Postgres) SaveOAuthToken(ctx context.Context, token *models.OAuthToken)
 	return nil
 }
 
-func (p *Postgres) GetOAuthToken(ctx context.Context, userID uuid.UUID) (*models.OAuthToken, error) {
+func (p *Postgres) GetOAuthToken(ctx context.Context, userID string) (*models.OAuthToken, error) {
 	query := `
 		SELECT id, user_id, access_token, refresh_token, token_type, expiry, scopes, created_at, updated_at
-		FROM google_oauth_tokens
+		FROM oauth_tokens
 		WHERE user_id = $1
 	`
 
 	var token models.OAuthToken
-	var scopes []byte
 
 	err := p.pool.QueryRow(ctx, query, userID).Scan(
-		&token.ID, &token.UserID, &token.AccessToken, &token.RefreshToken,
-		&token.TokenType, &token.Expiry, &scopes, &token.CreatedAt, &token.UpdatedAt,
+		&token.ID, 
+		&token.UserID, 
+		&token.AccessToken, 
+		&token.RefreshToken,
+		&token.TokenType, 
+		&token.Expiry, 
+		&token.Scopes,  // Scan directly into []string
+		&token.CreatedAt, 
+		&token.UpdatedAt,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -110,18 +111,11 @@ func (p *Postgres) GetOAuthToken(ctx context.Context, userID uuid.UUID) (*models
 		return nil, fmt.Errorf("failed to get oauth token: %w", err)
 	}
 
-	// Parse scopes array
-	if len(scopes) > 0 {
-		if err := json.Unmarshal(scopes, &token.Scopes); err != nil {
-			return nil, fmt.Errorf("failed to parse scopes: %w", err)
-		}
-	}
-
 	return &token, nil
 }
 
-func (p *Postgres) DeleteOAuthToken(ctx context.Context, userID uuid.UUID) error {
-	query := `DELETE FROM google_oauth_tokens WHERE user_id = $1`
+func (p *Postgres) DeleteOAuthToken(ctx context.Context, userID string) error {
+	query := `DELETE FROM oauth_tokens WHERE user_id = $1`
 
 	result, err := p.pool.Exec(ctx, query, userID)
 	if err != nil {
@@ -135,13 +129,72 @@ func (p *Postgres) DeleteOAuthToken(ctx context.Context, userID uuid.UUID) error
 	return nil
 }
 
+// OAuth State operations (for CSRF protection)
+
+func (p *Postgres) SaveOAuthState(ctx context.Context, state, userID string, expiresAt time.Time) (bool, error) {
+	query := `
+		INSERT INTO oauth_state (state, user_id, expires_at, created_at)
+		VALUES ($1, $2, $3, NOW())
+	`
+
+	_, err := p.pool.Exec(ctx, query, state, userID, expiresAt)
+	if err != nil {
+		return false, fmt.Errorf("failed to save oauth state: %w", err)
+	}
+
+	return true, nil
+}
+
+func (p *Postgres) GetAndDeleteOAuthState(ctx context.Context, state string) (string, error) {
+	// Use a transaction to get and delete atomically
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Get state
+	var userID string
+	var expiresAt time.Time
+	query := `SELECT user_id, expires_at FROM oauth_state WHERE state = $1`
+	
+	err = tx.QueryRow(ctx, query, state).Scan(&userID, &expiresAt)
+	if err == pgx.ErrNoRows {
+		return "", fmt.Errorf("state not found")
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get oauth state: %w", err)
+	}
+
+	// Check if expired
+	if time.Now().After(expiresAt) {
+		// Delete expired state
+		tx.Exec(ctx, `DELETE FROM oauth_state WHERE state = $1`, state)
+		tx.Commit(ctx)
+		return "", fmt.Errorf("state expired")
+	}
+
+	// Delete state
+	_, err = tx.Exec(ctx, `DELETE FROM oauth_state WHERE state = $1`, state)
+	if err != nil {
+		return "", fmt.Errorf("failed to delete oauth state: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return userID, nil
+}
+
 // Sync Metadata operations
 
 func (p *Postgres) SaveSyncMetadata(ctx context.Context, meta *models.SyncMetadata) error {
 	query := `
-		INSERT INTO client_sync_metadata 
-		(id, client_id, google_contact_id, user_id, last_synced_at, last_modified_source, sync_status, conflict_data, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO sync_metadata 
+		(client_id, google_contact_id, user_id, last_synced_at, last_modified_source, sync_status, conflict_data, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 		ON CONFLICT (client_id, user_id)
 		DO UPDATE SET
 			google_contact_id = EXCLUDED.google_contact_id,
@@ -149,17 +202,8 @@ func (p *Postgres) SaveSyncMetadata(ctx context.Context, meta *models.SyncMetada
 			last_modified_source = EXCLUDED.last_modified_source,
 			sync_status = EXCLUDED.sync_status,
 			conflict_data = EXCLUDED.conflict_data,
-			updated_at = EXCLUDED.updated_at
+			updated_at = NOW()
 	`
-
-	now := time.Now()
-	meta.UpdatedAt = now
-	if meta.CreatedAt.IsZero() {
-		meta.CreatedAt = now
-	}
-	if meta.ID == uuid.Nil {
-		meta.ID = uuid.New()
-	}
 
 	conflictJSON, err := json.Marshal(meta.ConflictData)
 	if err != nil {
@@ -167,9 +211,13 @@ func (p *Postgres) SaveSyncMetadata(ctx context.Context, meta *models.SyncMetada
 	}
 
 	_, err = p.pool.Exec(ctx, query,
-		meta.ID, meta.ClientID, meta.GoogleContactID, meta.UserID,
-		meta.LastSyncedAt, meta.LastModifiedSource, meta.SyncStatus,
-		conflictJSON, meta.CreatedAt, meta.UpdatedAt,
+		meta.ClientID,
+		meta.GoogleContactID,
+		meta.UserID,           // STRING - MongoDB ObjectId
+		meta.LastSyncedAt,
+		meta.LastModifiedSource,
+		meta.SyncStatus,
+		conflictJSON,
 	)
 
 	if err != nil {
@@ -179,11 +227,11 @@ func (p *Postgres) SaveSyncMetadata(ctx context.Context, meta *models.SyncMetada
 	return nil
 }
 
-func (p *Postgres) GetSyncMetadata(ctx context.Context, clientID, userID uuid.UUID) (*models.SyncMetadata, error) {
+func (p *Postgres) GetSyncMetadata(ctx context.Context, clientID, userID string) (*models.SyncMetadata, error) {
 	query := `
 		SELECT id, client_id, google_contact_id, user_id, last_synced_at, 
 		       last_modified_source, sync_status, conflict_data, created_at, updated_at
-		FROM client_sync_metadata
+		FROM sync_metadata
 		WHERE client_id = $1 AND user_id = $2
 	`
 
@@ -213,11 +261,11 @@ func (p *Postgres) GetSyncMetadata(ctx context.Context, clientID, userID uuid.UU
 	return &meta, nil
 }
 
-func (p *Postgres) GetAllSyncMetadata(ctx context.Context, userID uuid.UUID) ([]models.SyncMetadata, error) {
+func (p *Postgres) GetAllSyncMetadata(ctx context.Context, userID string) ([]models.SyncMetadata, error) {
 	query := `
 		SELECT id, client_id, google_contact_id, user_id, last_synced_at,
 		       last_modified_source, sync_status, conflict_data, created_at, updated_at
-		FROM client_sync_metadata
+		FROM sync_metadata
 		WHERE user_id = $1
 		ORDER BY updated_at DESC
 	`
@@ -259,8 +307,8 @@ func (p *Postgres) GetAllSyncMetadata(ctx context.Context, userID uuid.UUID) ([]
 	return metadataList, nil
 }
 
-func (p *Postgres) DeleteSyncMetadata(ctx context.Context, clientID, userID uuid.UUID) error {
-	query := `DELETE FROM client_sync_metadata WHERE client_id = $1 AND user_id = $2`
+func (p *Postgres) DeleteSyncMetadata(ctx context.Context, clientID, userID string) error {
+	query := `DELETE FROM sync_metadata WHERE client_id = $1 AND user_id = $2`
 
 	_, err := p.pool.Exec(ctx, query, clientID, userID)
 	if err != nil {
