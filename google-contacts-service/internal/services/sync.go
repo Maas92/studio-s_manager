@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,14 +24,8 @@ type SyncService struct {
 	logger         *zap.Logger
 }
 
-func NewSyncService(
-	db *database.Postgres,
-	googleService *GoogleService,
-	backendService *BackendService,
-	logger *zap.Logger,
-	cfg *config.Config,
-) *SyncService {
-
+func NewSyncService(db *database.Postgres, googleService *GoogleService, backendService *BackendService, logger *zap.Logger, cfg *config.Config) *SyncService {
+	// Create encryptor for token decryption
 	encryptor, err := crypto.NewEncryptor(cfg.EncryptionKey)
 	if err != nil {
 		logger.Fatal("Failed to create encryptor", zap.Error(err))
@@ -45,47 +40,33 @@ func NewSyncService(
 	}
 }
 
-// ===============================
-// PUBLIC SYNC METHODS
-// ===============================
-
-// PerformSync executes full bidirectional sync
-func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.SyncResult, error) {
+// PerformSync executes bidirectional sync between Google Contacts and local clients
+func (s *SyncService) PerformSync(ctx context.Context, userID uuid.UUID) (*models.SyncResult, error) {
 	startTime := time.Now()
 	result := &models.SyncResult{
-		StartedAt: startTime,
-		Conflicts: []models.ConflictItem{},
+		StartedAt:  startTime,
+		Conflicts:  []models.ConflictItem{},
 	}
 
-	s.logger.Info("Starting full sync", zap.String("user_id", userID))
+	s.logger.Info("Starting sync",
+		zap.String("user_id", userID.String()),
+	)
 
-	// Try to parse as UUID for backend calls
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		// If not UUID, backend might also use MongoDB ObjectId
-		s.logger.Warn("UserID is not UUID, backend must support string IDs", 
-			zap.String("user_id", userID))
-		// For now, just fetch from Google to verify OAuth
-		return s.performGoogleOnlySync(ctx, userID)
-	}
-
-	// Get and validate OAuth token
+	// 1. Get and validate OAuth token
 	token, err := s.getValidToken(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get valid token: %w", err)
 	}
 
-	// Fetch from both sources
+	// 2. Fetch data from both sources
 	googleContacts, err := s.googleService.FetchContacts(ctx, token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch Google contacts: %w", err)
 	}
 
-	localClients, err := s.backendService.GetClients(ctx, userUUID)
+	localClients, err := s.backendService.GetClients(ctx, userID)
 	if err != nil {
-		s.logger.Error("Failed to fetch local clients, continuing with Google sync only", 
-			zap.Error(err))
-		return s.performGoogleOnlySync(ctx, userID)
+		return nil, fmt.Errorf("failed to fetch local clients: %w", err)
 	}
 
 	s.logger.Info("Fetched data from both sources",
@@ -93,7 +74,7 @@ func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.S
 		zap.Int("local_clients", len(localClients)),
 	)
 
-	// Get sync metadata
+	// 3. Get existing sync metadata
 	syncMetadata, err := s.db.GetAllSyncMetadata(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)
@@ -116,14 +97,18 @@ func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.S
 		localClientMap[client.ID] = client
 	}
 
+	googleContactMap := make(map[string]*models.GoogleContact)
+	for i := range googleContacts {
+		contact := &googleContacts[i]
+		googleContactMap[contact.ResourceName] = contact
+	}
+
+	// 4. Process sync in three phases
 	result.TotalProcessed = len(googleContacts) + len(localClients)
 
-	// Phase 1: Process Google contacts → Local
+	// Phase 1: Process Google contacts
 	for _, googleContact := range googleContacts {
-		if err := s.processGoogleContact(
-			ctx, userID, userUUID, token,
-			&googleContact, metadataByGoogleID, localClientMap, result,
-		); err != nil {
+		if err := s.processGoogleContact(ctx, userID, token, &googleContact, metadataByGoogleID, localClientMap, result); err != nil {
 			s.logger.Error("Failed to process Google contact",
 				zap.String("resource_name", googleContact.ResourceName),
 				zap.Error(err),
@@ -132,11 +117,12 @@ func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.S
 		}
 	}
 
-	// Phase 2: Process Local clients → Google
+	// Phase 2: Process local clients that aren't in Google yet
 	for _, localClient := range localClients {
 		meta, exists := metadataByClientID[localClient.ID]
 		if !exists || meta.GoogleContactID == nil {
-			if err := s.createGoogleContact(ctx, userID, userUUID, token, &localClient, result); err != nil {
+			// Client not synced to Google yet
+			if err := s.createGoogleContact(ctx, userID, token, &localClient, result); err != nil {
 				s.logger.Error("Failed to create Google contact",
 					zap.String("client_id", localClient.ID.String()),
 					zap.Error(err),
@@ -146,11 +132,28 @@ func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.S
 		}
 	}
 
+	// Phase 3: Handle deletions (contacts in Google but not in local)
+	// This is optional - you might want to keep Google contacts even if deleted locally
+	// Uncomment if you want to delete from Google when deleted locally
+	/*
+	for googleID, meta := range metadataByGoogleID {
+		if _, exists := localClientMap[meta.ClientID]; !exists {
+			// Client was deleted locally, delete from Google
+			if err := s.googleService.DeleteContact(ctx, token, googleID); err != nil {
+				s.logger.Error("Failed to delete Google contact", zap.Error(err))
+				result.Errors++
+			} else {
+				s.db.DeleteSyncMetadata(ctx, meta.ClientID, userID)
+			}
+		}
+	}
+	*/
+
 	result.CompletedAt = time.Now()
 	result.Duration = result.CompletedAt.Sub(result.StartedAt)
 
 	s.logger.Info("Sync completed",
-		zap.String("user_id", userID),
+		zap.String("user_id", userID.String()),
 		zap.Duration("duration", result.Duration),
 		zap.Int("created", result.Created),
 		zap.Int("updated", result.Updated),
@@ -162,138 +165,10 @@ func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.S
 	return result, nil
 }
 
-// SyncSingleClient syncs a specific client to Google (for real-time webhook)
-func (s *SyncService) SyncSingleClient(ctx context.Context, userID string, clientID uuid.UUID) error {
-	s.logger.Info("Syncing single client", 
-		zap.String("user_id", userID),
-		zap.String("client_id", clientID.String()),
-	)
-
-	// Parse userID to UUID if needed
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("invalid user ID format: %w", err)
-	}
-
-	// Get OAuth token
-	token, err := s.getValidToken(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get valid token: %w", err)
-	}
-
-	// Get the client from backend
-	client, err := s.backendService.GetClient(ctx, userUUID, clientID)
-	if err != nil {
-		return fmt.Errorf("failed to get client: %w", err)
-	}
-
-	// Check if already synced
-	meta, err := s.db.GetSyncMetadata(ctx, clientID.String(), userID)
-	if err != nil {
-		return fmt.Errorf("failed to get sync metadata: %w", err)
-	}
-
-	if meta == nil || meta.GoogleContactID == nil {
-		// Create in Google
-		resourceName, err := s.googleService.CreateContact(ctx, token, client)
-		if err != nil {
-			return fmt.Errorf("failed to create Google contact: %w", err)
-		}
-
-		// Save metadata
-		now := time.Now()
-		newMeta := &models.SyncMetadata{
-			ClientID:           clientID,
-			GoogleContactID:    &resourceName,
-			UserID:             userID,
-			LastSyncedAt:       &now,
-			LastModifiedSource: "local",
-			SyncStatus:         "synced",
-		}
-		return s.db.SaveSyncMetadata(ctx, newMeta)
-	}
-
-	// Update in Google
-	if err := s.googleService.UpdateContact(ctx, token, *meta.GoogleContactID, client); err != nil {
-		return fmt.Errorf("failed to update Google contact: %w", err)
-	}
-
-	// Update metadata
-	now := time.Now()
-	meta.LastSyncedAt = &now
-	meta.LastModifiedSource = "local"
-	meta.SyncStatus = "synced"
-	return s.db.SaveSyncMetadata(ctx, meta)
-}
-
-// DeleteSyncedClient removes a client from Google and cleans up metadata
-func (s *SyncService) DeleteSyncedClient(ctx context.Context, userID string, clientID uuid.UUID) error {
-	s.logger.Info("Deleting synced client",
-		zap.String("user_id", userID),
-		zap.String("client_id", clientID.String()),
-	)
-
-	// Get sync metadata
-	meta, err := s.db.GetSyncMetadata(ctx, clientID.String(), userID)
-	if err != nil || meta == nil || meta.GoogleContactID == nil {
-		// Not synced, nothing to do
-		return nil
-	}
-
-	// Get OAuth token
-	token, err := s.getValidToken(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get valid token: %w", err)
-	}
-
-	// Delete from Google
-	if err := s.googleService.DeleteContact(ctx, token, *meta.GoogleContactID); err != nil {
-		s.logger.Error("Failed to delete from Google", zap.Error(err))
-		// Continue to delete metadata anyway
-	}
-
-	// Delete metadata
-	return s.db.DeleteSyncMetadata(ctx, clientID.String(), userID)
-}
-
-// ===============================
-// INTERNAL METHODS
-// ===============================
-
-func (s *SyncService) performGoogleOnlySync(ctx context.Context, userID string) (*models.SyncResult, error) {
-	startTime := time.Now()
-	result := &models.SyncResult{
-		StartedAt: startTime,
-		Conflicts: []models.ConflictItem{},
-	}
-
-	token, err := s.getValidToken(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get valid token: %w", err)
-	}
-
-	googleContacts, err := s.googleService.FetchContacts(ctx, token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch Google contacts: %w", err)
-	}
-
-	result.TotalProcessed = len(googleContacts)
-	result.Skipped = len(googleContacts)
-	result.CompletedAt = time.Now()
-	result.Duration = result.CompletedAt.Sub(result.StartedAt)
-
-	s.logger.Info("Google-only sync completed",
-		zap.String("user_id", userID),
-		zap.Int("contacts_fetched", len(googleContacts)),
-	)
-
-	return result, nil
-}
-
+// processGoogleContact handles syncing a Google contact to local
 func (s *SyncService) processGoogleContact(
 	ctx context.Context,
-	userID string,
-	userUUID uuid.UUID,
+	userID uuid.UUID,
 	token *oauth2.Token,
 	googleContact *models.GoogleContact,
 	metadataByGoogleID map[string]*models.SyncMetadata,
@@ -301,27 +176,33 @@ func (s *SyncService) processGoogleContact(
 	result *models.SyncResult,
 ) error {
 	meta, exists := metadataByGoogleID[googleContact.ResourceName]
+
 	if !exists {
-		return s.createLocalClient(ctx, userID, userUUID, googleContact, result)
+		// New contact from Google, create in local
+		return s.createLocalClient(ctx, userID, googleContact, result)
 	}
 
-	localClient, exists := localClientMap[meta.ClientID]
-	if !exists {
-		return s.createLocalClient(ctx, userID, userUUID, googleContact, result)
+	// Contact exists, check if update needed
+	localClient, localExists := localClientMap[meta.ClientID]
+	if !localExists {
+		// Metadata exists but client was deleted locally
+		// Recreate the client
+		return s.createLocalClient(ctx, userID, googleContact, result)
 	}
 
-	if s.needsUpdate(googleContact, localClient) {
-		return s.updateLocalClient(ctx, userID, userUUID, googleContact, localClient, meta, result)
+	// Check for conflicts or updates
+	if s.needsUpdate(googleContact, localClient, meta) {
+		return s.updateLocalClient(ctx, userID, googleContact, localClient, meta, result)
 	}
 
 	result.Skipped++
 	return nil
 }
 
+// createGoogleContact creates a new contact in Google from local client
 func (s *SyncService) createGoogleContact(
 	ctx context.Context,
-	userID string,
-	userUUID uuid.UUID,
+	userID uuid.UUID,
 	token *oauth2.Token,
 	client *models.Client,
 	result *models.SyncResult,
@@ -331,6 +212,7 @@ func (s *SyncService) createGoogleContact(
 		return err
 	}
 
+	// Save sync metadata
 	now := time.Now()
 	meta := &models.SyncMetadata{
 		ClientID:           client.ID,
@@ -349,20 +231,21 @@ func (s *SyncService) createGoogleContact(
 	return nil
 }
 
+// createLocalClient creates a new client locally from Google contact
 func (s *SyncService) createLocalClient(
 	ctx context.Context,
-	userID string,
-	userUUID uuid.UUID,
+	userID uuid.UUID,
 	googleContact *models.GoogleContact,
 	result *models.SyncResult,
 ) error {
-	client := s.convertGoogleContactToClient(googleContact, userUUID)
+	client := s.convertGoogleContactToClient(googleContact, userID)
 
-	createdClient, err := s.backendService.CreateClient(ctx, userUUID, client)
+	createdClient, err := s.backendService.CreateClient(ctx, userID, client)
 	if err != nil {
 		return err
 	}
 
+	// Save sync metadata
 	now := time.Now()
 	meta := &models.SyncMetadata{
 		ClientID:           createdClient.ID,
@@ -381,26 +264,52 @@ func (s *SyncService) createLocalClient(
 	return nil
 }
 
+// updateLocalClient updates local client from Google contact
 func (s *SyncService) updateLocalClient(
 	ctx context.Context,
-	userID string,
-	userUUID uuid.UUID,
+	userID uuid.UUID,
 	googleContact *models.GoogleContact,
 	localClient *models.Client,
 	meta *models.SyncMetadata,
 	result *models.SyncResult,
 ) error {
-	updatedClient := s.convertGoogleContactToClient(googleContact, userUUID)
-	updatedClient.ID = localClient.ID
+	// Check for conflicts (both modified since last sync)
+	if meta.LastModifiedSource == "local" && s.wasModifiedRecently(localClient.UpdatedAt, meta.LastSyncedAt) {
+		// Conflict: both sides modified
+		conflict := models.ConflictItem{
+			ClientID:        localClient.ID,
+			GoogleContactID: googleContact.ResourceName,
+			LocalData:       s.clientToMap(localClient),
+			GoogleData:      s.googleContactToMap(googleContact),
+			ConflictFields:  s.detectConflictFields(googleContact, localClient),
+		}
+		result.Conflicts = append(result.Conflicts, conflict)
 
-	if err := s.backendService.UpdateClient(ctx, userUUID, localClient.ID, updatedClient); err != nil {
+		// Mark as conflict in metadata
+		meta.SyncStatus = "conflict"
+		meta.ConflictData = map[string]interface{}{
+			"local":  s.clientToMap(localClient),
+			"google": s.googleContactToMap(googleContact),
+		}
+		s.db.SaveSyncMetadata(ctx, meta)
+
+		return nil
+	}
+
+	// No conflict, update local from Google
+	updatedClient := s.convertGoogleContactToClient(googleContact, userID)
+	updatedClient.ID = localClient.ID // Keep same ID
+
+	if err := s.backendService.UpdateClient(ctx, userID, localClient.ID, updatedClient); err != nil {
 		return err
 	}
 
+	// Update metadata
 	now := time.Now()
 	meta.LastSyncedAt = &now
 	meta.LastModifiedSource = "google"
 	meta.SyncStatus = "synced"
+	meta.ConflictData = nil
 
 	if err := s.db.SaveSyncMetadata(ctx, meta); err != nil {
 		return err
@@ -410,20 +319,18 @@ func (s *SyncService) updateLocalClient(
 	return nil
 }
 
-// ===============================
-// HELPERS
-// ===============================
+// Helper functions
 
-func (s *SyncService) getValidToken(ctx context.Context, userID string) (*oauth2.Token, error) {
+func (s *SyncService) getValidToken(ctx context.Context, userID uuid.UUID) (*oauth2.Token, error) {
 	oauthToken, err := s.db.GetOAuthToken(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-
 	if oauthToken == nil {
 		return nil, fmt.Errorf("no OAuth token found for user")
 	}
 
+	// Decrypt tokens
 	accessToken, err := s.encryptor.Decrypt(oauthToken.AccessToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt access token: %w", err)
@@ -441,12 +348,14 @@ func (s *SyncService) getValidToken(ctx context.Context, userID string) (*oauth2
 		Expiry:       oauthToken.Expiry,
 	}
 
+	// Refresh if expired
 	if time.Now().After(token.Expiry) {
 		newToken, err := s.googleService.RefreshToken(ctx, token.RefreshToken)
 		if err != nil {
 			return nil, fmt.Errorf("failed to refresh token: %w", err)
 		}
 
+		// Update stored token
 		encryptedAccess, _ := s.encryptor.Encrypt(newToken.AccessToken)
 		encryptedRefresh, _ := s.encryptor.Encrypt(newToken.RefreshToken)
 
@@ -462,33 +371,35 @@ func (s *SyncService) getValidToken(ctx context.Context, userID string) (*oauth2
 	return token, nil
 }
 
-func (s *SyncService) convertGoogleContactToClient(
-	googleContact *models.GoogleContact,
-	userID uuid.UUID,
-) *models.Client {
+func (s *SyncService) convertGoogleContactToClient(googleContact *models.GoogleContact, userID uuid.UUID) *models.Client {
 	client := &models.Client{
 		UserID: userID,
 		Name:   "Unknown",
 	}
 
+	// Name
 	if len(googleContact.Names) > 0 {
 		client.Name = googleContact.Names[0].DisplayName
 	}
 
+	// Email
 	if len(googleContact.EmailAddresses) > 0 {
 		email := googleContact.EmailAddresses[0].Value
 		client.Email = &email
 	}
 
+	// Phone
 	if len(googleContact.PhoneNumbers) > 0 {
 		client.Phone = googleContact.PhoneNumbers[0].Value
 	}
 
+	// Address
 	if len(googleContact.Addresses) > 0 {
 		addr := googleContact.Addresses[0].FormattedValue
 		client.Address = &addr
 	}
 
+	// Birthday
 	if len(googleContact.Birthdays) > 0 {
 		date := googleContact.Birthdays[0].Date
 		if date.Year > 0 {
@@ -497,6 +408,7 @@ func (s *SyncService) convertGoogleContactToClient(
 		}
 	}
 
+	// Notes
 	if len(googleContact.Biographies) > 0 {
 		notes := googleContact.Biographies[0].Value
 		client.Notes = &notes
@@ -505,16 +417,71 @@ func (s *SyncService) convertGoogleContactToClient(
 	return client
 }
 
-func (s *SyncService) needsUpdate(googleContact *models.GoogleContact, localClient *models.Client) bool {
-	var googleName, googlePhone string
-
+func (s *SyncService) needsUpdate(googleContact *models.GoogleContact, localClient *models.Client, meta *models.SyncMetadata) bool {
+	// Simple heuristic: check if name or phone differs
+	googleName := ""
 	if len(googleContact.Names) > 0 {
 		googleName = googleContact.Names[0].DisplayName
 	}
 
+	googlePhone := ""
 	if len(googleContact.PhoneNumbers) > 0 {
 		googlePhone = googleContact.PhoneNumbers[0].Value
 	}
 
 	return googleName != localClient.Name || googlePhone != localClient.Phone
+}
+
+func (s *SyncService) wasModifiedRecently(updatedAt time.Time, lastSyncedAt *time.Time) bool {
+	if lastSyncedAt == nil {
+		return false
+	}
+	return updatedAt.After(*lastSyncedAt)
+}
+
+func (s *SyncService) detectConflictFields(googleContact *models.GoogleContact, localClient *models.Client) []string {
+	var conflicts []string
+
+	googleName := ""
+	if len(googleContact.Names) > 0 {
+		googleName = googleContact.Names[0].DisplayName
+	}
+	if googleName != localClient.Name {
+		conflicts = append(conflicts, "name")
+	}
+
+	googlePhone := ""
+	if len(googleContact.PhoneNumbers) > 0 {
+		googlePhone = googleContact.PhoneNumbers[0].Value
+	}
+	if googlePhone != localClient.Phone {
+		conflicts = append(conflicts, "phone")
+	}
+
+	return conflicts
+}
+
+func (s *SyncService) clientToMap(client *models.Client) map[string]interface{} {
+	m := map[string]interface{}{
+		"id":    client.ID.String(),
+		"name":  client.Name,
+		"phone": client.Phone,
+	}
+	if client.Email != nil {
+		m["email"] = *client.Email
+	}
+	return m
+}
+
+func (s *SyncService) googleContactToMap(contact *models.GoogleContact) map[string]interface{} {
+	m := map[string]interface{}{
+		"resource_name": contact.ResourceName,
+	}
+	if len(contact.Names) > 0 {
+		m["name"] = contact.Names[0].DisplayName
+	}
+	if len(contact.PhoneNumbers) > 0 {
+		m["phone"] = contact.PhoneNumbers[0].Value
+	}
+	return m
 }

@@ -8,8 +8,8 @@ import (
 
 // OAuthToken stores encrypted Google OAuth tokens
 type OAuthToken struct {
-	ID           string    `json:"id"`
-	UserID       string    `json:"user_id"`
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
 	AccessToken  string    `json:"access_token"`   // Encrypted
 	RefreshToken string    `json:"refresh_token"`  // Encrypted
 	TokenType    string    `json:"token_type"`
@@ -36,10 +36,10 @@ type Client struct {
 
 // SyncMetadata tracks sync state for each client
 type SyncMetadata struct {
-	ID                 string                 `json:"id"`
+	ID                 uuid.UUID              `json:"id"`
 	ClientID           uuid.UUID              `json:"client_id"`
 	GoogleContactID    *string                `json:"google_contact_id"`
-	UserID             string                 `json:"user_id"`
+	UserID             uuid.UUID              `json:"user_id"`
 	LastSyncedAt       *time.Time             `json:"last_synced_at"`
 	LastModifiedSource string                 `json:"last_modified_source"` // "google" or "local"
 	SyncStatus         string                 `json:"sync_status"`          // "synced", "conflict", "pending", "error"

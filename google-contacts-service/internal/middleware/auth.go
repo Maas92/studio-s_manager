@@ -12,15 +12,8 @@ import (
 // GatewayAuth validates requests from the API gateway
 func GatewayAuth(gatewaySecret string, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		
 		// Check gateway secret
 		providedSecret := c.GetHeader("x-gateway-key")
-		
-		logger.Warn("GatewayAuth check",
-    zap.String("provided", providedSecret),
-    zap.String("expected", gatewaySecret),
-)
-		
 		if providedSecret != gatewaySecret {
 			logger.Warn("Unauthorized request - invalid gateway key",
 				zap.String("ip", c.ClientIP()),
@@ -117,7 +110,7 @@ func Logger(logger *zap.Logger) gin.HandlerFunc {
 			zap.String("query", query),
 			zap.Int("status", statusCode),
 			zap.Duration("latency", latency),
-			zap.String("ip", c.ClientIP()),
+			zap.String("ip", c.ClientIP),
 			zap.String("user_agent", c.Request.UserAgent()),
 		}
 

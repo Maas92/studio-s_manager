@@ -14,13 +14,12 @@ router.use(
   })
 );
 
-// Google Contacts routes
-// All other Google Contacts routes require authentication
+// Google Contacts Sync Service routes
 router.use(
   "/google-contacts",
   createProxy({
-    target: env.GOOGLE_CONTACTS_SERVICE_URL,
-    isBackendService: true, // Adds x-gateway-key
+    target: env.GOOGLE_CONTACTS_SERVICE_URL, // http://google-contacts:5004
+    isBackendService: true, // Will add x-gateway-key
   })
 );
 
