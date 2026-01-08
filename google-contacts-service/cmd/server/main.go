@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/config"
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/database"
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/handlers"
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/middleware"
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/services"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -54,7 +56,7 @@ func main() {
 	oauthHandler := handlers.NewOAuthHandler(cfg, db, googleService, logger)
 	syncHandler := handlers.NewSyncHandler(syncService, logger)
 
-	// Setup router
+	// Gin setup
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -64,27 +66,38 @@ func main() {
 	router.Use(middleware.Logger(logger))
 	router.Use(middleware.CORS(cfg.AllowedOrigins))
 
-	// Health check (no auth required)
-	router.GET("/health", healthHandler.Check)
+	// ------------------------------------------------------------------
+	// Public routes (NO gateway auth)
+	// ------------------------------------------------------------------
 
-	// API routes
-	api := router.Group("/api/google-contacts")
-	{
-		// These routes require gateway authentication
-		api.Use(middleware.GatewayAuth(cfg.GatewaySecret, logger))
+	router.Any("/health", healthHandler.Check)
+	
+	// OAuth callback (no auth required - called by Google redirect)
+	router.GET("/google-contacts/callback", oauthHandler.HandleCallback)
 
-		// OAuth flow
-		api.GET("/connect", oauthHandler.InitiateOAuth)
-		api.GET("/callback", oauthHandler.HandleCallback)
-		api.DELETE("/disconnect", oauthHandler.Disconnect)
-		api.GET("/status", oauthHandler.GetConnectionStatus)
+	// ------------------------------------------------------------------
+	// Protected routes (Gateway-only, internal use)
+	// ------------------------------------------------------------------
 
-		// Sync operations
-		api.POST("/sync", syncHandler.TriggerSync)
-		api.GET("/sync-status", syncHandler.GetSyncStatus)
-	}
+		api := router.Group("/google-contacts")
+		{
+    	api.Use(middleware.GatewayAuth(cfg.GatewaySecret, logger))
+			
+    	// OAuth flow
+    	api.GET("/connect", oauthHandler.InitiateOAuth)
+    	api.DELETE("/disconnect", oauthHandler.Disconnect)
+    	api.GET("/status", oauthHandler.GetConnectionStatus)
+			
+    	// Sync operations
+    	api.POST("/sync", syncHandler.TriggerSync)
+    	api.GET("/sync-status", syncHandler.GetSyncStatus)
+			
+			// Real-time sync endpoints
+    	api.POST("/sync-client/:clientId", syncHandler.SyncSingleClient)
+    	api.DELETE("/sync-client/:clientId", syncHandler.DeleteSyncedClient)
+		}
 
-	// Create HTTP server
+	// HTTP server
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      router,
@@ -93,7 +106,7 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Start server in goroutine
+	// Start server
 	go func() {
 		logger.Info("Server starting", zap.String("address", srv.Addr))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -133,7 +146,7 @@ func initLogger(level string) *zap.Logger {
 		zapLevel = zapcore.InfoLevel
 	}
 
-	config := zap.Config{
+	cfg := zap.Config{
 		Level:            zap.NewAtomicLevelAt(zapLevel),
 		Development:      false,
 		Encoding:         "json",
@@ -142,10 +155,10 @@ func initLogger(level string) *zap.Logger {
 		ErrorOutputPaths: []string{"stderr"},
 	}
 
-	config.EncoderConfig.TimeKey = "timestamp"
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	cfg.EncoderConfig.TimeKey = "timestamp"
+	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	logger, err := config.Build()
+	logger, err := cfg.Build()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}

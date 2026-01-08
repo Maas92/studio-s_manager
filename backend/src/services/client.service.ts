@@ -1,6 +1,7 @@
 import { pool } from "../config/database.js";
 import AppError from "../utils/appError.js";
 import { logger } from "../utils/logger.js";
+import axios from "axios";
 
 interface CreateClientData {
   name: string;
@@ -10,22 +11,69 @@ interface CreateClientData {
   notes?: string;
   date_of_birth?: string;
   address?: string;
+  user_id?: string; // Add user_id to track who owns the client
 }
 
 export class ClientService {
+  // Sync a single client to Google Contacts
+  private async syncClientToGoogle(userId: string, clientId: string) {
+    try {
+      await axios.post(
+        `http://google-contacts:5004/api/google-contacts/sync-client/${clientId}`,
+        {},
+        {
+          headers: {
+            "x-gateway-key": process.env.GATEWAY_SECRET || "",
+            "x-user-id": userId,
+          },
+        }
+      );
+      logger.info(`Client synced to Google: ${clientId}`);
+    } catch (error: any) {
+      // Log but don't fail the client creation/update
+      logger.error("Failed to sync to Google:", {
+        clientId,
+        userId,
+        error: error.message,
+      });
+    }
+  }
+
+  // Delete client from Google Contacts
+  private async deleteSyncedClient(userId: string, clientId: string) {
+    try {
+      await axios.delete(
+        `http://google-contacts:5004/api/google-contacts/sync-client/${clientId}`,
+        {
+          headers: {
+            "x-gateway-key": process.env.GATEWAY_SECRET || "",
+            "x-user-id": userId,
+          },
+        }
+      );
+      logger.info(`Client deleted from Google: ${clientId}`);
+    } catch (error: any) {
+      logger.error("Failed to delete from Google:", {
+        clientId,
+        userId,
+        error: error.message,
+      });
+    }
+  }
+
   /**
    * Create new client
    */
-  async create(data: CreateClientData) {
+  async create(data: CreateClientData, userId: string) {
     // Split name into first and last name
     const nameParts = data.name.trim().split(/\s+/);
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(" ") || ".";
 
-    // Check if client with same phone exists - FIXED: use is_active
+    // Check if client with same phone exists
     const existingClient = await pool.query(
-      "SELECT id FROM clients WHERE phone = $1 AND is_active = true",
-      [data.phone]
+      "SELECT id FROM clients WHERE phone = $1 AND is_active = true AND user_id = $2",
+      [data.phone, userId]
     );
 
     if (existingClient.rows.length > 0) {
@@ -34,6 +82,7 @@ export class ClientService {
 
     const result = await pool.query(
       `INSERT INTO clients (
+        user_id,
         first_name, 
         last_name, 
         email, 
@@ -45,9 +94,10 @@ export class ClientService {
         is_active,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW()) 
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW(), NOW()) 
       RETURNING *`,
       [
+        userId,
         firstName,
         lastName,
         data.email || null,
@@ -60,15 +110,24 @@ export class ClientService {
     );
 
     logger.info(`Client created: ${result.rows[0].id}`);
-    return this.formatClient(result.rows[0]);
+
+    const client = result.rows[0];
+
+    // Sync to Google in background (non-blocking)
+    this.syncClientToGoogle(userId, client.id).catch((err) =>
+      logger.error("Background Google sync failed", err)
+    );
+
+    return this.formatClient(client);
   }
 
   /**
    * Find all clients with pagination
-   * FIXED: Use 'bookings' table instead of 'appointments'
-   * FIXED: Use 'is_active' instead of 'active'
    */
-  async findAll(filters: { search?: string; page?: number; limit?: number }) {
+  async findAll(
+    userId: string,
+    filters: { search?: string; page?: number; limit?: number }
+  ) {
     const { search, page = 1, limit = 50 } = filters;
     const offset = (page - 1) * limit;
 
@@ -86,9 +145,10 @@ export class ClientService {
       LEFT JOIN sales s ON c.id = s.client_id
       WHERE c.is_active = true
     `;
+    // TODO add back AND c.user_id = $1 to where clause to test whats happening I think it should be removed from all the queries
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [userId];
+    let paramIndex = 2;
 
     if (search) {
       query += ` AND (
@@ -109,16 +169,16 @@ export class ClientService {
 
     params.push(limit, offset);
 
-    // Count query - FIXED: use is_active
-    let countQuery = `SELECT COUNT(*) FROM clients WHERE is_active = true`;
-    const countParams: any[] = [];
+    // Count query
+    let countQuery = `SELECT COUNT(*) FROM clients WHERE is_active = true AND user_id = $1`;
+    const countParams: any[] = [userId];
 
     if (search) {
       countQuery += ` AND (
-        first_name ILIKE $1 OR 
-        last_name ILIKE $1 OR 
-        phone ILIKE $1 OR 
-        email ILIKE $1
+        first_name ILIKE $2 OR 
+        last_name ILIKE $2 OR 
+        phone ILIKE $2 OR 
+        email ILIKE $2
       )`;
       countParams.push(`%${search}%`);
     }
@@ -139,9 +199,8 @@ export class ClientService {
 
   /**
    * Search clients (for quick search/autocomplete)
-   * FIXED: use is_active
    */
-  async search(searchTerm: string) {
+  async search(userId: string, searchTerm: string) {
     const searchPattern = `%${searchTerm}%`;
 
     const result = await pool.query(
@@ -154,15 +213,16 @@ export class ClientService {
         whatsapp
       FROM clients 
       WHERE is_active = true
+        AND user_id = $1
         AND (
-          first_name ILIKE $1 OR 
-          last_name ILIKE $1 OR 
-          phone ILIKE $1 OR
-          email ILIKE $1
+          first_name ILIKE $2 OR 
+          last_name ILIKE $2 OR 
+          phone ILIKE $2 OR
+          email ILIKE $2
         )
       ORDER BY last_name, first_name
       LIMIT 10`,
-      [searchPattern]
+      [userId, searchPattern]
     );
 
     return result.rows.map((client: any) => ({
@@ -176,9 +236,8 @@ export class ClientService {
 
   /**
    * Find client by ID with detailed info
-   * FIXED: Use 'bookings' instead of 'appointments'
    */
-  async findById(id: string) {
+  async findById(userId: string, id: string) {
     const result = await pool.query(
       `SELECT 
         c.*,
@@ -193,9 +252,9 @@ export class ClientService {
       FROM clients c
       LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.id = $1
+      WHERE c.id = $1 AND c.user_id = $2
       GROUP BY c.id`,
-      [id]
+      [id, userId]
     );
 
     if (result.rows.length === 0) {
@@ -208,7 +267,7 @@ export class ClientService {
   /**
    * Update client
    */
-  async update(id: string, data: Partial<CreateClientData>) {
+  async update(userId: string, id: string, data: Partial<CreateClientData>) {
     const fields: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -243,12 +302,12 @@ export class ClientService {
       throw AppError.badRequest("No fields to update");
     }
 
-    values.push(id);
+    values.push(userId, id);
 
     const result = await pool.query(
       `UPDATE clients 
        SET ${fields.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIndex}
+       WHERE id = $${paramIndex + 1} AND user_id = $${paramIndex}
        RETURNING *`,
       values
     );
@@ -258,18 +317,25 @@ export class ClientService {
     }
 
     logger.info(`Client updated: ${id}`);
-    return this.formatClient(result.rows[0]);
+
+    const client = result.rows[0];
+
+    // Sync to Google in background
+    this.syncClientToGoogle(userId, client.id).catch((err) =>
+      logger.error("Background Google sync failed", err)
+    );
+
+    return this.formatClient(client);
   }
 
   /**
    * Get client history (appointments and purchases)
-   * FIXED: Use 'bookings' table and 'services' table
    */
-  async getHistory(id: string) {
-    // Verify client exists
+  async getHistory(userId: string, id: string) {
+    // Verify client exists and belongs to user
     const clientCheck = await pool.query(
-      "SELECT id FROM clients WHERE id = $1",
-      [id]
+      "SELECT id FROM clients WHERE id = $1 AND user_id = $2",
+      [id, userId]
     );
 
     if (clientCheck.rows.length === 0) {
@@ -336,9 +402,8 @@ export class ClientService {
 
   /**
    * Get client statistics
-   * FIXED: Use 'bookings' and 'services' tables
    */
-  async getStats(id: string) {
+  async getStats(userId: string, id: string) {
     const result = await pool.query(
       `SELECT 
         COUNT(DISTINCT b.id) as total_appointments,
@@ -355,9 +420,9 @@ export class ClientService {
       LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN services srv ON b.treatment_id = srv.id
       LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.id = $1
+      WHERE c.id = $1 AND c.user_id = $2
       GROUP BY c.id`,
-      [id]
+      [id, userId]
     );
 
     if (result.rows.length === 0) {
@@ -382,15 +447,14 @@ export class ClientService {
 
   /**
    * Soft delete client (mark as inactive)
-   * FIXED: Use is_active
    */
-  async delete(id: string) {
+  async delete(userId: string, id: string) {
     const result = await pool.query(
       `UPDATE clients 
        SET is_active = false, updated_at = NOW()
-       WHERE id = $1
+       WHERE id = $1 AND user_id = $2
        RETURNING id`,
-      [id]
+      [id, userId]
     );
 
     if (result.rows.length === 0) {
@@ -398,11 +462,15 @@ export class ClientService {
     }
 
     logger.info(`Client deactivated: ${id}`);
+
+    // Delete from Google in background
+    this.deleteSyncedClient(userId, id).catch((err) =>
+      logger.error("Background Google delete failed", err)
+    );
   }
 
   /**
    * Format client object for response
-   * FIXED: Use is_active
    */
   private formatClient(client: any) {
     return {

@@ -22,14 +22,23 @@ export const createClient = catchAsync(
       );
     }
 
-    const client = await clientService.create(validation.data.body);
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
-    res.status(201).json({
-      status: "success",
-      data: {
-        client,
-      },
-    });
+      const client = await clientService.create(validation.data.body, userId);
+
+      res.status(201).json({
+        status: "success",
+        data: {
+          client,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
@@ -45,7 +54,8 @@ export const getAllClients = catchAsync(
       limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
     };
 
-    const result = await clientService.findAll(filters);
+    const userId = req.user?.id ?? "";
+    const result = await clientService.findAll(userId, filters);
 
     res.status(200).json({
       status: "success",
@@ -82,7 +92,9 @@ export const searchClients = catchAsync(
       });
     }
 
-    const clients = await clientService.search(q);
+    const userId = req.user?.id ?? "";
+
+    const clients = await clientService.search(userId, q);
 
     res.status(200).json({
       status: "success",
@@ -99,7 +111,8 @@ export const searchClients = catchAsync(
  */
 export const getClient = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const client = await clientService.findById(req.params.id);
+    const userId = req.user?.id ?? "";
+    const client = await clientService.findById(userId, req.params.id);
 
     res.status(200).json({
       status: "success",
@@ -123,7 +136,10 @@ export const updateClient = catchAsync(
       );
     }
 
+    const userId = req.user?.id ?? "";
+
     const client = await clientService.update(
+      userId,
       req.params.id,
       validation.data.body
     );
@@ -143,7 +159,8 @@ export const updateClient = catchAsync(
  */
 export const getClientHistory = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const history = await clientService.getHistory(req.params.id);
+    const userId = req.user?.id ?? "";
+    const history = await clientService.getHistory(userId, req.params.id);
 
     res.status(200).json({
       status: "success",
@@ -160,7 +177,9 @@ export const getClientHistory = catchAsync(
  */
 export const getClientStats = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    const stats = await clientService.getStats(req.params.id);
+    const userId = req.user?.id ?? "";
+
+    const stats = await clientService.getStats(userId, req.params.id);
 
     res.status(200).json({
       status: "success",
@@ -177,7 +196,8 @@ export const getClientStats = catchAsync(
  */
 export const deleteClient = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
-    await clientService.delete(req.params.id);
+    const userId = req.user?.id ?? "";
+    await clientService.delete(userId, req.params.id);
 
     res.status(204).json({
       status: "success",

@@ -347,3 +347,54 @@ func (s *GoogleService) convertClientToPerson(client *models.Client) *people.Per
 
 	return person
 }
+
+// GetContactChanges fetches only contacts that changed since last sync
+func (s *GoogleService) GetContactChanges(ctx context.Context, token *oauth2.Token, syncToken string) ([]models.GoogleContact, string, error) {
+	service, err := s.GetPeopleService(ctx, token)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get people service: %w", err)
+	}
+
+	call := service.People.Connections.List("people/me").
+		PersonFields("names,emailAddresses,phoneNumbers,addresses,birthdays,biographies").
+		PageSize(1000)
+
+	// If we have a sync token, use it to get only changes
+	if syncToken != "" {
+		call = call.SyncToken(syncToken)
+	}
+
+	var allContacts []models.GoogleContact
+	var newSyncToken string
+
+	for {
+		resp, err := call.Do()
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to fetch contacts: %w", err)
+		}
+
+		// Convert contacts
+		for _, person := range resp.Connections {
+			contact := s.convertToGoogleContact(person)
+			allContacts = append(allContacts, contact)
+		}
+
+		// Save the new sync token for next time
+		if resp.NextSyncToken != "" {
+			newSyncToken = resp.NextSyncToken
+		}
+		
+		// Check if there are more pages
+		if resp.NextPageToken == "" {
+			break
+		}
+		call = call.PageToken(resp.NextPageToken)
+	}
+
+	s.logger.Info("Fetched contact changes",
+		zap.Int("count", len(allContacts)),
+		zap.String("new_sync_token", newSyncToken),
+	)
+
+	return allContacts, newSyncToken, nil
+}

@@ -19,6 +19,7 @@ import Spinner from "../../ui/components/Spinner";
 import SearchBar from "../../ui/components/SearchBar";
 import EmptyState from "../../ui/components/EmptyState";
 import Card from "../../ui/components/Card";
+import { SyncButton } from "../../ui/components/ContactsSyncBtn";
 
 import { useClients } from "./useClient";
 import { useAppointments } from "../appointments/useAppointments";
@@ -365,6 +366,7 @@ export default function ClientsPage() {
               <Plus size={16} /> New Client
             </Button>
           )}
+          <SyncButton />
         </PageHeader>
 
         <SearchBar
