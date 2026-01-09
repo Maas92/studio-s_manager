@@ -143,9 +143,9 @@ export class ClientService {
       FROM clients c
       LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.is_active = true
+      WHERE c.is_active = true AND c.user_id = $1
     `;
-    // TODO add back AND c.user_id = $1 to where clause to test whats happening I think it should be removed from all the queries
+    // TODO remove user_id condition for all queries
 
     const params: any[] = [userId];
     let paramIndex = 2;

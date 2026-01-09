@@ -64,7 +64,7 @@ interface Staff {
 interface ReceiptAndNextProps {
   transaction: Transaction;
   client: Client;
-  treatments: Treatment[];
+  treatments: any[];
   staff: Staff[];
   onBookAppointment: (appointmentData: {
     clientId: string;
