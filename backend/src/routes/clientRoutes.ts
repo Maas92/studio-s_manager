@@ -9,10 +9,13 @@ import {
   getClientStats,
   deleteClient,
 } from "../controllers/clientController.js";
-import { restrictTo } from "../middleware/userMiddleware.js";
+import { requireAuth, restrictTo } from "../middleware/userMiddleware.js";
 import { validateUUID } from "../middleware/validation.js";
 
 const router = Router();
+
+// Apply authentication to ALL client routes
+router.use(requireAuth);
 
 // Search endpoint (before /:id to avoid conflicts)
 router.get("/search", searchClients);

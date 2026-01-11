@@ -1,40 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  checkGoogleConnection,
+  connectGoogleAccount,
+  syncGoogleContacts,
+  disconnectGoogleAccount,
+} from "../../utils/googleContacts";
 import { Recycle } from "lucide-react";
 import Button from "./Button";
 
 export function SyncButton() {
+  const [isConnected, setIsConnected] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkConnection();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("google_connected") === "true") {
+      window.history.replaceState({}, "", window.location.pathname);
+      alert("✅ Google account connected successfully!");
+    }
+  }, []);
+
+  const checkConnection = async () => {
+    setChecking(true);
+    setError(null);
+    try {
+      const connected = await checkGoogleConnection();
+      setIsConnected(connected);
+    } catch (err: any) {
+      if (err.name === "CanceledError" || err.name === "AbortError") {
+        setError("Connection check timed out");
+      } else {
+        setError(err.response?.data?.error || err.message);
+      }
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    setError(null);
+    try {
+      await connectGoogleAccount();
+      // User will be redirected to Google
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
 
   const handleSync = async () => {
     setSyncing(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        throw new Error("Not logged in");
-      }
-
-      const response = await fetch(
-        "http://localhost:4000/google-contacts/sync",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
+      const result = await syncGoogleContacts();
 
       setLastSync(new Date());
       console.log("Sync result:", result);
@@ -53,6 +76,58 @@ export function SyncButton() {
       setSyncing(false);
     }
   };
+
+  const handleDisconnect = async () => {
+    if (!confirm("Are you sure you want to disconnect your Google account?")) {
+      return;
+    }
+
+    setError(null);
+    try {
+      await disconnectGoogleAccount();
+      setIsConnected(false);
+      alert("✅ Google account disconnected");
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message);
+    }
+  };
+
+  if (checking) {
+    return (
+      <div className="card p-4">
+        <div className="animate-pulse">Checking Google connection...</div>
+      </div>
+    );
+  }
+
+  if (error && !isConnected) {
+    return (
+      <div className="card p-4">
+        <div className="text-red-600 mb-4">⚠️ {error}</div>
+        <button onClick={checkConnection} className="btn btn-secondary">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="card p-4 bg-white shadow rounded-lg">
+        <h3 className="text-lg font-semibold mb-2">
+          🔗 Connect Google Contacts
+        </h3>
+        <p className="text-gray-600 mb-4">
+          Connect your Google account to automatically sync your contacts with
+          your client list
+        </p>
+        {error && <div className="text-red-600 text-sm mb-3">⚠️ {error}</div>}
+        <button onClick={handleConnect} className="btn btn-primary w-full">
+          🔐 Connect Google Account
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>

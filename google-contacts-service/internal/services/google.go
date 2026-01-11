@@ -42,7 +42,7 @@ func NewGoogleService(cfg *config.Config, logger *zap.Logger) *GoogleService {
 
 // GetAuthURL generates the OAuth authorization URL
 func (s *GoogleService) GetAuthURL(state string) string {
-	return s.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
+	return s.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"), oauth2.ApprovalForce)
 }
 
 // ExchangeCode exchanges authorization code for tokens

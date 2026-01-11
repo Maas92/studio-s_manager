@@ -37,6 +37,9 @@ type Config struct {
 
 	// CORS
 	AllowedOrigins []string
+	
+	// Frontend
+	FrontendURL string
 }
 
 func Load() (*Config, error) {
@@ -68,6 +71,7 @@ func Load() (*Config, error) {
 		GatewaySecret: getEnvRequired("GATEWAY_SECRET"),
 
 		EncryptionKey: []byte(getEnvRequired("ENCRYPTION_KEY")),
+		FrontendURL:   getEnv("FRONTEND_URL", "http://localhost:5173"),
 	}
 
 	// Parse allowed origins

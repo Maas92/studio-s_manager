@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // OAuthToken stores encrypted Google OAuth tokens
@@ -21,7 +19,7 @@ type OAuthToken struct {
 
 // Client represents a client from your backend
 type Client struct {
-	ID          uuid.UUID  `json:"id"`
+	ID          string     `json:"id"`
 	Name        string     `json:"name"`
 	Email       *string    `json:"email"`
 	Phone       string     `json:"phone"`
@@ -29,7 +27,7 @@ type Client struct {
 	DateOfBirth *time.Time `json:"date_of_birth"`
 	Address     *string    `json:"address"`
 	Notes       *string    `json:"notes"`
-	UserID      uuid.UUID  `json:"user_id"`
+	UserID      string     `json:"user_id"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -37,7 +35,7 @@ type Client struct {
 // SyncMetadata tracks sync state for each client
 type SyncMetadata struct {
 	ID                 string                 `json:"id"`
-	ClientID           uuid.UUID              `json:"client_id"`
+	ClientID           string                 `json:"client_id"`
 	GoogleContactID    *string                `json:"google_contact_id"`
 	UserID             string                 `json:"user_id"`
 	LastSyncedAt       *time.Time             `json:"last_synced_at"`
@@ -109,7 +107,7 @@ type SyncResult struct {
 }
 
 type ConflictItem struct {
-	ClientID        uuid.UUID              `json:"client_id"`
+	ClientID        string                 `json:"client_id"`
 	GoogleContactID string                 `json:"google_contact_id"`
 	LocalData       map[string]interface{} `json:"local_data"`
 	GoogleData      map[string]interface{} `json:"google_data"`

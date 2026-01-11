@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/middleware"
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/services"
+	
+	appErrors "github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/errors"
 )
 
 type SyncHandler struct {
@@ -44,6 +47,14 @@ func (h *SyncHandler) TriggerSync(c *gin.Context) {
 	// Perform sync - pass string userID directly (MongoDB ObjectId)
 	result, err := h.syncService.PerformSync(ctx, userCtx.UserID)
 	if err != nil {
+		var httpErr *appErrors.HTTPError
+		if errors.As(err, &httpErr) {
+			c.JSON(httpErr.Status, gin.H{
+				"error": httpErr.Message,
+			})
+			return
+		}
+		
 		h.logger.Error("Sync failed",
 			zap.String("user_id", userCtx.UserID),
 			zap.Error(err),

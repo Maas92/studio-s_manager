@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/Maas92/studio-s_manager/tree/main/google-contacts-service/internal/config"
@@ -56,16 +55,17 @@ func NewBackendService(cfg *config.Config, logger *zap.Logger) *BackendService {
 }
 
 // GetClients fetches all clients for a user from the backend
-func (s *BackendService) GetClients(ctx context.Context, userID uuid.UUID) ([]models.Client, error) {
-	url := fmt.Sprintf("%s/api/v1/clients", s.config.BackendServiceURL)
+// Changed: userID is now string (MongoDB ObjectId)
+func (s *BackendService) GetClients(ctx context.Context, userID string) ([]models.Client, error) {
+	url := fmt.Sprintf("%s/clients", s.config.BackendServiceURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add user context headers (simulating what gateway would send)
-	req.Header.Set("x-user-id", userID.String())
+	// Add user context headers
+	req.Header.Set("x-user-id", userID) // Now string
 	req.Header.Set("x-gateway-key", s.config.GatewaySecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -77,32 +77,84 @@ func (s *BackendService) GetClients(ctx context.Context, userID uuid.UUID) ([]mo
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		s.logger.Error("Backend fetch clients failed",
+			zap.Int("status", resp.StatusCode),
+			zap.String("body", string(body)),
+		)
 		return nil, fmt.Errorf("backend returned status %d: %s", resp.StatusCode, string(body))
 	}
 
+	// Read response body
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Parse the actual backend response format: { data: { clients: [...] } }
+	var response struct {
+		Data struct {
+			Clients []models.Client `json:"clients"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
+		s.logger.Error("Failed to decode backend response",
+			zap.String("raw_body", string(bodyBytes)),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	clients := response.Data.Clients
+
+	s.logger.Info("Fetched clients from backend",
+		zap.String("user_id", userID),
+		zap.Int("count", len(clients)),
+	)
+
+	return clients, nil
+}
+
+// GetClient fetches a single client from the backend
+// Changed: both IDs are now strings
+func (s *BackendService) GetClient(ctx context.Context, userID, clientID string) (*models.Client, error) {
+	url := fmt.Sprintf("%s/clients/%s", s.config.BackendServiceURL, clientID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("x-user-id", userID)
+	req.Header.Set("x-gateway-key", s.config.GatewaySecret)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch client: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("backend returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse: { data: { id, name, ... } } (single client object in data)
 	var result struct {
-		Status string           `json:"status"`
-		Data   []models.Client  `json:"data"`
+		Data models.Client `json:"data"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	s.logger.Info("Fetched clients from backend",
-		zap.String("user_id", userID.String()),
-		zap.Int("count", len(result.Data)),
-	)
-
-	return result.Data, nil
+	return &result.Data, nil
 }
 
 // CreateClient creates a new client in the backend
-func (s *BackendService) CreateClient(ctx context.Context, userID uuid.UUID, client *models.Client) (*models.Client, error) {
-	url := fmt.Sprintf("%s/api/v1/clients", s.config.BackendServiceURL)
-
-	// Set user ID for the client
-	client.UserID = userID
+// Changed: userID is now string
+func (s *BackendService) CreateClient(ctx context.Context, userID string, client *models.Client) (*models.Client, error) {
+	url := fmt.Sprintf("%s/clients", s.config.BackendServiceURL)
 
 	body, err := json.Marshal(client)
 	if err != nil {
@@ -114,7 +166,7 @@ func (s *BackendService) CreateClient(ctx context.Context, userID uuid.UUID, cli
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("x-user-id", userID.String())
+	req.Header.Set("x-user-id", userID)
 	req.Header.Set("x-gateway-key", s.config.GatewaySecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -129,9 +181,9 @@ func (s *BackendService) CreateClient(ctx context.Context, userID uuid.UUID, cli
 		return nil, fmt.Errorf("backend returned status %d: %s", resp.StatusCode, string(body))
 	}
 
+	// Parse: { data: { id, name, ... } }
 	var result struct {
-		Status string         `json:"status"`
-		Data   models.Client  `json:"data"`
+		Data models.Client `json:"data"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -139,8 +191,8 @@ func (s *BackendService) CreateClient(ctx context.Context, userID uuid.UUID, cli
 	}
 
 	s.logger.Info("Created client in backend",
-		zap.String("user_id", userID.String()),
-		zap.String("client_id", result.Data.ID.String()),
+		zap.String("user_id", userID),
+		zap.String("client_id", result.Data.ID),
 		zap.String("client_name", result.Data.Name),
 	)
 
@@ -148,8 +200,9 @@ func (s *BackendService) CreateClient(ctx context.Context, userID uuid.UUID, cli
 }
 
 // UpdateClient updates an existing client in the backend
-func (s *BackendService) UpdateClient(ctx context.Context, userID, clientID uuid.UUID, client *models.Client) error {
-	url := fmt.Sprintf("%s/api/v1/clients/%s", s.config.BackendServiceURL, clientID.String())
+// Changed: both IDs are now strings
+func (s *BackendService) UpdateClient(ctx context.Context, userID, clientID string, client *models.Client) error {
+	url := fmt.Sprintf("%s/clients/%s", s.config.BackendServiceURL, clientID)
 
 	body, err := json.Marshal(client)
 	if err != nil {
@@ -161,7 +214,7 @@ func (s *BackendService) UpdateClient(ctx context.Context, userID, clientID uuid
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("x-user-id", userID.String())
+	req.Header.Set("x-user-id", userID)
 	req.Header.Set("x-gateway-key", s.config.GatewaySecret)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -177,23 +230,24 @@ func (s *BackendService) UpdateClient(ctx context.Context, userID, clientID uuid
 	}
 
 	s.logger.Info("Updated client in backend",
-		zap.String("user_id", userID.String()),
-		zap.String("client_id", clientID.String()),
+		zap.String("user_id", userID),
+		zap.String("client_id", clientID),
 	)
 
 	return nil
 }
 
 // DeleteClient deletes a client from the backend
-func (s *BackendService) DeleteClient(ctx context.Context, userID, clientID uuid.UUID) error {
-	url := fmt.Sprintf("%s/api/v1/clients/%s", s.config.BackendServiceURL, clientID.String())
+// Changed: both IDs are now strings
+func (s *BackendService) DeleteClient(ctx context.Context, userID, clientID string) error {
+	url := fmt.Sprintf("%s/clients/%s", s.config.BackendServiceURL, clientID)
 
 	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("x-user-id", userID.String())
+	req.Header.Set("x-user-id", userID)
 	req.Header.Set("x-gateway-key", s.config.GatewaySecret)
 
 	resp, err := s.client.Do(req)
@@ -208,44 +262,9 @@ func (s *BackendService) DeleteClient(ctx context.Context, userID, clientID uuid
 	}
 
 	s.logger.Info("Deleted client from backend",
-		zap.String("user_id", userID.String()),
-		zap.String("client_id", clientID.String()),
+		zap.String("user_id", userID),
+		zap.String("client_id", clientID),
 	)
 
 	return nil
-}
-
-// GetClient fetches a single client from the backend
-func (s *BackendService) GetClient(ctx context.Context, userID, clientID uuid.UUID) (*models.Client, error) {
-	url := fmt.Sprintf("%s/api/v1/clients/%s", s.config.BackendServiceURL, clientID.String())
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("x-user-id", userID.String())
-	req.Header.Set("x-gateway-key", s.config.GatewaySecret)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch client: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("backend returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var result struct {
-		Status string        `json:"status"`
-		Data   models.Client `json:"data"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return &result.Data, nil
 }

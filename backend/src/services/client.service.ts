@@ -19,7 +19,7 @@ export class ClientService {
   private async syncClientToGoogle(userId: string, clientId: string) {
     try {
       await axios.post(
-        `http://google-contacts:5004/api/google-contacts/sync-client/${clientId}`,
+        `http://google-contacts:5004/google-contacts/sync-client/${clientId}`,
         {},
         {
           headers: {
@@ -43,7 +43,7 @@ export class ClientService {
   private async deleteSyncedClient(userId: string, clientId: string) {
     try {
       await axios.delete(
-        `http://google-contacts:5004/api/google-contacts/sync-client/${clientId}`,
+        `http://google-contacts:5004/google-contacts/sync-client/${clientId}`,
         {
           headers: {
             "x-gateway-key": process.env.GATEWAY_SECRET || "",

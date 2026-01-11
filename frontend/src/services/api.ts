@@ -39,6 +39,7 @@ if (!runtimeBase && !buildBase) {
 const api: AxiosInstance = axios.create({
   baseURL: BASE,
   withCredentials: true, // important: send cookies (refresh cookie)
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
   },
