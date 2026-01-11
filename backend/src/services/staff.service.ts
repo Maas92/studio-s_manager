@@ -221,7 +221,7 @@ export class StaffService {
 
     if (data.hireDate !== undefined) {
       fields.push(`hire_date = $${i++}`);
-      values.push(data.hireDate);
+      values.push(data.hireDate && data.hireDate !== "" ? data.hireDate : null);
     }
 
     if (data.bio !== undefined) {
@@ -249,6 +249,8 @@ export class StaffService {
     }
 
     values.push(id);
+
+    console.log(data);
 
     const result = await pool.query(
       `

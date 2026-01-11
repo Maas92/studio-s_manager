@@ -51,7 +51,27 @@ export const CreateStaffMemberSchema = z.object({
   commissionRate: z.number().nullable().optional(),
 });
 
+export const StaffLeaveSchema = z.object({
+  staffId: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  leaveType: z.enum([
+    "annual",
+    "sick",
+    "unpaid",
+    "maternity",
+    "paternity",
+    "study",
+    "other",
+  ]),
+  reason: z.string().optional(),
+  status: z
+    .enum(["pending", "approved", "rejected", "cancelled"])
+    .default("approved"),
+});
+
 // Types
 export type StaffPerformance = z.infer<typeof StaffPerformanceSchema>;
 export type StaffMember = z.infer<typeof StaffMemberSchema>;
 export type CreateStaffMemberInput = z.infer<typeof CreateStaffMemberSchema>;
+export type StaffLeave = z.infer<typeof StaffLeaveSchema>;

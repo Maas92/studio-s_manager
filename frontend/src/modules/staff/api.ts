@@ -2,8 +2,10 @@ import { createResourceClient } from "../../services/resourceFactory";
 import {
   StaffMemberSchema,
   CreateStaffMemberSchema,
+  StaffLeaveSchema,
   type StaffMember,
   type CreateStaffMemberInput,
+  type StaffLeave,
 } from "./StaffSchema";
 
 // Create typed API client
@@ -16,6 +18,12 @@ export const staffApi = createResourceClient<
   createSchema: CreateStaffMemberSchema,
 });
 
+export const staffLeaveApi = createResourceClient<StaffLeave, StaffLeave>({
+  basePath: "/staff/leaves",
+  schema: StaffLeaveSchema,
+  createSchema: StaffLeaveSchema,
+});
+
 // Export individual functions for convenience
 export const {
   list: listStaffMembers,
@@ -26,4 +34,4 @@ export const {
 } = staffApi;
 
 // Export types
-export type { StaffMember, CreateStaffMemberInput };
+export type { StaffMember, CreateStaffMemberInput, StaffLeave };
