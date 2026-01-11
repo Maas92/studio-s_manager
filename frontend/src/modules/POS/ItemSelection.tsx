@@ -31,6 +31,7 @@ interface ItemSelectionProps {
   productStock: Record<string, number>;
   onAddToCart: (item: any) => void;
   onUpdateQuantity: (id: string, type: string, delta: number) => void;
+  onUpdatePrice: (id: string, type: string, newPrice: number) => void;
   onRemoveFromCart: (id: string, type: string) => void;
   onNext: () => void;
   onBack: () => void;
@@ -114,11 +115,12 @@ const Tab = styled.button<{ $active?: boolean }>`
 
 const ItemsGrid = styled.div`
   display: grid;
-  gap: 0.75rem;
+  gap: 0.85rem;
   grid-template-columns: repeat(2, 1fr);
   max-height: 520px;
   overflow-y: auto;
   padding-right: 0.5rem;
+  padding-top: 0.25rem;
 
   /* Custom scrollbar */
   &::-webkit-scrollbar {
@@ -177,12 +179,12 @@ const ItemButton = styled.button<{ $disabled?: boolean; $inCart?: boolean }>`
 const ItemName = styled.div`
   font-weight: 700;
   color: ${({ theme }) => theme.color.text};
-  margin-bottom: 0.25rem;
-  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  font-size: 1.2rem;
 `;
 
 const ItemMeta = styled.div`
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: ${({ theme }) => theme.color.mutedText};
   margin-bottom: 0.5rem;
   display: flex;
@@ -206,7 +208,7 @@ const ItemFooter = styled.div`
 
 const ItemPrice = styled.div`
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   color: ${({ theme }) => theme.color.brand600};
 `;
 
@@ -315,7 +317,7 @@ const CartItemInfo = styled.div`
 
 const CartItemName = styled.div`
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   color: ${({ theme }) => theme.color.text};
   white-space: nowrap;
   overflow: hidden;
@@ -378,15 +380,73 @@ const QuantityDisplay = styled.div`
   min-width: 32px;
   text-align: center;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: ${({ theme }) => theme.color.text};
 `;
 
 const CartItemPrice = styled.div`
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: ${({ theme }) => theme.color.brand600};
   white-space: nowrap;
+`;
+
+const PriceEdit = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+`;
+
+const PriceInput = styled(Input)`
+  width: 100px;
+  font-size: 1.2rem;
+`;
+
+const PriceEditButton = styled.button<{ $primary?: boolean }>`
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${({ $primary, theme }) =>
+    $primary ? theme.color.green500 : theme.color.grey300};
+  color: ${({ $primary }) => ($primary ? "white" : "inherit")};
+  border: 1px solid
+    ${({ $primary, theme }) =>
+      $primary ? theme.color.green700 : theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  &:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+`;
+
+const EditablePrice = styled(CartItemPrice)`
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  user-select: none;
+
+  &:hover {
+    color: ${({ theme }) => theme.color.brand700};
+
+    .edit-icon {
+      opacity: 1;
+    }
+  }
+
+  .edit-icon {
+    opacity: 0.4;
+    font-size: 0.7rem;
+    transition: opacity 0.2s;
+  }
 `;
 
 const DeleteButton = styled.button`
@@ -441,7 +501,7 @@ const CartTotal = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: ${({ theme }) => theme.color.text};
   padding: 0.75rem;
@@ -459,7 +519,7 @@ const ErrorMessage = styled.div`
   border: 1px solid ${({ theme }) => theme.color.red500};
   border-radius: ${({ theme }) => theme.radii.sm};
   color: ${({ theme }) => theme.color.red600};
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   margin-bottom: 0.75rem;
 
   svg {
@@ -482,10 +542,13 @@ export default function ItemSelection({
   productStock,
   onAddToCart,
   onUpdateQuantity,
+  onUpdatePrice,
   onRemoveFromCart,
   onNext,
   onBack,
 }: ItemSelectionProps) {
+  const [editingPrice, setEditingPrice] = useState<string | null>(null);
+  const [tempPrice, setTempPrice] = useState<string>("");
   const [activeTab, setActiveTab] = useState<
     "appointments" | "treatments" | "products"
   >(clientType === "booked" ? "appointments" : "treatments");
@@ -740,36 +803,92 @@ export default function ItemSelection({
                   {item.staffName && (
                     <CartItemDetail>Staff: {item.staffName}</CartItemDetail>
                   )}
-                  <CartItemPrice>
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </CartItemPrice>
+
+                  {/* Price editing */}
+                  {editingPrice === `${item.id}-${item.type}` ? (
+                    <PriceEdit>
+                      <PriceInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={tempPrice}
+                        onChange={(e) => setTempPrice(e.target.value)}
+                        placeholder="Price"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const newPrice = parseFloat(tempPrice);
+                            if (!isNaN(newPrice) && newPrice >= 0) {
+                              onUpdatePrice(item.id, item.type, newPrice);
+                            }
+                            setEditingPrice(null);
+                          } else if (e.key === "Escape") {
+                            setEditingPrice(null);
+                          }
+                        }}
+                      />
+                      <PriceEditButton
+                        $primary
+                        onClick={() => {
+                          const newPrice = parseFloat(tempPrice);
+                          if (!isNaN(newPrice) && newPrice >= 0) {
+                            onUpdatePrice(item.id, item.type, newPrice);
+                          }
+                          setEditingPrice(null);
+                        }}
+                        title="Save"
+                      >
+                        ✓
+                      </PriceEditButton>
+                      <PriceEditButton
+                        onClick={() => setEditingPrice(null)}
+                        title="Cancel"
+                      >
+                        ✕
+                      </PriceEditButton>
+                    </PriceEdit>
+                  ) : (
+                    <EditablePrice
+                      onClick={() => {
+                        setEditingPrice(`${item.id}-${item.type}`);
+                        setTempPrice(item.price.toString());
+                      }}
+                      title="Click to edit price"
+                    >
+                      ${(item.price * item.quantity).toFixed(2)}
+                      <span className="edit-icon">✎</span>
+                    </EditablePrice>
+                  )}
                 </CartItemInfo>
 
                 <CartItemControls>
-                  {item.type === "product" ? (
-                    <QuantityControl>
-                      <QuantityButton
-                        onClick={() => onUpdateQuantity(item.id, item.type, -1)}
-                        disabled={item.quantity <= 1}
-                      >
-                        <Minus />
-                      </QuantityButton>
-                      <QuantityDisplay>{item.quantity}</QuantityDisplay>
-                      <QuantityButton
-                        onClick={() => onUpdateQuantity(item.id, item.type, 1)}
-                      >
-                        <Plus />
-                      </QuantityButton>
-                    </QuantityControl>
-                  ) : (
-                    <QuantityDisplay style={{ padding: "0 0.5rem" }}>
-                      Qty: {item.quantity}
-                    </QuantityDisplay>
-                  )}
+                  {/* Always show quantity controls for all item types */}
+                  <QuantityControl>
+                    <QuantityButton
+                      onClick={() => onUpdateQuantity(item.id, item.type, -1)}
+                      disabled={item.quantity <= 1}
+                      title="Decrease quantity"
+                    >
+                      <Minus />
+                    </QuantityButton>
+                    <QuantityDisplay>{item.quantity}</QuantityDisplay>
+                    <QuantityButton
+                      onClick={() => onUpdateQuantity(item.id, item.type, 1)}
+                      disabled={
+                        item.type === "product" &&
+                        item.quantity >=
+                          (productStock[item.productId || item.id] || 0)
+                      }
+                      title="Increase quantity"
+                    >
+                      <Plus />
+                    </QuantityButton>
+                  </QuantityControl>
 
                   <DeleteButton
                     onClick={() => onRemoveFromCart(item.id, item.type)}
                     aria-label="Remove item"
+                    title="Remove from cart"
                   >
                     <Trash2 />
                   </DeleteButton>

@@ -92,11 +92,34 @@ const HintText = styled.span`
   margin-top: 0.25rem;
 `;
 
+const RadioGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+const RadioOption = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+
+  input[type="radio"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: ${({ theme }) => theme.color.brand600};
+  }
+`;
+
 const INITIAL: CreateTreatmentInput = {
   name: "",
   description: "",
   durationMinutes: 60,
   price: 0,
+  pricingType: "fixed",
+  priceRangeMax: undefined,
   category: "",
   benefits: [],
   contraindications: [],
@@ -196,8 +219,64 @@ export default function CreateTreatmentModal({
           </FormField>
 
           <FormField>
+            <Label htmlFor="treatment-category">Category</Label>
+            <Input
+              id="treatment-category"
+              value={formValues.category ?? ""}
+              onChange={(e) =>
+                setFormValues((p) => ({ ...p, category: e.target.value }))
+              }
+              placeholder="e.g., Massage, Facial"
+            />
+          </FormField>
+        </Grid>
+
+        <FormField>
+          <Label>
+            Pricing Type <RequiredIndicator>*</RequiredIndicator>
+          </Label>
+          <RadioGroup>
+            <RadioOption>
+              <input
+                type="radio"
+                name="pricingType"
+                value="fixed"
+                checked={formValues.pricingType === "fixed"}
+                onChange={(e) =>
+                  setFormValues((p) => ({
+                    ...p,
+                    pricingType: "fixed",
+                    priceRangeMax: undefined,
+                  }))
+                }
+              />
+              Fixed Price
+            </RadioOption>
+            <RadioOption>
+              <input
+                type="radio"
+                name="pricingType"
+                value="from"
+                checked={formValues.pricingType === "from"}
+                onChange={(e) =>
+                  setFormValues((p) => ({ ...p, pricingType: "from" }))
+                }
+              />
+              From Price (Starting at)
+            </RadioOption>
+          </RadioGroup>
+          <HintText>
+            {formValues.pricingType === "fixed"
+              ? "Exact price for this treatment"
+              : "Starting price - actual price varies"}
+          </HintText>
+        </FormField>
+
+        <Grid>
+          <FormField>
             <Label htmlFor="treatment-price">
-              Price <RequiredIndicator>*</RequiredIndicator>
+              {formValues.pricingType === "from" ? "Starting Price" : "Price"}{" "}
+              <RequiredIndicator>*</RequiredIndicator>
             </Label>
             <Input
               id="treatment-price"
@@ -211,21 +290,40 @@ export default function CreateTreatmentModal({
               placeholder="0.00"
               required
             />
-            <HintText>Price in USD</HintText>
+            <HintText>
+              {formValues.pricingType === "from"
+                ? "Minimum/starting price"
+                : "Price in USD"}
+            </HintText>
           </FormField>
-        </Grid>
 
-        <FormField>
-          <Label htmlFor="treatment-category">Category</Label>
-          <Input
-            id="treatment-category"
-            value={formValues.category ?? ""}
-            onChange={(e) =>
-              setFormValues((p) => ({ ...p, category: e.target.value }))
-            }
-            placeholder="e.g., Massage, Facial, Body Treatment"
-          />
-        </FormField>
+          {formValues.pricingType === "from" && (
+            <FormField>
+              <Label htmlFor="treatment-price-max">Maximum Price</Label>
+              <Input
+                id="treatment-price-max"
+                type="number"
+                step="0.01"
+                min={formValues.price}
+                value={
+                  formValues.priceRangeMax !== undefined
+                    ? String(formValues.priceRangeMax)
+                    : ""
+                }
+                onChange={(e) =>
+                  setFormValues((p) => ({
+                    ...p,
+                    priceRangeMax: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  }))
+                }
+                placeholder="Optional"
+              />
+              <HintText>Optional - for displaying price range</HintText>
+            </FormField>
+          )}
+        </Grid>
 
         <FormField>
           <Label htmlFor="treatment-tags">Tags</Label>

@@ -88,6 +88,54 @@ const EditModeGrid = styled.div`
   }
 `;
 
+const RadioGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+const RadioOption = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+
+  input[type="radio"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: ${({ theme }) => theme.color.brand600};
+  }
+`;
+
+const HintText = styled.span`
+  font-size: 0.8rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  margin-top: 0.25rem;
+`;
+
+const Label = styled.label`
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${({ theme }) => theme.color.text};
+  margin-bottom: 0.5rem;
+`;
+
+// Helper function to format price display
+function formatPrice(treatment: Treatment): string {
+  if (treatment.pricingType === "from") {
+    if (treatment.priceRangeMax) {
+      return `$${treatment.price.toFixed(
+        2
+      )} - $${treatment.priceRangeMax.toFixed(2)}`;
+    }
+    return `From $${treatment.price.toFixed(2)}`;
+  }
+  return `$${treatment.price.toFixed(2)}`;
+}
+
 export default function TreatmentDetailModal({
   isOpen,
   onClose,
@@ -106,6 +154,8 @@ export default function TreatmentDetailModal({
     description: "",
     durationMinutes: 0,
     price: 0,
+    pricingType: "fixed",
+    priceRangeMax: undefined,
     category: "",
     benefits: [],
     contraindications: [],
@@ -122,6 +172,8 @@ export default function TreatmentDetailModal({
         description: treatment.description || "",
         durationMinutes: treatment.durationMinutes,
         price: treatment.price,
+        pricingType: treatment.pricingType || "fixed",
+        priceRangeMax: treatment.priceRangeMax || undefined,
         category: treatment.category || "",
         benefits: treatment.benefits || [],
         contraindications: treatment.contraindications || [],
@@ -153,26 +205,17 @@ export default function TreatmentDetailModal({
       0
     );
 
-    // Calculate unique clients
     const uniqueClients = new Set(treatmentAppts.map((a) => a.clientId)).size;
-
-    // Calculate repeat booking rate
     const repeatRate =
       uniqueClients > 0
         ? ((treatmentAppts.length - uniqueClients) / treatmentAppts.length) *
           100
         : 0;
-
-    // Calculate cancellation rate
     const cancellationRate =
       treatmentAppts.length > 0
         ? (cancelled.length / treatmentAppts.length) * 100
         : 0;
-
-    // Calculate average rating (mock - would come from reviews)
     const avgRating = 4.6;
-
-    // Calculate booking frequency (bookings per week)
     const now = Date.now();
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
     const recentBookings = treatmentAppts.filter(
@@ -218,6 +261,8 @@ export default function TreatmentDetailModal({
         description: treatment.description || "",
         durationMinutes: treatment.durationMinutes,
         price: treatment.price,
+        pricingType: treatment.pricingType || "fixed",
+        priceRangeMax: treatment.priceRangeMax || undefined,
         category: treatment.category || "",
         benefits: treatment.benefits || [],
         contraindications: treatment.contraindications || [],
@@ -247,15 +292,12 @@ export default function TreatmentDetailModal({
       ariaLabel="Treatment details"
     >
       <Content>
-        {/* Treatment Stats - Admin Only */}
-
         {isAdmin && treatmentStats && !isEditing && (
           <StatsSection
             title="Treatment Performance - All Time"
             icon={<Activity size={18} />}
             columns={4}
           >
-            {/* Total Revenue */}
             <StatCard
               label="Total Revenue"
               value={`$${treatmentStats.totalRevenue.toLocaleString()}`}
@@ -265,8 +307,6 @@ export default function TreatmentDetailModal({
               iconColor="#15803d"
               valueColor="#15803d"
             />
-
-            {/* Total Bookings */}
             <StatCard
               label="Total Bookings"
               value={treatmentStats.totalBookings}
@@ -276,8 +316,6 @@ export default function TreatmentDetailModal({
               iconColor="#2563eb"
               valueColor="#2563eb"
             />
-
-            {/* Unique Clients */}
             <StatCard
               label="Unique Clients"
               value={treatmentStats.uniqueClients}
@@ -287,8 +325,6 @@ export default function TreatmentDetailModal({
               iconColor="#2563eb"
               valueColor="#2563eb"
             />
-
-            {/* Upcoming */}
             <StatCard
               label="Upcoming"
               value={treatmentStats.upcoming}
@@ -298,8 +334,6 @@ export default function TreatmentDetailModal({
               iconColor="#ca8a04"
               valueColor="#ca8a04"
             />
-
-            {/* Repeat Booking Rate */}
             <StatCard
               label="Repeat Rate"
               value={`${treatmentStats.repeatRate.toFixed(0)}%`}
@@ -327,8 +361,6 @@ export default function TreatmentDetailModal({
                   : "#2563eb"
               }
             />
-
-            {/* Average Rating */}
             <StatCard
               label="Avg Rating"
               value={treatmentStats.avgRating.toFixed(1)}
@@ -338,8 +370,6 @@ export default function TreatmentDetailModal({
               iconColor="#15803d"
               valueColor="#15803d"
             />
-
-            {/* Cancellation Rate */}
             <StatCard
               label="Cancel Rate"
               value={`${treatmentStats.cancellationRate.toFixed(1)}%`}
@@ -367,8 +397,6 @@ export default function TreatmentDetailModal({
                   : "#2563eb"
               }
             />
-
-            {/* Booking Frequency */}
             <StatCard
               label="Weekly Rate"
               value={treatmentStats.bookingsPerWeek.toFixed(1)}
@@ -391,7 +419,7 @@ export default function TreatmentDetailModal({
               },
               {
                 label: "Price",
-                value: `$${treatment.price.toFixed(2)}`,
+                value: formatPrice(treatment),
                 icon: <DollarSign size={20} />,
               },
               {
@@ -446,7 +474,64 @@ export default function TreatmentDetailModal({
               />
 
               <FormField
-                label="Price ($)"
+                label="Category"
+                id="treatment-category"
+                value={formValues.category ?? ""}
+                onChange={(e) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    category: e.target.value,
+                  }))
+                }
+              />
+            </EditModeGrid>
+
+            <Section>
+              <Label>Pricing Type</Label>
+              <RadioGroup>
+                <RadioOption>
+                  <input
+                    type="radio"
+                    name="pricingType"
+                    value="fixed"
+                    checked={formValues.pricingType === "fixed"}
+                    onChange={() =>
+                      setFormValues((p) => ({
+                        ...p,
+                        pricingType: "fixed",
+                        priceRangeMax: undefined,
+                      }))
+                    }
+                  />
+                  Fixed Price
+                </RadioOption>
+                <RadioOption>
+                  <input
+                    type="radio"
+                    name="pricingType"
+                    value="from"
+                    checked={formValues.pricingType === "from"}
+                    onChange={() =>
+                      setFormValues((p) => ({ ...p, pricingType: "from" }))
+                    }
+                  />
+                  From Price
+                </RadioOption>
+              </RadioGroup>
+              <HintText>
+                {formValues.pricingType === "fixed"
+                  ? "Exact price for this treatment"
+                  : "Starting price - actual price varies"}
+              </HintText>
+            </Section>
+
+            <EditModeGrid>
+              <FormField
+                label={
+                  formValues.pricingType === "from"
+                    ? "Starting Price ($)"
+                    : "Price ($)"
+                }
                 id="treatment-price"
                 type="number"
                 min="0"
@@ -461,17 +546,25 @@ export default function TreatmentDetailModal({
                 required
               />
 
-              <FormField
-                label="Category"
-                id="treatment-category"
-                value={formValues.category ?? ""}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    category: e.target.value,
-                  }))
-                }
-              />
+              {formValues.pricingType === "from" && (
+                <FormField
+                  label="Maximum Price ($)"
+                  id="treatment-price-max"
+                  type="number"
+                  min={formValues.price}
+                  step="0.01"
+                  value={formValues.priceRangeMax ?? 0}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      priceRangeMax: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    }))
+                  }
+                  placeholder="Optional"
+                />
+              )}
             </EditModeGrid>
 
             <FormField

@@ -1,12 +1,14 @@
-import { pool } from '../config/database.js';
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
+import { pool } from "../config/database.js";
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
 
 interface CreateTreatmentData {
   name: string;
   description?: string;
   duration_minutes: number;
   price: number;
+  pricing_type?: "fixed" | "from";
+  price_range_max?: number;
   category?: string;
   benefits?: string[];
   contraindications?: string[];
@@ -103,16 +105,18 @@ export class TreatmentService {
   async create(data: CreateTreatmentData) {
     const result = await pool.query(
       `INSERT INTO treatments (
-        name, description, duration_minutes, price, category,
-        benefits, contraindications, preparation_instructions,
+        name, description, duration_minutes, price, pricing_type, price_range_max,
+        category, benefits, contraindications, preparation_instructions,
         aftercare_instructions, available_for, image_url, is_active, tags
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         data.name,
         data.description || null,
         data.duration_minutes,
         data.price,
+        data.pricing_type || "fixed",
+        data.price_range_max || null,
         data.category || null,
         data.benefits || [],
         data.contraindications || [],
@@ -142,6 +146,8 @@ export class TreatmentService {
       description: "description",
       duration_minutes: "duration_minutes",
       price: "price",
+      pricing_type: "pricing_type",
+      price_range_max: "price_range_max",
       category: "category",
       benefits: "benefits",
       contraindications: "contraindications",

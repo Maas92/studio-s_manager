@@ -325,6 +325,26 @@ export default function PointOfSale() {
     []
   );
 
+  const updatePrice = useCallback(
+    (id: string, type: string, newPrice: number) => {
+      setCart((prev) =>
+        prev.map((item) => {
+          if (item.id === id && item.type === type) {
+            return {
+              ...item,
+              price: newPrice,
+              // Keep originalPrice for tracking purposes
+              originalPrice: item.originalPrice || item.price,
+            };
+          }
+          return item;
+        })
+      );
+      toast.success("Price updated");
+    },
+    []
+  );
+
   // ============================================================================
   // CLIENT OPERATIONS
   // ============================================================================
@@ -583,6 +603,7 @@ export default function PointOfSale() {
               productStock={productStock}
               onAddToCart={addToCart}
               onUpdateQuantity={updateQuantity}
+              onUpdatePrice={updatePrice}
               onRemoveFromCart={removeFromCart}
               onNext={() => goToStep(3)}
               onBack={() => goToStep(1)}

@@ -159,6 +159,35 @@ const TagsList = styled.div`
   margin-top: 0.5rem;
 `;
 
+const PriceText = styled.span<{ $isFromPrice?: boolean }>`
+  ${({ $isFromPrice, theme }) =>
+    $isFromPrice &&
+    `
+    font-size: 0.8em;
+    color: ${theme.color.mutedText};
+  `}
+`;
+
+// Helper function to format price display
+function formatPrice(treatment: Treatment): React.ReactNode {
+  if (treatment.pricingType === "from") {
+    if (treatment.priceRangeMax) {
+      return (
+        <>
+          <PriceText $isFromPrice>from </PriceText>${treatment.price.toFixed(2)}{" "}
+          - ${treatment.priceRangeMax.toFixed(2)}
+        </>
+      );
+    }
+    return (
+      <>
+        <PriceText $isFromPrice>from </PriceText>${treatment.price.toFixed(2)}
+      </>
+    );
+  }
+  return `$${treatment.price.toFixed(2)}`;
+}
+
 export default function TreatmentsPage() {
   const navigate = useNavigate();
   const { canManageTreatments, isAdmin, isOwner } = useAuth();
@@ -238,7 +267,6 @@ export default function TreatmentsPage() {
   const handleBook = useCallback(
     (treatmentId: string, treatmentName: string) => {
       detailModal.close();
-      // Navigate to appointments page with pre-filled treatment
       navigate("/appointments", {
         state: {
           createAppointment: true,
@@ -370,7 +398,8 @@ export default function TreatmentsPage() {
                   {treatment.durationMinutes} min
                 </MetaItem>
                 <MetaItem>
-                  <DollarIcon size={16} />${treatment.price.toFixed(2)}
+                  <DollarIcon size={16} />
+                  {formatPrice(treatment)}
                 </MetaItem>
               </MetaGrid>
             </TreatmentCard>
@@ -387,7 +416,7 @@ export default function TreatmentsPage() {
         onBook={handleBook}
         updating={updateMutation.isPending}
         deleting={deleteMutation.isPending}
-        appointments={appointments} // ADD THIS
+        appointments={appointments}
         isAdmin={canManageTreatments}
       />
 
