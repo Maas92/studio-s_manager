@@ -3,6 +3,7 @@ import LinkButton from "./components/LinkButton";
 import ActionButton from "./components/ActionButton";
 import {
   Calendar,
+  DollarSign,
   Package,
   Paintbrush,
   ShoppingCart,
@@ -28,6 +29,7 @@ const DEFAULT_TABS: Tab[] = [
     icon: Calendar,
   },
   { id: "pos", to: "/POS", label: "POS", icon: ShoppingCart },
+  { id: "cashup", to: "/CashUp", label: "Cash Up", icon: DollarSign },
   { id: "stock", to: "/stock", label: "Stock", icon: Package },
   { id: "staff", to: "/staff", label: "Staff", icon: User },
   { id: "clients", to: "/clients", label: "Clients", icon: Users },

@@ -1,314 +1,92 @@
-| table_schema | table_name               | column_name                | data_type                   | is_nullable |
-| ------------ | ------------------------ | -------------------------- | --------------------------- | ----------- |
-| public       | SetmoreApps              | id                         | bigint                      | NO          |
-| public       | SetmoreApps              | created_at                 | timestamp with time zone    | NO          |
-| public       | SetmoreApps              | LocalStart                 | text                        | YES         |
-| public       | SetmoreApps              | ConsumersName              | text                        | YES         |
-| public       | SetmoreApps              | ConsumersMobile            | text                        | YES         |
-| public       | SetmoreApps              | ConsumersEmail             | text                        | YES         |
-| public       | SetmoreApps              | ProvidersName              | text                        | YES         |
-| public       | SetmoreApps              | RecordKey                  | text                        | YES         |
-| public       | SetmoreApps              | ServicesCost               | double precision            | YES         |
-| public       | SetmoreApps              | ServicesName               | text                        | YES         |
-| public       | alert_configurations     | id                         | uuid                        | NO          |
-| public       | alert_configurations     | location_id                | uuid                        | YES         |
-| public       | alert_configurations     | low_stock_threshold        | integer                     | YES         |
-| public       | alert_configurations     | expiry_warning_days        | integer                     | YES         |
-| public       | alert_configurations     | notification_recipients    | ARRAY                       | YES         |
-| public       | alert_configurations     | is_active                  | boolean                     | YES         |
-| public       | alert_configurations     | created_at                 | timestamp without time zone | YES         |
-| public       | alert_configurations     | updated_at                 | timestamp without time zone | YES         |
-| public       | booking_product_usage    | id                         | uuid                        | NO          |
-| public       | booking_product_usage    | booking_id                 | uuid                        | NO          |
-| public       | booking_product_usage    | product_id                 | uuid                        | NO          |
-| public       | booking_product_usage    | quantity_reserved          | numeric                     | NO          |
-| public       | booking_product_usage    | quantity_used              | numeric                     | YES         |
-| public       | booking_product_usage    | location_id                | uuid                        | NO          |
-| public       | booking_product_usage    | status                     | USER-DEFINED                | YES         |
-| public       | booking_product_usage    | reserved_at                | timestamp without time zone | YES         |
-| public       | booking_product_usage    | consumed_at                | timestamp without time zone | YES         |
-| public       | bookings                 | id                         | uuid                        | NO          |
-| public       | bookings                 | client_id                  | uuid                        | NO          |
-| public       | bookings                 | service_id                 | uuid                        | NO          |
-| public       | bookings                 | staff_id                   | uuid                        | NO          |
-| public       | bookings                 | booking_date               | date                        | NO          |
-| public       | bookings                 | start_time                 | time without time zone      | NO          |
-| public       | bookings                 | end_time                   | time without time zone      | NO          |
-| public       | bookings                 | status                     | USER-DEFINED                | YES         |
-| public       | bookings                 | treatment_location_id      | uuid                        | YES         |
-| public       | bookings                 | total_price                | numeric                     | NO          |
-| public       | bookings                 | deposit_paid               | numeric                     | YES         |
-| public       | bookings                 | loyalty_points_earned      | integer                     | YES         |
-| public       | bookings                 | notes                      | text                        | YES         |
-| public       | bookings                 | internal_notes             | text                        | YES         |
-| public       | bookings                 | cancellation_reason        | text                        | YES         |
-| public       | bookings                 | created_at                 | timestamp without time zone | YES         |
-| public       | bookings                 | updated_at                 | timestamp without time zone | YES         |
-| public       | bookings                 | confirmed_at               | timestamp without time zone | YES         |
-| public       | bookings                 | completed_at               | timestamp without time zone | YES         |
-| public       | bookings                 | cancelled_at               | timestamp without time zone | YES         |
-| public       | categories               | id                         | uuid                        | NO          |
-| public       | categories               | name                       | character varying           | NO          |
-| public       | categories               | parent_category_id         | uuid                        | YES         |
-| public       | categories               | type                       | character varying           | YES         |
-| public       | categories               | created_at                 | timestamp without time zone | YES         |
-| public       | categories               | updated_at                 | timestamp without time zone | YES         |
-| public       | client_history           | id                         | uuid                        | NO          |
-| public       | client_history           | client_id                  | uuid                        | NO          |
-| public       | client_history           | booking_id                 | uuid                        | YES         |
-| public       | client_history           | service_provided           | character varying           | YES         |
-| public       | client_history           | products_used              | jsonb                       | YES         |
-| public       | client_history           | staff_id                   | uuid                        | YES         |
-| public       | client_history           | staff_notes                | text                        | YES         |
-| public       | client_history           | client_feedback            | text                        | YES         |
-| public       | client_history           | client_rating              | integer                     | YES         |
-| public       | client_history           | before_photos              | ARRAY                       | YES         |
-| public       | client_history           | after_photos               | ARRAY                       | YES         |
-| public       | client_history           | created_at                 | timestamp without time zone | YES         |
-| public       | client_loyalty_accounts  | id                         | uuid                        | NO          |
-| public       | client_loyalty_accounts  | client_id                  | uuid                        | NO          |
-| public       | client_loyalty_accounts  | loyalty_program_id         | uuid                        | NO          |
-| public       | client_loyalty_accounts  | current_points             | integer                     | YES         |
-| public       | client_loyalty_accounts  | lifetime_points            | integer                     | YES         |
-| public       | client_loyalty_accounts  | membership_tier            | USER-DEFINED                | YES         |
-| public       | client_loyalty_accounts  | membership_status          | USER-DEFINED                | YES         |
-| public       | client_loyalty_accounts  | tier_achieved_date         | date                        | YES         |
-| public       | client_loyalty_accounts  | joined_at                  | timestamp without time zone | YES         |
-| public       | client_loyalty_accounts  | last_transaction_date      | timestamp without time zone | YES         |
-| public       | clients                  | id                         | uuid                        | NO          |
-| public       | clients                  | first_name                 | character varying           | NO          |
-| public       | clients                  | last_name                  | character varying           | NO          |
-| public       | clients                  | email                      | character varying           | YES         |
-| public       | clients                  | phone                      | character varying           | NO          |
-| public       | clients                  | whatsapp                   | character varying           | NO          |
-| public       | clients                  | date_of_birth              | date                        | YES         |
-| public       | clients                  | gender                     | character varying           | YES         |
-| public       | clients                  | address                    | text                        | YES         |
-| public       | clients                  | city                       | character varying           | YES         |
-| public       | clients                  | postal_code                | character varying           | YES         |
-| public       | clients                  | emergency_contact_name     | character varying           | YES         |
-| public       | clients                  | emergency_contact_phone    | character varying           | YES         |
-| public       | clients                  | allergies                  | text                        | YES         |
-| public       | clients                  | skin_type                  | character varying           | YES         |
-| public       | clients                  | medical_conditions         | text                        | YES         |
-| public       | clients                  | notes                      | text                        | YES         |
-| public       | clients                  | marketing_consent          | boolean                     | YES         |
-| public       | clients                  | is_active                  | boolean                     | YES         |
-| public       | clients                  | created_at                 | timestamp without time zone | YES         |
-| public       | clients                  | updated_at                 | timestamp without time zone | YES         |
-| public       | clients                  | last_visit_date            | date                        | YES         |
-| public       | inventory_levels         | id                         | uuid                        | NO          |
-| public       | inventory_levels         | product_id                 | uuid                        | NO          |
-| public       | inventory_levels         | location_id                | uuid                        | NO          |
-| public       | inventory_levels         | quantity_available         | integer                     | NO          |
-| public       | inventory_levels         | quantity_reserved          | integer                     | NO          |
-| public       | inventory_levels         | batch_number               | character varying           | YES         |
-| public       | inventory_levels         | expiry_date                | date                        | YES         |
-| public       | inventory_levels         | last_updated               | timestamp without time zone | YES         |
-| public       | loyalty_programs         | id                         | uuid                        | NO          |
-| public       | loyalty_programs         | name                       | character varying           | NO          |
-| public       | loyalty_programs         | description                | text                        | YES         |
-| public       | loyalty_programs         | points_per_dollar          | numeric                     | YES         |
-| public       | loyalty_programs         | points_expiry_days         | integer                     | YES         |
-| public       | loyalty_programs         | minimum_spend_for_points   | numeric                     | YES         |
-| public       | loyalty_programs         | is_active                  | boolean                     | YES         |
-| public       | loyalty_programs         | created_at                 | timestamp without time zone | YES         |
-| public       | loyalty_programs         | updated_at                 | timestamp without time zone | YES         |
-| public       | loyalty_rewards          | id                         | uuid                        | NO          |
-| public       | loyalty_rewards          | loyalty_program_id         | uuid                        | NO          |
-| public       | loyalty_rewards          | name                       | character varying           | NO          |
-| public       | loyalty_rewards          | description                | text                        | YES         |
-| public       | loyalty_rewards          | points_required            | integer                     | NO          |
-| public       | loyalty_rewards          | reward_type                | character varying           | YES         |
-| public       | loyalty_rewards          | reward_value               | numeric                     | YES         |
-| public       | loyalty_rewards          | product_id                 | uuid                        | YES         |
-| public       | loyalty_rewards          | service_id                 | uuid                        | YES         |
-| public       | loyalty_rewards          | minimum_tier               | USER-DEFINED                | YES         |
-| public       | loyalty_rewards          | valid_from                 | date                        | YES         |
-| public       | loyalty_rewards          | valid_until                | date                        | YES         |
-| public       | loyalty_rewards          | max_redemptions_per_client | integer                     | YES         |
-| public       | loyalty_rewards          | is_active                  | boolean                     | YES         |
-| public       | loyalty_rewards          | created_at                 | timestamp without time zone | YES         |
-| public       | loyalty_transactions     | id                         | uuid                        | NO          |
-| public       | loyalty_transactions     | loyalty_account_id         | uuid                        | NO          |
-| public       | loyalty_transactions     | transaction_type           | USER-DEFINED                | NO          |
-| public       | loyalty_transactions     | points_amount              | integer                     | NO          |
-| public       | loyalty_transactions     | reference_id               | uuid                        | YES         |
-| public       | loyalty_transactions     | reference_type             | character varying           | YES         |
-| public       | loyalty_transactions     | description                | text                        | YES         |
-| public       | loyalty_transactions     | expiry_date                | date                        | YES         |
-| public       | loyalty_transactions     | performed_by               | uuid                        | YES         |
-| public       | loyalty_transactions     | created_at                 | timestamp without time zone | YES         |
-| public       | products                 | id                         | uuid                        | NO          |
-| public       | products                 | name                       | character varying           | NO          |
-| public       | products                 | sku                        | character varying           | NO          |
-| public       | products                 | category_id                | uuid                        | YES         |
-| public       | products                 | brand                      | character varying           | YES         |
-| public       | products                 | supplier_id                | uuid                        | YES         |
-| public       | products                 | description                | text                        | YES         |
-| public       | products                 | unit_of_measure            | character varying           | NO          |
-| public       | products                 | unit_cost                  | numeric                     | NO          |
-| public       | products                 | retail_price               | numeric                     | YES         |
-| public       | products                 | reorder_level              | integer                     | YES         |
-| public       | products                 | expiry_tracking            | boolean                     | YES         |
-| public       | products                 | is_active                  | boolean                     | YES         |
-| public       | products                 | image_url                  | text                        | YES         |
-| public       | products                 | created_at                 | timestamp without time zone | YES         |
-| public       | products                 | updated_at                 | timestamp without time zone | YES         |
-| public       | reward_redemptions       | id                         | uuid                        | NO          |
-| public       | reward_redemptions       | loyalty_account_id         | uuid                        | NO          |
-| public       | reward_redemptions       | reward_id                  | uuid                        | NO          |
-| public       | reward_redemptions       | points_redeemed            | integer                     | NO          |
-| public       | reward_redemptions       | booking_id                 | uuid                        | YES         |
-| public       | reward_redemptions       | sale_id                    | uuid                        | YES         |
-| public       | reward_redemptions       | redeemed_at                | timestamp without time zone | YES         |
-| public       | reward_redemptions       | expires_at                 | timestamp without time zone | YES         |
-| public       | sale_items               | id                         | uuid                        | NO          |
-| public       | sale_items               | sale_id                    | uuid                        | NO          |
-| public       | sale_items               | product_id                 | uuid                        | NO          |
-| public       | sale_items               | quantity                   | integer                     | NO          |
-| public       | sale_items               | unit_price                 | numeric                     | NO          |
-| public       | sale_items               | discount_amount            | numeric                     | YES         |
-| public       | sale_items               | subtotal                   | numeric                     | NO          |
-| public       | sale_items               | created_at                 | timestamp without time zone | YES         |
-| public       | sales                    | id                         | uuid                        | NO          |
-| public       | sales                    | client_id                  | uuid                        | YES         |
-| public       | sales                    | staff_id                   | uuid                        | NO          |
-| public       | sales                    | sale_date                  | date                        | NO          |
-| public       | sales                    | total_amount               | numeric                     | NO          |
-| public       | sales                    | discount_amount            | numeric                     | YES         |
-| public       | sales                    | tax_amount                 | numeric                     | YES         |
-| public       | sales                    | final_amount               | numeric                     | NO          |
-| public       | sales                    | payment_method             | USER-DEFINED                | NO          |
-| public       | sales                    | payment_status             | USER-DEFINED                | YES         |
-| public       | sales                    | loyalty_points_earned      | integer                     | YES         |
-| public       | sales                    | receipt_number             | character varying           | NO          |
-| public       | sales                    | notes                      | text                        | YES         |
-| public       | sales                    | created_at                 | timestamp without time zone | YES         |
-| public       | service_products         | id                         | uuid                        | NO          |
-| public       | service_products         | service_id                 | uuid                        | NO          |
-| public       | service_products         | product_id                 | uuid                        | NO          |
-| public       | service_products         | quantity_used              | numeric                     | NO          |
-| public       | service_products         | is_mandatory               | boolean                     | YES         |
-| public       | service_products         | created_at                 | timestamp without time zone | YES         |
-| public       | services                 | id                         | uuid                        | NO          |
-| public       | services                 | name                       | character varying           | NO          |
-| public       | services                 | description                | text                        | YES         |
-| public       | services                 | category                   | character varying           | YES         |
-| public       | services                 | duration_minutes           | integer                     | NO          |
-| public       | services                 | price                      | numeric                     | NO          |
-| public       | services                 | deposit_required           | boolean                     | YES         |
-| public       | services                 | deposit_amount             | numeric                     | YES         |
-| public       | services                 | requires_patch_test        | boolean                     | YES         |
-| public       | services                 | loyalty_points_earned      | integer                     | YES         |
-| public       | services                 | is_active                  | boolean                     | YES         |
-| public       | services                 | image_url                  | text                        | YES         |
-| public       | services                 | created_at                 | timestamp without time zone | YES         |
-| public       | services                 | updated_at                 | timestamp without time zone | YES         |
-| public       | staff                    | id                         | uuid                        | NO          |
-| public       | staff                    | first_name                 | character varying           | NO          |
-| public       | staff                    | last_name                  | character varying           | NO          |
-| public       | staff                    | email                      | character varying           | NO          |
-| public       | staff                    | phone                      | character varying           | YES         |
-| public       | staff                    | password_hash              | character varying           | NO          |
-| public       | staff                    | role                       | USER-DEFINED                | NO          |
-| public       | staff                    | specializations            | ARRAY                       | YES         |
-| public       | staff                    | bio                        | text                        | YES         |
-| public       | staff                    | profile_image_url          | text                        | YES         |
-| public       | staff                    | is_active                  | boolean                     | YES         |
-| public       | staff                    | hire_date                  | date                        | YES         |
-| public       | staff                    | created_at                 | timestamp without time zone | YES         |
-| public       | staff                    | updated_at                 | timestamp without time zone | YES         |
-| public       | staff_availability       | id                         | uuid                        | NO          |
-| public       | staff_availability       | staff_id                   | uuid                        | NO          |
-| public       | staff_availability       | day_of_week                | integer                     | NO          |
-| public       | staff_availability       | start_time                 | time without time zone      | NO          |
-| public       | staff_availability       | end_time                   | time without time zone      | NO          |
-| public       | staff_availability       | is_recurring               | boolean                     | YES         |
-| public       | staff_availability       | effective_date             | date                        | YES         |
-| public       | staff_availability       | created_at                 | timestamp without time zone | YES         |
-| public       | staff_leave              | id                         | uuid                        | NO          |
-| public       | staff_leave              | staff_id                   | uuid                        | NO          |
-| public       | staff_leave              | start_date                 | date                        | NO          |
-| public       | staff_leave              | end_date                   | date                        | NO          |
-| public       | staff_leave              | leave_type                 | character varying           | YES         |
-| public       | staff_leave              | reason                     | text                        | YES         |
-| public       | staff_leave              | status                     | USER-DEFINED                | YES         |
-| public       | staff_leave              | approved_by                | uuid                        | YES         |
-| public       | staff_leave              | created_at                 | timestamp without time zone | YES         |
-| public       | staff_leave              | updated_at                 | timestamp without time zone | YES         |
-| public       | stock_alerts             | id                         | uuid                        | NO          |
-| public       | stock_alerts             | product_id                 | uuid                        | NO          |
-| public       | stock_alerts             | location_id                | uuid                        | NO          |
-| public       | stock_alerts             | alert_type                 | USER-DEFINED                | NO          |
-| public       | stock_alerts             | current_quantity           | integer                     | YES         |
-| public       | stock_alerts             | threshold_quantity         | integer                     | YES         |
-| public       | stock_alerts             | expiry_date                | date                        | YES         |
-| public       | stock_alerts             | status                     | USER-DEFINED                | YES         |
-| public       | stock_alerts             | created_at                 | timestamp without time zone | YES         |
-| public       | stock_alerts             | acknowledged_at            | timestamp without time zone | YES         |
-| public       | stock_alerts             | acknowledged_by            | uuid                        | YES         |
-| public       | stock_alerts             | resolved_at                | timestamp without time zone | YES         |
-| public       | stock_locations          | id                         | uuid                        | NO          |
-| public       | stock_locations          | name                       | character varying           | NO          |
-| public       | stock_locations          | type                       | USER-DEFINED                | NO          |
-| public       | stock_locations          | description                | text                        | YES         |
-| public       | stock_locations          | is_active                  | boolean                     | YES         |
-| public       | stock_locations          | created_at                 | timestamp without time zone | YES         |
-| public       | stock_movements          | id                         | uuid                        | NO          |
-| public       | stock_movements          | product_id                 | uuid                        | NO          |
-| public       | stock_movements          | from_location_id           | uuid                        | YES         |
-| public       | stock_movements          | to_location_id             | uuid                        | YES         |
-| public       | stock_movements          | quantity                   | integer                     | NO          |
-| public       | stock_movements          | movement_type              | USER-DEFINED                | NO          |
-| public       | stock_movements          | reference_id               | uuid                        | YES         |
-| public       | stock_movements          | reference_type             | character varying           | YES         |
-| public       | stock_movements          | reason                     | text                        | YES         |
-| public       | stock_movements          | performed_by               | uuid                        | YES         |
-| public       | stock_movements          | batch_number               | character varying           | YES         |
-| public       | stock_movements          | cost_per_unit              | numeric                     | YES         |
-| public       | stock_movements          | timestamp                  | timestamp without time zone | YES         |
-| public       | suppliers                | id                         | uuid                        | NO          |
-| public       | suppliers                | name                       | character varying           | NO          |
-| public       | suppliers                | contact_person             | character varying           | YES         |
-| public       | suppliers                | email                      | character varying           | YES         |
-| public       | suppliers                | phone                      | character varying           | YES         |
-| public       | suppliers                | address                    | text                        | YES         |
-| public       | suppliers                | payment_terms              | text                        | YES         |
-| public       | suppliers                | lead_time_days             | integer                     | YES         |
-| public       | suppliers                | is_active                  | boolean                     | YES         |
-| public       | suppliers                | created_at                 | timestamp without time zone | YES         |
-| public       | suppliers                | updated_at                 | timestamp without time zone | YES         |
-| public       | v_client_loyalty_summary | client_id                  | uuid                        | YES         |
-| public       | v_client_loyalty_summary | client_name                | text                        | YES         |
-| public       | v_client_loyalty_summary | email                      | character varying           | YES         |
-| public       | v_client_loyalty_summary | phone                      | character varying           | YES         |
-| public       | v_client_loyalty_summary | current_points             | integer                     | YES         |
-| public       | v_client_loyalty_summary | lifetime_points            | integer                     | YES         |
-| public       | v_client_loyalty_summary | membership_tier            | USER-DEFINED                | YES         |
-| public       | v_client_loyalty_summary | membership_status          | USER-DEFINED                | YES         |
-| public       | v_client_loyalty_summary | total_bookings             | bigint                      | YES         |
-| public       | v_client_loyalty_summary | total_purchases            | bigint                      | YES         |
-| public       | v_client_loyalty_summary | total_spent                | numeric                     | YES         |
-| public       | v_current_stock_levels   | product_id                 | uuid                        | YES         |
-| public       | v_current_stock_levels   | product_name               | character varying           | YES         |
-| public       | v_current_stock_levels   | sku                        | character varying           | YES         |
-| public       | v_current_stock_levels   | location_id                | uuid                        | YES         |
-| public       | v_current_stock_levels   | location_name              | character varying           | YES         |
-| public       | v_current_stock_levels   | quantity_available         | integer                     | YES         |
-| public       | v_current_stock_levels   | quantity_reserved          | integer                     | YES         |
-| public       | v_current_stock_levels   | quantity_free              | integer                     | YES         |
-| public       | v_current_stock_levels   | expiry_date                | date                        | YES         |
-| public       | v_current_stock_levels   | reorder_level              | integer                     | YES         |
-| public       | v_current_stock_levels   | is_low_stock               | boolean                     | YES         |
-| public       | v_todays_bookings        | id                         | uuid                        | YES         |
-| public       | v_todays_bookings        | booking_date               | date                        | YES         |
-| public       | v_todays_bookings        | start_time                 | time without time zone      | YES         |
-| public       | v_todays_bookings        | end_time                   | time without time zone      | YES         |
-| public       | v_todays_bookings        | status                     | USER-DEFINED                | YES         |
-| public       | v_todays_bookings        | client_name                | text                        | YES         |
-| public       | v_todays_bookings        | client_phone               | character varying           | YES         |
-| public       | v_todays_bookings        | service_name               | character varying           | YES         |
-| public       | v_todays_bookings        | duration_minutes           | integer                     | YES         |
-| public       | v_todays_bookings        | staff_name                 | text                        | YES         |
-| public       | v_todays_bookings        | notes                      | text                        | YES         |
+| table_name            | column_name              | data_type                   | is_nullable | column_default                    |
+| --------------------- | ------------------------ | --------------------------- | ----------- | --------------------------------- |
+| alert_configurations  | id                       | uuid                        | NO          | uuid_generate_v4()                |
+| alert_configurations  | location_id              | uuid                        | YES         | null                              |
+| alert_configurations  | low_stock_threshold      | integer                     | YES         | 10                                |
+| alert_configurations  | expiry_warning_days      | integer                     | YES         | 30                                |
+| alert_configurations  | notification_recipients  | ARRAY                       | YES         | null                              |
+| alert_configurations  | is_active                | boolean                     | YES         | true                              |
+| alert_configurations  | created_at               | timestamp without time zone | YES         | CURRENT_TIMESTAMP                 |
+| alert_configurations  | updated_at               | timestamp without time zone | YES         | CURRENT_TIMESTAMP                 |
+| appointments          | id                       | uuid                        | YES         | null                              |
+| appointments          | clientId                 | uuid                        | YES         | null                              |
+| appointments          | clientName               | text                        | YES         | null                              |
+| appointments          | treatmentId              | uuid                        | YES         | null                              |
+| appointments          | treatmentName            | character varying           | YES         | null                              |
+| appointments          | datetimeISO              | timestamp without time zone | YES         | null                              |
+| appointments          | status                   | text                        | YES         | null                              |
+| appointments          | staffId                  | uuid                        | YES         | null                              |
+| appointments          | staffName                | text                        | YES         | null                              |
+| appointments          | notes                    | text                        | YES         | null                              |
+| appointments          | duration                 | integer                     | YES         | null                              |
+| appointments          | price                    | numeric                     | YES         | null                              |
+| appointments          | createdAt                | timestamp with time zone    | YES         | null                              |
+| appointments          | updatedAt                | timestamp with time zone    | YES         | null                              |
+| audit_log             | id                       | uuid                        | NO          | gen_random_uuid()                 |
+| audit_log             | table_name               | character varying           | NO          | null                              |
+| audit_log             | record_id                | uuid                        | NO          | null                              |
+| audit_log             | action                   | character varying           | NO          | null                              |
+| audit_log             | old_values               | jsonb                       | YES         | null                              |
+| audit_log             | new_values               | jsonb                       | YES         | null                              |
+| audit_log             | changed_fields           | ARRAY                       | YES         | null                              |
+| audit_log             | performed_by             | uuid                        | YES         | null                              |
+| audit_log             | performed_at             | timestamp with time zone    | YES         | now()                             |
+| audit_log             | ip_address               | inet                        | YES         | null                              |
+| audit_log             | user_agent               | text                        | YES         | null                              |
+| booking_cancellations | id                       | uuid                        | NO          | gen_random_uuid()                 |
+| booking_cancellations | booking_id               | uuid                        | NO          | null                              |
+| booking_cancellations | cancelled_by             | character varying           | NO          | null                              |
+| booking_cancellations | cancellation_reason      | text                        | YES         | null                              |
+| booking_cancellations | cancelled_at             | timestamp with time zone    | YES         | now()                             |
+| booking_cancellations | policy_id                | uuid                        | YES         | null                              |
+| booking_cancellations | penalty_charged          | numeric                     | YES         | 0                                 |
+| booking_cancellations | refund_issued            | numeric                     | YES         | 0                                 |
+| booking_cancellations | processed_by             | uuid                        | YES         | null                              |
+| booking_deposits      | id                       | uuid                        | NO          | gen_random_uuid()                 |
+| booking_deposits      | booking_id               | uuid                        | NO          | null                              |
+| booking_deposits      | deposit_amount           | numeric                     | NO          | null                              |
+| booking_deposits      | deposit_percentage       | numeric                     | YES         | null                              |
+| booking_deposits      | payment_id               | uuid                        | YES         | null                              |
+| booking_deposits      | status                   | character varying           | YES         | 'pending'::character varying      |
+| booking_deposits      | due_date                 | date                        | YES         | null                              |
+| booking_deposits      | notes                    | text                        | YES         | null                              |
+| booking_deposits      | created_at               | timestamp with time zone    | YES         | now()                             |
+| booking_deposits      | updated_at               | timestamp with time zone    | YES         | now()                             |
+| booking_product_usage | id                       | uuid                        | NO          | uuid_generate_v4()                |
+| booking_product_usage | booking_id               | uuid                        | NO          | null                              |
+| booking_product_usage | product_id               | uuid                        | NO          | null                              |
+| booking_product_usage | quantity_reserved        | numeric                     | NO          | null                              |
+| booking_product_usage | quantity_used            | numeric                     | YES         | null                              |
+| booking_product_usage | location_id              | uuid                        | NO          | null                              |
+| booking_product_usage | status                   | USER-DEFINED                | YES         | null                              |
+| booking_product_usage | reserved_at              | timestamp without time zone | YES         | CURRENT_TIMESTAMP                 |
+| booking_product_usage | consumed_at              | timestamp without time zone | YES         | null                              |
+| bookings              | id                       | uuid                        | NO          | uuid_generate_v4()                |
+| bookings              | client_id                | uuid                        | NO          | null                              |
+| bookings              | treatment_id             | uuid                        | NO          | null                              |
+| bookings              | staff_id                 | uuid                        | YES         | null                              |
+| bookings              | booking_date             | date                        | NO          | null                              |
+| bookings              | start_time               | time without time zone      | NO          | null                              |
+| bookings              | end_time                 | time without time zone      | NO          | null                              |
+| bookings              | status                   | USER-DEFINED                | YES         | null                              |
+| bookings              | treatment_location_id    | uuid                        | YES         | null                              |
+| bookings              | total_price              | numeric                     | NO          | null                              |
+| bookings              | deposit_paid             | numeric                     | YES         | 0                                 |
+| bookings              | loyalty_points_earned    | integer                     | YES         | 0                                 |
+| bookings              | notes                    | text                        | YES         | null                              |
+| bookings              | internal_notes           | text                        | YES         | null                              |
+| bookings              | cancellation_reason      | text                        | YES         | null                              |
+| bookings              | created_at               | timestamp with time zone    | YES         | (now() AT TIME ZONE 'SAST'::text) |
+| bookings              | updated_at               | timestamp with time zone    | YES         | (now() AT TIME ZONE 'SAST'::text) |
+| bookings              | confirmed_at             | timestamp with time zone    | YES         | null                              |
+| bookings              | completed_at             | timestamp with time zone    | YES         | null                              |
+| bookings              | cancelled_at             | timestamp with time zone    | YES         | null                              |
+| bookings              | deposit_required         | boolean                     | YES         | false                             |
+| bookings              | deposit_amount           | numeric                     | YES         | 0                                 |
+| bookings              | payment_status           | character varying           | YES         | 'pending'::character varying      |
+| bookings              | amount_paid              | numeric                     | YES         | 0                                 |
+| bookings              | cancellation_policy_id   | uuid                        | YES         | null                              |
+| bookings              | recurring_appointment_id | uuid                        | YES         | null                              |
+| bookings              | confirmation_sent_at     | timestamp with time zone    | YES         | null                              |
+| bookings              | reminder_sent_at         | timestamp with time zone    | YES         | null                              |
+| bookings              | no_show                  | boolean                     | YES         | false                             |

@@ -9,8 +9,9 @@ import { Protected } from "../modules/auth/Protected.js";
 import AuthCallback from "../modules/auth/AuthCallback";
 import Login from "../modules/login/Login";
 import NotFound from "../ui/NotFound.js";
-import Staff from "../modules/staff/Staff.js";
+import Staff from "../modules/staff/Staff";
 import POS from "../modules/POS/POS";
+import CashUp from "../modules/cashup/CashUp";
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: "clients", element: <Clients /> },
       { path: "staff", element: <Staff /> },
       { path: "appointments", element: <Appointments /> },
+      { path: "cashup", element: <CashUp /> },
       // 👇 catch-all for unknown routes inside the app shell
       { path: "*", element: <NotFound /> },
     ],
