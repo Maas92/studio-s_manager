@@ -7,10 +7,11 @@ import SearchableSelect, {
 } from "../../ui/components/SearchableSelect";
 import styled from "styled-components";
 import type { Client, Treatment, Staff } from "./api";
+import { Plus, X, Clock } from "lucide-react";
 
 export interface AppointmentFormValues {
   client: string;
-  treatment: string;
+  treatments: string[]; // Changed from single treatment to array
   staff?: string;
   datetimeLocal: string;
 }
@@ -103,6 +104,109 @@ const Actions = styled.div`
   border-top: 1px solid ${({ theme }) => theme.color.border};
 `;
 
+const TreatmentsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const TreatmentRow = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+`;
+
+const TreatmentSelectWrapper = styled.div`
+  flex: 1;
+`;
+
+const RemoveButton = styled.button`
+  min-width: 46px;
+  height: 46px;
+  padding: 0.5rem;
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  background-color: ${({ theme }) => theme.color.panel};
+  color: ${({ theme }) => theme.color.red500 || "#ef4444"};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+
+  &:hover:not(:disabled) {
+    background-color: ${({ theme }) => theme.color.red100 || "#fee2e2"};
+    border-color: ${({ theme }) => theme.color.red200 || "#fca5a5"};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+`;
+
+const AddTreatmentButton = styled.button`
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: ${({ theme }) => theme.radii.sm};
+  border: 2px dashed ${({ theme }) => theme.color.border};
+  background-color: transparent;
+  color: ${({ theme }) => theme.color.brand600};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: all 0.12s ease;
+
+  &:hover {
+    background-color: ${({ theme }) => theme.color.brand50 || "#eff6ff"};
+    border-color: ${({ theme }) => theme.color.brand600};
+  }
+`;
+
+const TreatmentSummary = styled.div`
+  padding: 1rem;
+  background: ${({ theme }) => theme.color.grey50 || "#f9fafb"};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const SummaryRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.color.mutedText};
+
+  &:last-child {
+    padding-top: 0.5rem;
+    border-top: 1px solid ${({ theme }) => theme.color.border};
+    font-weight: 600;
+    color: ${({ theme }) => theme.color.text};
+  }
+`;
+
+const TimeSlot = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: ${({ theme }) => theme.color.panel};
+  border-radius: ${({ theme }) => theme.radii.sm};
+  font-size: 0.85rem;
+  color: ${({ theme }) => theme.color.mutedText};
+  border: 1px solid ${({ theme }) => theme.color.border};
+
+  svg {
+    color: ${({ theme }) => theme.color.brand600};
+  }
+`;
+
 // Helper Functions
 function pad2(n: number): string {
   return n.toString().padStart(2, "0");
@@ -122,9 +226,7 @@ function generateTimeOptions(): string[] {
 function splitDatetimeLocal(value: string): { date: string; time: string } {
   if (!value) return { date: "", time: "" };
 
-  // Handle partial values (date only or time only)
   if (value.startsWith("T")) {
-    // Time only case
     return { date: "", time: value.slice(1, 6) };
   }
 
@@ -133,7 +235,6 @@ function splitDatetimeLocal(value: string): { date: string; time: string } {
     return { date: datePart || "", time: timePart?.slice(0, 5) || "" };
   }
 
-  // Just a date, no time
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return { date: value, time: "" };
   }
@@ -155,10 +256,9 @@ function splitDatetimeLocal(value: string): { date: string; time: string } {
 }
 
 function joinDateTimeLocal(date: string, time: string): string {
-  // Allow joining even if one part is missing - the form will handle validation
   if (!date && !time) return "";
-  if (!date) return `T${time}`; // Time only
-  if (!time) return date; // Date only
+  if (!date) return `T${time}`;
+  if (!time) return date;
   return `${date}T${time}`;
 }
 
@@ -169,6 +269,23 @@ function mapToSimpleOptions<T extends { id: string; name: string }>(
     id: item.id,
     label: item.name,
   }));
+}
+
+function mapStaffToSimpleOptions(
+  items: Array<{ id: string; firstName: string; lastName: string }>
+): SimpleOption[] {
+  return items.map((item) => ({
+    id: item.id,
+    label: `${item.firstName} ${item.lastName}`,
+  }));
+}
+
+function formatTime(date: Date): string {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${pad2(minutes)} ${ampm}`;
 }
 
 // Component
@@ -184,29 +301,18 @@ export default function AppointmentModal({
   staff = [],
 }: AppointmentModalProps) {
   const timeOptions = useMemo(() => generateTimeOptions(), []);
-
   const clientOptions = useMemo(() => mapToSimpleOptions(clients), [clients]);
-
   const treatmentOptions = useMemo(
     () => mapToSimpleOptions(treatments),
     [treatments]
   );
+  const staffOptions = useMemo(() => mapStaffToSimpleOptions(staff), [staff]);
 
-  const staffOptions = useMemo(() => mapToSimpleOptions(staff), [staff]);
-
-  // CRITICAL FIX: Don't use memoized date/time in callbacks
-  // Always split from values.datetimeLocal directly to avoid stale closures
   const handleDateChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newDate = e.target.value;
-
-      // Get current time by splitting datetimeLocal (or empty if not set)
       const { time: currentTime } = splitDatetimeLocal(values.datetimeLocal);
-
-      // Join new date with current time (even if time is empty)
       const newDateTime = joinDateTimeLocal(newDate, currentTime);
-
-      // IMPORTANT: Save the partial datetime even if time isn't selected yet
       onChange({ datetimeLocal: newDateTime });
     },
     [onChange, values.datetimeLocal]
@@ -215,14 +321,8 @@ export default function AppointmentModal({
   const handleTimeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newTime = e.target.value;
-
-      // Get current date by splitting datetimeLocal (or empty if not set)
       const { date: currentDate } = splitDatetimeLocal(values.datetimeLocal);
-
-      // Join current date with new time (even if date isn't selected yet)
       const newDateTime = joinDateTimeLocal(currentDate, newTime);
-
-      // IMPORTANT: Save the partial datetime even if date isn't selected yet
       onChange({ datetimeLocal: newDateTime });
     },
     [onChange, values.datetimeLocal]
@@ -236,15 +336,85 @@ export default function AppointmentModal({
     [onSubmit]
   );
 
-  const isFormValid = useMemo(
-    () => values.client && values.treatment && values.datetimeLocal,
-    [values]
+  const handleAddTreatment = useCallback(() => {
+    onChange({ treatments: [...values.treatments, ""] });
+  }, [onChange, values.treatments]);
+
+  const handleRemoveTreatment = useCallback(
+    (index: number) => {
+      const newTreatments = values.treatments.filter((_, i) => i !== index);
+      onChange({ treatments: newTreatments });
+    },
+    [onChange, values.treatments]
   );
 
-  // Split datetimeLocal for display in inputs
+  const handleTreatmentChange = useCallback(
+    (index: number, treatmentId: string) => {
+      const newTreatments = [...values.treatments];
+      newTreatments[index] = treatmentId;
+      onChange({ treatments: newTreatments });
+    },
+    [onChange, values.treatments]
+  );
+
+  // Calculate treatment schedule and totals
+  const treatmentSchedule = useMemo(() => {
+    if (!values.datetimeLocal || values.treatments.length === 0) {
+      return { slots: [], totalDuration: 0, endTime: null };
+    }
+
+    const startDate = new Date(values.datetimeLocal);
+    if (isNaN(startDate.getTime())) {
+      return { slots: [], totalDuration: 0, endTime: null };
+    }
+
+    let currentTime = new Date(startDate);
+    let totalDuration = 0;
+    const slots: Array<{
+      treatmentName: string;
+      startTime: Date;
+      endTime: Date;
+      duration: number;
+    }> = [];
+
+    values.treatments.forEach((treatmentId) => {
+      if (!treatmentId) return;
+
+      const treatment = treatments.find((t) => t.id === treatmentId);
+      if (!treatment) return;
+
+      const duration = treatment.durationMinutes || 60;
+      const endTime = new Date(currentTime.getTime() + duration * 60 * 1000);
+
+      slots.push({
+        treatmentName: treatment.name,
+        startTime: new Date(currentTime),
+        endTime: endTime,
+        duration: duration,
+      });
+
+      totalDuration += duration;
+      currentTime = endTime;
+    });
+
+    return {
+      slots,
+      totalDuration,
+      endTime: slots.length > 0 ? slots[slots.length - 1].endTime : null,
+    };
+  }, [values.datetimeLocal, values.treatments, treatments]);
+
+  const isFormValid = useMemo(() => {
+    return (
+      values.client &&
+      values.treatments.length > 0 &&
+      values.treatments.every((t) => t) &&
+      values.datetimeLocal
+    );
+  }, [values]);
+
   const { date, time } = useMemo(() => {
-    const result = splitDatetimeLocal(values.datetimeLocal);
-    return result;
+    return splitDatetimeLocal(values.datetimeLocal);
   }, [values.datetimeLocal]);
 
   return (
@@ -274,23 +444,65 @@ export default function AppointmentModal({
           />
         </FormField>
 
-        {/* Treatment Field */}
+        {/* Treatments Field */}
         <FormField>
-          <Label htmlFor="appointment-treatment">
-            Treatment
+          <Label>
+            Treatments
             <RequiredIndicator>*</RequiredIndicator>
           </Label>
-          <SearchableSelect
-            id="appointment-treatment"
-            options={treatmentOptions}
-            value={values.treatment}
-            onChange={(val) => onChange({ treatment: val })}
-            placeholder="Search for a treatment..."
-            allowFreeInput={false}
-            ariaLabel="Select treatment"
-            required
-          />
+          <TreatmentsList>
+            {values.treatments.map((treatmentId, index) => (
+              <TreatmentRow key={index}>
+                <TreatmentSelectWrapper>
+                  <SearchableSelect
+                    id={`appointment-treatment-${index}`}
+                    options={treatmentOptions}
+                    value={treatmentId}
+                    onChange={(val) => handleTreatmentChange(index, val)}
+                    placeholder="Search for a treatment..."
+                    allowFreeInput={false}
+                    ariaLabel={`Select treatment ${index + 1}`}
+                    required
+                  />
+                </TreatmentSelectWrapper>
+                <RemoveButton
+                  type="button"
+                  onClick={() => handleRemoveTreatment(index)}
+                  disabled={values.treatments.length === 1}
+                  aria-label="Remove treatment"
+                >
+                  <X size={18} />
+                </RemoveButton>
+              </TreatmentRow>
+            ))}
+            <AddTreatmentButton type="button" onClick={handleAddTreatment}>
+              <Plus size={18} />
+              Add Another Treatment
+            </AddTreatmentButton>
+          </TreatmentsList>
         </FormField>
+
+        {/* Treatment Schedule Summary */}
+        {treatmentSchedule.slots.length > 0 && (
+          <TreatmentSummary>
+            {treatmentSchedule.slots.map((slot, index) => (
+              <SummaryRow key={index}>
+                <span>{slot.treatmentName}</span>
+                <TimeSlot>
+                  <Clock size={14} />
+                  {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                  <span style={{ marginLeft: "0.25rem", opacity: 0.7 }}>
+                    ({slot.duration} min)
+                  </span>
+                </TimeSlot>
+              </SummaryRow>
+            ))}
+            <SummaryRow>
+              <span>Total Duration</span>
+              <span>{treatmentSchedule.totalDuration} minutes</span>
+            </SummaryRow>
+          </TreatmentSummary>
+        )}
 
         {/* Staff Field */}
         <FormField>
@@ -310,7 +522,7 @@ export default function AppointmentModal({
         <DateTimeGrid>
           <FormField>
             <Label htmlFor="appointment-date">
-              Date
+              Start Date
               <RequiredIndicator>*</RequiredIndicator>
             </Label>
             <Input
@@ -326,7 +538,7 @@ export default function AppointmentModal({
 
           <FormField>
             <Label htmlFor="appointment-time">
-              Time
+              Start Time
               <RequiredIndicator>*</RequiredIndicator>
             </Label>
             <Select
@@ -361,7 +573,13 @@ export default function AppointmentModal({
             type="submit"
             disabled={submitting || !isFormValid}
           >
-            {submitting ? "Booking..." : "Book Appointment"}
+            {submitting
+              ? "Booking..."
+              : `Book ${
+                  values.treatments.length > 1
+                    ? `${values.treatments.length} Treatments`
+                    : "Appointment"
+                }`}
           </Button>
         </Actions>
       </Form>

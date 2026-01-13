@@ -18,6 +18,11 @@ interface WeekCalendarProps {
   initialDate?: Date;
 }
 
+interface PositionedEvent extends CalendarEvent {
+  column: number;
+  totalColumns: number;
+}
+
 const CalendarWrapper = styled.div`
   background: ${({ theme }) => theme.color.panel};
   border-radius: ${({ theme }) => theme.radii.lg};
@@ -137,10 +142,12 @@ const EventBlock = styled.button<{
   $color?: string;
   $top: number;
   $height: number;
+  $left: number;
+  $width: number;
 }>`
   position: absolute;
-  left: 2px;
-  right: 2px;
+  left: ${({ $left }) => $left}%;
+  width: ${({ $width }) => $width}%;
   top: ${({ $top }) => $top}px;
   height: ${({ $height }) => $height}px;
   background: ${({ $color }) => $color || "#3b82f6"};
@@ -239,6 +246,74 @@ function getCurrentTimePosition(): number {
   return getTimePosition(now);
 }
 
+// Check if two events overlap
+function eventsOverlap(event1: CalendarEvent, event2: CalendarEvent): boolean {
+  const end1 =
+    event1.endTime || new Date(event1.startTime.getTime() + 60 * 60 * 1000);
+  const end2 =
+    event2.endTime || new Date(event2.startTime.getTime() + 60 * 60 * 1000);
+
+  return event1.startTime < end2 && end1 > event2.startTime;
+}
+
+// Calculate columns for overlapping events
+function calculateEventColumns(events: CalendarEvent[]): PositionedEvent[] {
+  if (events.length === 0) return [];
+
+  // Sort events by start time, then by duration (longer first)
+  const sortedEvents = [...events].sort((a, b) => {
+    if (a.startTime.getTime() !== b.startTime.getTime()) {
+      return a.startTime.getTime() - b.startTime.getTime();
+    }
+    const durationA =
+      (a.endTime?.getTime() || a.startTime.getTime() + 3600000) -
+      a.startTime.getTime();
+    const durationB =
+      (b.endTime?.getTime() || b.startTime.getTime() + 3600000) -
+      b.startTime.getTime();
+    return durationB - durationA;
+  });
+
+  const positioned: PositionedEvent[] = [];
+  const columns: CalendarEvent[][] = [];
+
+  for (const event of sortedEvents) {
+    // Find the first column where this event doesn't overlap
+    let placed = false;
+    for (let i = 0; i < columns.length; i++) {
+      const column = columns[i];
+      const hasOverlap = column.some((existingEvent) =>
+        eventsOverlap(existingEvent, event)
+      );
+
+      if (!hasOverlap) {
+        column.push(event);
+        positioned.push({ ...event, column: i, totalColumns: 0 });
+        placed = true;
+        break;
+      }
+    }
+
+    // If no suitable column found, create a new one
+    if (!placed) {
+      columns.push([event]);
+      positioned.push({
+        ...event,
+        column: columns.length - 1,
+        totalColumns: 0,
+      });
+    }
+  }
+
+  // Update totalColumns for all events
+  const totalColumns = columns.length;
+  positioned.forEach((event) => {
+    event.totalColumns = totalColumns;
+  });
+
+  return positioned;
+}
+
 export default function WeekCalendar({
   events,
   onEventClick,
@@ -252,7 +327,7 @@ export default function WeekCalendar({
   React.useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(getCurrentTimePosition());
-    }, 60000); // Update every minute
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -262,7 +337,9 @@ export default function WeekCalendar({
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     events.forEach((event) => {
-      const dateKey = `${event.startTime.getFullYear()}-${event.startTime.getMonth()}-${event.startTime.getDate()}`;
+      // Use local date components to avoid timezone issues
+      const localDate = new Date(event.startTime);
+      const dateKey = `${localDate.getFullYear()}-${localDate.getMonth()}-${localDate.getDate()}`;
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
@@ -271,9 +348,10 @@ export default function WeekCalendar({
     return map;
   }, [events]);
 
-  const getEventsForDay = (date: Date): CalendarEvent[] => {
+  const getEventsForDay = (date: Date): PositionedEvent[] => {
     const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-    return eventsByDay.get(dateKey) || [];
+    const dayEvents = eventsByDay.get(dateKey) || [];
+    return calculateEventColumns(dayEvents);
   };
 
   const handlePrevWeek = () => {
@@ -306,7 +384,7 @@ export default function WeekCalendar({
   })}`;
 
   // Business hours: 9 AM to 5 PM
-  const businessHours = Array.from({ length: 9 }, (_, i) => i + 9); // 9, 10, 11, ..., 17
+  const businessHours = Array.from({ length: 9 }, (_, i) => i + 9);
   const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
@@ -337,7 +415,6 @@ export default function WeekCalendar({
       </Header>
 
       <WeekGrid>
-        {/* Time column header (empty cell) */}
         <div
           style={{
             height: "60px",
@@ -346,7 +423,6 @@ export default function WeekCalendar({
           }}
         />
 
-        {/* Day headers */}
         {weekDays.map((day, index) => {
           const isToday = isSameDay(day, today);
           return (
@@ -357,7 +433,6 @@ export default function WeekCalendar({
           );
         })}
 
-        {/* Time column */}
         <TimeColumn>
           {businessHours.map((hour, index) => (
             <TimeSlot key={hour} $isFirstRow={index === 0}>
@@ -370,7 +445,6 @@ export default function WeekCalendar({
           ))}
         </TimeColumn>
 
-        {/* Day columns */}
         {weekDays.map((day, dayIndex) => {
           const dayEvents = getEventsForDay(day);
           const isToday = isSameDay(day, today);
@@ -378,22 +452,24 @@ export default function WeekCalendar({
           return (
             <DayColumn key={`day-${dayIndex}`}>
               <DayContent>
-                {/* Hour slots */}
                 {businessHours.map((hour, index) => (
                   <HourSlot key={`hour-${hour}`} $isFirstRow={index === 0} />
                 ))}
 
-                {/* Events - adjust position relative to 9 AM start */}
                 {dayEvents.map((event) => {
-                  const startPos = getTimePosition(event.startTime) - 9 * 60; // Subtract 9 hours
+                  const startPos = getTimePosition(event.startTime) - 9 * 60;
                   const endTime =
                     event.endTime ||
                     new Date(event.startTime.getTime() + 60 * 60 * 1000);
                   const endPos = getTimePosition(endTime) - 9 * 60;
                   const duration = endPos - startPos;
-                  const height = Math.max(duration, 30); // Minimum 30px height
+                  const height = Math.max(duration, 30);
 
-                  // Only show events within business hours
+                  // Calculate width and left position based on columns
+                  const columnWidth = 100 / event.totalColumns;
+                  const leftPosition = event.column * columnWidth;
+                  const width = columnWidth - 1; // Small gap between columns
+
                   if (startPos >= 0 && startPos < 9 * 60) {
                     return (
                       <EventBlock
@@ -401,6 +477,8 @@ export default function WeekCalendar({
                         $color={event.color}
                         $top={startPos}
                         $height={height}
+                        $left={leftPosition}
+                        $width={width}
                         onClick={() => handleEventClick(event)}
                         title={event.title}
                       >
@@ -418,7 +496,6 @@ export default function WeekCalendar({
                   return null;
                 })}
 
-                {/* Current time indicator - adjust for 9 AM start */}
                 {isToday && currentTime >= 9 * 60 && currentTime <= 17 * 60 && (
                   <CurrentTimeLine $position={currentTime - 9 * 60} />
                 )}

@@ -101,11 +101,40 @@ export class AppointmentService {
     const offset = (page - 1) * limit;
     params.push(limit, offset);
 
-    console.log(whereClause);
-
     const query = `
       SELECT 
-        b.*,
+        b.id,
+        b.client_id,
+        b.treatment_id,
+        b.staff_id,
+        TO_CHAR(b.booking_date, 'YYYY-MM-DD') as booking_date,
+        b.start_time,
+        b.end_time,
+        b.status,
+        b.treatment_location_id,
+        b.total_price,
+        b.deposit_paid,
+        b.loyalty_points_earned,
+        b.notes,
+        b.internal_notes,
+        b.cancellation_reason,
+        b.created_at,
+        b.updated_at,
+        b.confirmed_at,
+        b.completed_at,
+        b.cancelled_at,
+        b.deposit_required,
+        b.deposit_amount,
+        b.payment_status,
+        b.amount_paid,
+        b.cancellation_policy_id,
+        b.recurring_appointment_id,
+        b.confirmation_sent_at,
+        b.reminder_sent_at,
+        b.no_show,
+        b.checked_in_at,
+        b.checked_out_at,
+        b.duration_minutes,
         c.first_name || ' ' || c.last_name as client_name,
         c.phone as client_phone,
         c.email as client_email,
@@ -133,6 +162,8 @@ export class AppointmentService {
       pool.query(countQuery, params.slice(0, -2)),
     ]);
 
+    console.log(dataResult.rows);
+
     return {
       appointments: dataResult.rows,
       total: parseInt(countResult.rows[0].count),
@@ -149,8 +180,39 @@ export class AppointmentService {
   async findById(id: string) {
     const result = await pool.query(
       `
-      SELECT 
-        b.*,
+      SELECT
+        b.id,
+        b.client_id,
+        b.treatment_id,
+        b.staff_id,
+        TO_CHAR(b.booking_date, 'YYYY-MM-DD') as booking_date,
+        b.start_time,
+        b.end_time,
+        b.status,
+        b.treatment_location_id,
+        b.total_price,
+        b.deposit_paid,
+        b.loyalty_points_earned,
+        b.notes,
+        b.internal_notes,
+        b.cancellation_reason,
+        b.created_at,
+        b.updated_at,
+        b.confirmed_at,
+        b.completed_at,
+        b.cancelled_at,
+        b.deposit_required,
+        b.deposit_amount,
+        b.payment_status,
+        b.amount_paid,
+        b.cancellation_policy_id,
+        b.recurring_appointment_id,
+        b.confirmation_sent_at,
+        b.reminder_sent_at,
+        b.no_show,
+        b.checked_in_at,
+        b.checked_out_at,
+        b.duration_minutes,
         c.first_name || ' ' || c.last_name as client_name,
         c.phone as client_phone,
         c.email as client_email,

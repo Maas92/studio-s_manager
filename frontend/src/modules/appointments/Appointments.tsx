@@ -99,7 +99,7 @@ const EmptyStateWrapper = styled.div`
 
 const INITIAL_FORM_STATE: AppointmentFormValues = {
   client: "",
-  treatment: "",
+  treatments: [""],
   staff: "",
   datetimeLocal: "",
 };
@@ -137,13 +137,14 @@ export default function Appointments() {
   useEffect(() => {
     const state = location.state as any;
     if (state?.createAppointment) {
-      // Pre-fill form with whatever we have
       const newFormValues = { ...INITIAL_FORM_STATE };
 
+      // Pre-fill treatment if coming from treatments page
       if (state.treatmentId) {
-        newFormValues.treatment = state.treatmentId;
+        newFormValues.treatments = [state.treatmentId];
       }
 
+      // Pre-fill client if coming from clients page
       if (state.clientId) {
         newFormValues.client = state.clientId;
       }
@@ -158,7 +159,7 @@ export default function Appointments() {
         toast.success(`Creating appointment for ${state.clientName}`);
       }
 
-      // Clear the navigation state
+      // Clear the navigation state to prevent re-triggering
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -166,7 +167,10 @@ export default function Appointments() {
   // Transform appointments for calendar
   const calendarEvents = useMemo(() => {
     return (appointments || []).map((apt) => {
+      // Parse UTC ISO string and convert to local Date object
+      // new Date() automatically handles UTC -> local conversion
       const start = new Date(apt.datetimeISO);
+
       const durationMins =
         treatments.find((t) => t.id === apt.treatmentId)?.durationMinutes ?? 60;
       const end = new Date(start.getTime() + durationMins * 60 * 1000);
@@ -174,7 +178,7 @@ export default function Appointments() {
       return {
         id: apt.id,
         title: `${apt.clientName ?? apt.clientId} — ${apt.treatmentName ?? ""}`,
-        startTime: start,
+        startTime: start, // This is now in local timezone
         endTime: end,
         data: apt,
       };
@@ -188,21 +192,51 @@ export default function Appointments() {
 
   const handleSubmitCreate = useCallback(async () => {
     try {
-      await createMutation.mutateAsync({
-        clientId: formValues.client,
-        treatmentId: formValues.treatment,
-        staffId: formValues.staff || undefined,
-        status: "confirmed",
-        datetimeISO: new Date(formValues.datetimeLocal).toISOString(),
-      });
+      // Parse LOCAL datetime from form (format: "2024-01-15T10:00")
+      const [datePart, timePart] = formValues.datetimeLocal.split("T");
+      const [year, month, day] = datePart.split("-").map(Number);
+      const [hour, minute] = timePart.split(":").map(Number);
 
-      toast.success("Appointment created successfully!");
+      // Create Date using LOCAL timezone
+      const startDate = new Date(year, month - 1, day, hour, minute, 0);
+
+      if (isNaN(startDate.getTime())) {
+        toast.error("Invalid date/time selected");
+        return;
+      }
+
+      let currentTimeMs = startDate.getTime();
+
+      for (let i = 0; i < formValues.treatments.length; i++) {
+        const treatmentId = formValues.treatments[i];
+        const treatment = treatments.find((t) => t.id === treatmentId);
+        const durationMinutes = treatment?.durationMinutes || 60;
+
+        await createMutation.mutateAsync({
+          clientId: formValues.client,
+          treatmentId: treatmentId,
+          staffId: formValues.staff || undefined,
+          status: "confirmed",
+          datetimeISO: new Date(currentTimeMs).toISOString(), // Converts to UTC for storage
+        });
+
+        currentTimeMs += durationMinutes * 60 * 1000;
+      }
+
+      const treatmentCount = formValues.treatments.length;
+      toast.success(
+        treatmentCount > 1
+          ? `${treatmentCount} appointments created successfully!`
+          : "Appointment created successfully!"
+      );
+
       setShowCreateModal(false);
       setFormValues(INITIAL_FORM_STATE);
     } catch (err: any) {
-      toast.error(err?.message ?? "Failed to create appointment");
+      console.error("Failed to create appointments:", err);
+      toast.error(err?.message ?? "Failed to create appointment(s)");
     }
-  }, [createMutation, formValues]);
+  }, [createMutation, formValues, treatments]);
 
   const handleEventClick = useCallback((ev: any) => {
     setSelectedAppointment(ev.data as Appointment);

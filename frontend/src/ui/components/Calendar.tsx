@@ -239,6 +239,8 @@ export default function Calendar({
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     events.forEach((event) => {
+      // event.startTime is already a local Date object
+      // Use getFullYear(), getMonth(), getDate() for local components
       const dateKey = `${event.startTime.getFullYear()}-${event.startTime.getMonth()}-${event.startTime.getDate()}`;
       if (!map.has(dateKey)) {
         map.set(dateKey, []);

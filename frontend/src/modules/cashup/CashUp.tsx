@@ -429,115 +429,93 @@ const TotalRow = styled(BreakdownRow)`
 // ============================================================================
 
 export default function CashUp({
-  cashUpId,
-  transactions = [],
-  openingFloat = 0,
+  cashUpId, // Pass the cash-up session ID
   onComplete,
   onSave,
-}: CashUpProps) {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [newExpense, setNewExpense] = useState({
-    description: "",
-    amount: "",
-    category: "general",
-  });
-  const [actualCash, setActualCash] = useState("");
-  const [openingFloatInput, setOpeningFloatInput] = useState(
-    openingFloat.toString()
-  );
-  const [editingFloat, setEditingFloat] = useState(false);
+}: {
+  cashUpId?: string;
+  onComplete?: (data: any) => void;
+  onSave?: (data: any) => void;
+}) {
+  const {
+    getQuery,
+    dailySnapshotQuery,
+    createMutation,
+    completeMutation,
+    addExpenseMutation,
+    deleteExpenseMutation,
+    uploadReceiptMutation,
+    addSafeDropMutation,
+    deleteSafeDropMutation,
+  } = useCashUp();
 
-  // Calculate payment totals
-  const paymentTotals = useMemo(() => {
-    const totals = {
-      cash: 0,
-      card: 0,
-      loyalty: 0,
-      giftCard: 0,
-    };
+  // Load existing session or daily snapshot
+  const { data: cashUpData } = cashUpId
+    ? getQuery(cashUpId)
+    : dailySnapshotQuery;
 
-    transactions.forEach((tx) => {
-      tx.payments.forEach((payment) => {
-        if (payment.method === "cash") totals.cash += payment.amount;
-        else if (payment.method === "card") totals.card += payment.amount;
-        else if (payment.method === "loyalty") totals.loyalty += payment.amount;
-        else if (payment.method === "gift-card")
-          totals.giftCard += payment.amount;
+  const [sessionId, setSessionId] = useState<string | null>(cashUpId || null);
+
+  // Initialize from backend data
+  useEffect(() => {
+    if (cashUpData) {
+      setSessionId(cashUpData.id);
+      setOpeningFloatInput(cashUpData.openingFloat.toString());
+      setExpenses(cashUpData.expenses || []);
+      // ... set other state from backend
+    }
+  }, [cashUpData]);
+
+  // Updated handlers to call backend:
+
+  const handleAddExpense = async () => {
+    if (!newExpense.description || !newExpense.amount || !sessionId) return;
+
+    try {
+      await addExpenseMutation.mutateAsync({
+        cashUpId: sessionId,
+        data: {
+          description: newExpense.description,
+          amount: parseFloat(newExpense.amount),
+          category: newExpense.category,
+        },
       });
-    });
 
-    return totals;
-  }, [transactions]);
-
-  // Calculate totals
-  const calculations = useMemo(() => {
-    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const cashFromSales = paymentTotals.cash;
-    const floatAmount = parseFloat(openingFloatInput) || 0;
-    const expectedCash = floatAmount + cashFromSales - totalExpenses;
-    const actualCashAmount = parseFloat(actualCash) || 0;
-    const variance = actualCashAmount - expectedCash;
-
-    return {
-      totalExpenses,
-      cashFromSales,
-      expectedCash,
-      actualCash: actualCashAmount,
-      variance,
-      totalSales:
-        paymentTotals.cash +
-        paymentTotals.card +
-        paymentTotals.loyalty +
-        paymentTotals.giftCard,
-      openingFloat: floatAmount,
-    };
-  }, [expenses, paymentTotals, actualCash, openingFloatInput]);
-
-  // Add expense
-  const handleAddExpense = () => {
-    if (!newExpense.description || !newExpense.amount) return;
-
-    const expense: Expense = {
-      id: Date.now().toString(),
-      description: newExpense.description,
-      amount: parseFloat(newExpense.amount),
-      category: newExpense.category,
-      time: new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    setExpenses([...expenses, expense]);
-    setNewExpense({ description: "", amount: "", category: "general" });
+      setNewExpense({ description: "", amount: "", category: "general" });
+    } catch (error) {
+      console.error("Failed to add expense:", error);
+    }
   };
 
-  // Remove expense
-  const handleRemoveExpense = (id: string) => {
-    setExpenses(expenses.filter((exp) => exp.id !== id));
+  const handleRemoveExpense = async (id: string) => {
+    if (!sessionId) return;
+
+    try {
+      await deleteExpenseMutation.mutateAsync({
+        cashUpId: sessionId,
+        expenseId: id,
+      });
+    } catch (error) {
+      console.error("Failed to delete expense:", error);
+    }
   };
 
-  // Get variance status
-  const getVarianceStatus = () => {
-    const absVariance = Math.abs(calculations.variance);
-    if (absVariance === 0) return "success";
-    if (absVariance <= 5) return "warning";
-    return "error";
-  };
+  const handleComplete = async () => {
+    if (!sessionId) return;
 
-  // Complete cash-up
-  const handleComplete = () => {
-    const data: CashUpData = {
-      expectedCash: calculations.expectedCash,
-      actualCash: calculations.actualCash,
-      variance: calculations.variance,
-      cardTotal: paymentTotals.card,
-      otherPayments: paymentTotals.loyalty + paymentTotals.giftCard,
-      expenses,
-      openingFloat: calculations.openingFloat,
-    };
+    try {
+      const result = await completeMutation.mutateAsync({
+        id: sessionId,
+        data: {
+          actualCash: parseFloat(actualCash),
+          notes: calculations.variance !== 0 ? "Variance detected" : undefined,
+        },
+      });
 
-    onComplete?.(data);
+      onComplete?.(result.data.data.cashUp);
+    } catch (error) {
+      console.error("Failed to complete cash-up:", error);
+    }
   };
 
   // Save draft

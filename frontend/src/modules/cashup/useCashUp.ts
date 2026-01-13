@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cashUpClient } from "../../services/cashUpClient";
+// import { cashUpClient } from "../../services/cashUpClient";
 import toast from "react-hot-toast";
 
 export function useCashUp() {
@@ -9,14 +9,16 @@ export function useCashUp() {
   const listQuery = (filters?: any) =>
     useQuery({
       queryKey: ["cash-ups", filters],
-      queryFn: () => cashUpClient.getAll(filters).then((res) => res.data.data.cashUps),
+      queryFn: () =>
+        cashUpClient.getAll(filters).then((res) => res.data.data.cashUps),
     });
 
   // Get by ID query
   const getQuery = (id: string) =>
     useQuery({
       queryKey: ["cash-ups", id],
-      queryFn: () => cashUpClient.getById(id).then((res) => res.data.data.cashUp),
+      queryFn: () =>
+        cashUpClient.getById(id).then((res) => res.data.data.cashUp),
       enabled: !!id,
     });
 
@@ -72,7 +74,9 @@ export function useCashUp() {
       toast.success("Cash-up completed successfully!");
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to complete cash-up");
+      toast.error(
+        error.response?.data?.message || "Failed to complete cash-up"
+      );
     },
   });
 
@@ -119,8 +123,13 @@ export function useCashUp() {
   });
 
   const deleteExpenseMutation = useMutation({
-    mutationFn: ({ cashUpId, expenseId }: { cashUpId: string; expenseId: string }) =>
-      cashUpClient.deleteExpense(cashUpId, expenseId),
+    mutationFn: ({
+      cashUpId,
+      expenseId,
+    }: {
+      cashUpId: string;
+      expenseId: string;
+    }) => cashUpClient.deleteExpense(cashUpId, expenseId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cash-ups"] });
       toast.success("Expense deleted");

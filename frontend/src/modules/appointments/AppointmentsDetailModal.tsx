@@ -287,12 +287,21 @@ function joinDateTimeLocal(date: string, time: string): string {
   return `${date}T${time}`;
 }
 
-function mapToSimpleOptions<T extends { id: string; firstName: string }>(
+function mapToSimpleOptions<T extends { id: string; name: string }>(
   items: T[]
 ): SimpleOption[] {
   return items.map((item) => ({
     id: item.id,
-    label: item.firstName,
+    label: item.name,
+  }));
+}
+
+function mapStaffToSimpleOptions(
+  items: Array<{ id: string; firstName: string; lastName: string }>
+): SimpleOption[] {
+  return items.map((item) => ({
+    id: item.id,
+    label: `${item.firstName} ${item.lastName}`,
   }));
 }
 
@@ -325,7 +334,7 @@ export default function AppointmentDetailModal({
     () => mapToSimpleOptions(treatments),
     [treatments]
   );
-  const staffOptions = useMemo(() => mapToSimpleOptions(staff), [staff]);
+  const staffOptions = useMemo(() => mapStaffToSimpleOptions(staff), [staff]);
 
   useEffect(() => {
     if (appointment) {
@@ -369,8 +378,15 @@ export default function AppointmentDetailModal({
   const handleSave = useCallback(() => {
     if (!appointment) return;
 
+    // Parse LOCAL datetime
+    const [datePart, timePart] = formValues.datetimeLocal.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+
+    const localDate = new Date(year, month - 1, day, hour, minute, 0);
+
     const updates: Partial<AppointmentDetailFormValues> = {
-      datetimeLocal: new Date(formValues.datetimeLocal).toISOString(),
+      datetimeLocal: localDate.toISOString(), // Convert to UTC ISO for storage
       status: formValues.status,
       notes: formValues.notes,
     };
@@ -412,9 +428,10 @@ export default function AppointmentDetailModal({
   const treatmentName =
     treatments.find((t) => t.id === formValues.treatment)?.name ||
     appointment.treatmentName;
-  const staffName =
-    staff.find((s) => s.id === formValues.staff)?.firstName ||
-    appointment.staffName;
+  const staffMember = staff.find((s) => s.id === formValues.staff);
+  const staffName = staffMember
+    ? `${staffMember.firstName} ${staffMember.lastName}`
+    : appointment.staffName;
 
   const statusVariant = (
     ["confirmed", "pending", "cancelled", "completed"].includes(
