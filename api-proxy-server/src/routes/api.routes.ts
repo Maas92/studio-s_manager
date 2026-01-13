@@ -38,6 +38,7 @@ const inventoryRoutes = [
   "staff",
   "bookings",
   "stock",
+  "cash-ups",
 ];
 
 inventoryRoutes.forEach((route) => {

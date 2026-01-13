@@ -6,6 +6,7 @@ import suppliers from "./supplierRoutes.js";
 import locations from "./locationRoutes.js";
 import sales from "./salesRoutes.js";
 import clients from "./clientRoutes.js";
+import cashUpRoutes from "./cashUpRoutes.js";
 import treatmentRoutes from "./treatmentRoutes.js";
 import appointmentRoutes from "./appointmentRoutes.js";
 import staffRoutes from "./staffRoutes.js";
@@ -20,6 +21,7 @@ r.use("/inventory", inventory);
 r.use("/treatments", treatmentRoutes);
 r.use("/appointments", appointmentRoutes);
 r.use("/clients", clients);
+r.use("/cash-ups", cashUpRoutes);
 r.use("/staff", staffRoutes);
 r.use("/sales", sales);
 r.use("/transactions", transactionRoutes); // For POS

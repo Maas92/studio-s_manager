@@ -16,58 +16,46 @@ import {
   Clock,
   Edit2,
   Package,
+  Upload,
 } from "lucide-react";
-import { useCashUp } from "./useCashUp";
 
 import Card from "../../ui/components/Card";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import { Label } from "../../ui/components/Form";
+import { useCashUp } from "./useCashUp";
+import toast from "react-hot-toast";
 
 // ============================================================================
 // TYPES
 // ============================================================================
-
-interface Transaction {
-  id: string;
-  total: number;
-  payments: PaymentBreakdown[];
-  createdAt: string;
-  clientName?: string;
-}
-
-interface PaymentBreakdown {
-  method: "cash" | "card" | "loyalty" | "gift-card";
-  amount: number;
-}
 
 interface Expense {
   id: string;
   description: string;
   amount: number;
   category: string;
-  time: string;
+  expenseTime: string;
+  hasReceipt?: boolean;
+  receiptUrl?: string;
 }
 
-interface CashUpData {
-  expectedCash: number;
-  actualCash: number;
-  variance: number;
-  cardTotal: number;
-  otherPayments: number;
-  expenses: Expense[];
-  openingFloat: number;
+interface SafeDrop {
+  id: string;
+  amount: number;
+  dropTime: string;
+  reason?: string;
+  notes?: string;
 }
 
-interface CashUpProps {
-  transactions?: Transaction[];
-  openingFloat?: number;
-  onComplete?: (data: CashUpData) => void;
-  onSave?: (data: CashUpData) => void;
+interface CashUpModuleProps {
+  cashUpId?: string;
+  onComplete?: (data: any) => void;
+  onSave?: (data: any) => void;
 }
 
 // ============================================================================
-// STYLED COMPONENTS
+// STYLED COMPONENTS (keeping all your existing styled components)
 // ============================================================================
 
 const Container = styled.div`
@@ -111,10 +99,10 @@ const StatCard = styled(Card)<{
 }>`
   padding: 1.5rem;
   background: ${({ theme, $variant }) => {
-    if ($variant === "success") return theme.color.green100;
-    if ($variant === "warning") return theme.color.yellow100;
-    if ($variant === "error") return theme.color.red100;
-    if ($variant === "info") return theme.color.blue100;
+    if ($variant === "success") return theme.color.green50;
+    if ($variant === "warning") return theme.color.yellow50;
+    if ($variant === "error") return theme.color.red50;
+    if ($variant === "info") return theme.color.blue50;
     return theme.color.panel;
   }};
   border: 1px solid
@@ -424,23 +412,30 @@ const TotalRow = styled(BreakdownRow)`
   color: ${({ theme }) => theme.color.text};
 `;
 
+const LoadingState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: ${({ theme }) => theme.color.mutedText};
+`;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-export default function CashUp({
-  cashUpId, // Pass the cash-up session ID
+export default function CashUpModule({
+  cashUpId,
   onComplete,
   onSave,
-}: {
-  cashUpId?: string;
-  onComplete?: (data: any) => void;
-  onSave?: (data: any) => void;
-}) {
+}: CashUpModuleProps) {
+  // Hooks
   const {
     getQuery,
     dailySnapshotQuery,
     createMutation,
+    updateMutation,
     completeMutation,
     addExpenseMutation,
     deleteExpenseMutation,
@@ -449,31 +444,95 @@ export default function CashUp({
     deleteSafeDropMutation,
   } = useCashUp();
 
-  // Load existing session or daily snapshot
-  const { data: cashUpData } = cashUpId
+  // Load session data
+  const { data: cashUpData, isLoading } = cashUpId
     ? getQuery(cashUpId)
     : dailySnapshotQuery;
 
+  // Local state
   const [sessionId, setSessionId] = useState<string | null>(cashUpId || null);
+  const [openingFloatInput, setOpeningFloatInput] = useState("0");
+  const [editingFloat, setEditingFloat] = useState(false);
+  const [actualCash, setActualCash] = useState("");
+  const [newExpense, setNewExpense] = useState({
+    description: "",
+    amount: "",
+    category: "general",
+  });
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [safeDrops, setSafeDrops] = useState<SafeDrop[]>([]);
 
   // Initialize from backend data
   useEffect(() => {
     if (cashUpData) {
       setSessionId(cashUpData.id);
-      setOpeningFloatInput(cashUpData.openingFloat.toString());
+      setOpeningFloatInput(cashUpData.openingFloat?.toString() || "0");
       setExpenses(cashUpData.expenses || []);
-      // ... set other state from backend
+      setSafeDrops(cashUpData.safeDrops || []);
+      if (cashUpData.actualCash) {
+        setActualCash(cashUpData.actualCash.toString());
+      }
     }
   }, [cashUpData]);
 
-  // Updated handlers to call backend:
+  // Calculate totals
+  const calculations = useMemo(() => {
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalSafeDrops = safeDrops.reduce(
+      (sum, drop) => sum + drop.amount,
+      0
+    );
+    const cashFromSales = cashUpData?.cashSales || 0;
+    const floatAmount = parseFloat(openingFloatInput) || 0;
+    const expectedCash =
+      floatAmount + cashFromSales - totalExpenses - totalSafeDrops;
+    const actualCashAmount = parseFloat(actualCash) || 0;
+    const variance = actualCash ? actualCashAmount - expectedCash : 0;
 
+    return {
+      totalExpenses,
+      totalSafeDrops,
+      cashFromSales,
+      expectedCash,
+      actualCash: actualCashAmount,
+      variance,
+      totalSales: cashUpData?.totalSales || 0,
+      cardSales: cashUpData?.cardSales || 0,
+      otherPayments: cashUpData?.otherPayments || 0,
+      openingFloat: floatAmount,
+    };
+  }, [expenses, safeDrops, cashUpData, actualCash, openingFloatInput]);
+
+  // Add expense
   const handleAddExpense = async () => {
-    if (!newExpense.description || !newExpense.amount || !sessionId) return;
+    if (!newExpense.description || !newExpense.amount) {
+      toast.error("Please fill in all expense fields");
+      return;
+    }
+
+    console.log("Adding expense:", newExpense);
+    console.log("Current session ID:", sessionId);
 
     try {
-      await addExpenseMutation.mutateAsync({
-        cashUpId: sessionId,
+      // Create session if it doesn't exist
+      let currentSessionId = sessionId;
+
+      if (!currentSessionId) {
+        console.log("Creating new session...");
+        const result = await createMutation.mutateAsync({
+          openingFloat: parseFloat(openingFloatInput) || 0,
+          sessionDate: new Date().toISOString().split("T")[0],
+        });
+        currentSessionId = result.data.data.cashUp.id;
+        setSessionId(currentSessionId);
+        toast.success("Cash-up session created");
+        console.log("Session created:", currentSessionId);
+      }
+
+      // Now add the expense to the session
+      console.log("Adding expense to session:", currentSessionId);
+      const expenseResult = await addExpenseMutation.mutateAsync({
+        cashUpId: currentSessionId,
         data: {
           description: newExpense.description,
           amount: parseFloat(newExpense.amount),
@@ -481,27 +540,67 @@ export default function CashUp({
         },
       });
 
+      console.log("Expense added successfully:", expenseResult);
       setNewExpense({ description: "", amount: "", category: "general" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to add expense:", error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to add expense"
+      );
     }
   };
 
-  const handleRemoveExpense = async (id: string) => {
+  // Remove expense
+  const handleRemoveExpense = async (expenseId: string) => {
     if (!sessionId) return;
 
     try {
       await deleteExpenseMutation.mutateAsync({
         cashUpId: sessionId,
-        expenseId: id,
+        expenseId,
       });
     } catch (error) {
       console.error("Failed to delete expense:", error);
     }
   };
 
-  const handleComplete = async () => {
+  // Upload receipt
+  const handleUploadReceipt = async (expenseId: string, file: File) => {
     if (!sessionId) return;
+
+    try {
+      await uploadReceiptMutation.mutateAsync({
+        cashUpId: sessionId,
+        expenseId,
+        file,
+      });
+    } catch (error) {
+      console.error("Failed to upload receipt:", error);
+    }
+  };
+
+  // Get variance status
+  const getVarianceStatus = () => {
+    if (!actualCash) return "success";
+    const absVariance = Math.abs(calculations.variance);
+    if (absVariance === 0) return "success";
+    if (absVariance <= 5) return "warning";
+    return "error";
+  };
+
+  // Complete cash-up
+  const handleComplete = async () => {
+    if (!sessionId) {
+      toast.error("Please create a session first");
+      return;
+    }
+
+    if (!actualCash) {
+      toast.error("Please enter actual cash amount");
+      return;
+    }
 
     try {
       const result = await completeMutation.mutateAsync({
@@ -519,18 +618,25 @@ export default function CashUp({
   };
 
   // Save draft
-  const handleSave = () => {
-    const data: CashUpData = {
-      expectedCash: calculations.expectedCash,
-      actualCash: calculations.actualCash,
-      variance: calculations.variance,
-      cardTotal: paymentTotals.card,
-      otherPayments: paymentTotals.loyalty + paymentTotals.giftCard,
-      expenses,
-      openingFloat: calculations.openingFloat,
-    };
+  const handleSave = async () => {
+    if (!sessionId) {
+      toast.error("Please create a session first");
+      return;
+    }
 
-    onSave?.(data);
+    try {
+      await updateMutation.mutateAsync({
+        id: sessionId,
+        data: {
+          openingFloat: parseFloat(openingFloatInput),
+          actualCash: actualCash ? parseFloat(actualCash) : undefined,
+        },
+      });
+
+      onSave?.(cashUpData);
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    }
   };
 
   const currentDate = new Date().toLocaleDateString("en-US", {
@@ -543,6 +649,15 @@ export default function CashUp({
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  if (isLoading) {
+    return (
+      <LoadingState>
+        <Package size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
+        <div>Loading cash-up session...</div>
+      </LoadingState>
+    );
+  }
 
   return (
     <Container>
@@ -603,7 +718,7 @@ export default function CashUp({
               <PaymentLabel>
                 <DollarSign />
                 Opening Float
-                {!editingFloat && (
+                {!editingFloat && !sessionId && (
                   <Edit2
                     size={14}
                     style={{ cursor: "pointer", opacity: 0.6 }}
@@ -642,7 +757,9 @@ export default function CashUp({
                 <Banknote />
                 Cash Sales
               </PaymentLabel>
-              <PaymentAmount>${paymentTotals.cash.toFixed(2)}</PaymentAmount>
+              <PaymentAmount>
+                ${calculations.cashFromSales.toFixed(2)}
+              </PaymentAmount>
             </PaymentRow>
 
             <PaymentRow>
@@ -650,17 +767,19 @@ export default function CashUp({
                 <CreditCard />
                 Card Payments
               </PaymentLabel>
-              <PaymentAmount>${paymentTotals.card.toFixed(2)}</PaymentAmount>
+              <PaymentAmount>
+                ${calculations.cardSales.toFixed(2)}
+              </PaymentAmount>
             </PaymentRow>
 
-            {(paymentTotals.loyalty > 0 || paymentTotals.giftCard > 0) && (
+            {calculations.otherPayments > 0 && (
               <PaymentRow>
                 <PaymentLabel>
                   <DollarSign />
                   Other Payments
                 </PaymentLabel>
                 <PaymentAmount>
-                  ${(paymentTotals.loyalty + paymentTotals.giftCard).toFixed(2)}
+                  ${calculations.otherPayments.toFixed(2)}
                 </PaymentAmount>
               </PaymentRow>
             )}
@@ -713,7 +832,15 @@ export default function CashUp({
                       <ExpenseDescription>
                         {expense.description}
                       </ExpenseDescription>
-                      <ExpenseMeta>{expense.time}</ExpenseMeta>
+                      <ExpenseMeta>
+                        {new Date(expense.expenseTime).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </ExpenseMeta>
                     </ExpenseInfo>
                     <ExpenseAmount>-${expense.amount.toFixed(2)}</ExpenseAmount>
                     <DeleteButton
@@ -771,7 +898,7 @@ export default function CashUp({
                 }}
               >
                 Opening float (${calculations.openingFloat.toFixed(2)}) + Cash
-                sales (${paymentTotals.cash.toFixed(2)}) - Expenses ($
+                sales (${calculations.cashFromSales.toFixed(2)}) - Expenses ($
                 {calculations.totalExpenses.toFixed(2)})
               </div>
             </InputGroup>
@@ -829,7 +956,7 @@ export default function CashUp({
                 <BreakdownRow $color="#059669">
                   <span>+ Cash Sales:</span>
                   <BreakdownValue>
-                    ${paymentTotals.cash.toFixed(2)}
+                    ${calculations.cashFromSales.toFixed(2)}
                   </BreakdownValue>
                 </BreakdownRow>
                 <BreakdownRow $color="#dc2626">
@@ -855,6 +982,7 @@ export default function CashUp({
           size="large"
           onClick={handleSave}
           style={{ flex: 1 }}
+          disabled={!sessionId}
         >
           <Save size={18} />
           Save Draft
@@ -863,7 +991,7 @@ export default function CashUp({
           variation="primary"
           size="large"
           onClick={handleComplete}
-          disabled={!actualCash}
+          disabled={!actualCash || !sessionId}
           style={{ flex: 1 }}
         >
           <CheckCircle size={18} />

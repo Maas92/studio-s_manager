@@ -1,11 +1,12 @@
 import { Pool, PoolConfig, QueryResultRow } from "pg";
-import { env } from './env.js';
+import { createClient } from "@supabase/supabase-js";
+import { env } from "./env.js";
 import {
   logger,
   logStartup,
   logShutdown,
   logDatabaseConnection,
-} from '../utils/logger.js';
+} from "../utils/logger.js";
 
 // Database configuration
 const config: PoolConfig = {
@@ -87,3 +88,50 @@ export const closePool = async (): Promise<void> => {
     throw err;
   }
 };
+
+const supabaseUrl = env.SUPABASE_URL || "";
+const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Initialize storage buckets
+ * Run this once to set up the storage bucket
+ */
+export async function initializeStorage() {
+  // Create expense-receipts bucket if it doesn't exist
+
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+
+    const receiptsBucket = buckets?.find((b) => b.name === "expense-receipts");
+
+    if (!receiptsBucket) {
+      const { data, error } = await supabase.storage.createBucket(
+        "expense-receipts",
+        {
+          public: true,
+          fileSizeLimit: 5242880, // 5MB
+          allowedMimeTypes: [
+            "image/jpeg",
+            "image/png",
+            "image/jpg",
+            "application/pdf",
+          ],
+        }
+      );
+
+      if (error) {
+        console.error("Failed to create bucket:", error);
+        throw error;
+      }
+
+      console.log("✅ Storage bucket created:", data);
+    } else {
+      console.log("✅ Storage bucket already exists");
+    }
+  } catch (error) {
+    console.error("Error initializing storage:", error);
+    throw error;
+  }
+}

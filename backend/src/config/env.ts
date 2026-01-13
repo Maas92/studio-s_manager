@@ -29,6 +29,10 @@ const envSchema = z.object({
   // Security
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 minutes
+  
+  // Supabase Configuration
+  SUPABASE_URL: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 });
 
 // Parse and validate environment variables

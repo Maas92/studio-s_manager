@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-// import { cashUpClient } from "../../services/cashUpClient";
+import { cashUpClient } from "../../services/cashUpClient";
 import toast from "react-hot-toast";
 
 export function useCashUp() {
@@ -97,11 +97,16 @@ export function useCashUp() {
   const addExpenseMutation = useMutation({
     mutationFn: ({ cashUpId, data }: { cashUpId: string; data: any }) =>
       cashUpClient.addExpense(cashUpId, data),
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
+      // Invalidate all cash-up queries to refetch
       qc.invalidateQueries({ queryKey: ["cash-ups"] });
+      // Also refetch the specific session
+      qc.invalidateQueries({ queryKey: ["cash-ups", variables.cashUpId] });
+      qc.invalidateQueries({ queryKey: ["cash-ups", "daily-snapshot"] });
       toast.success("Expense added");
     },
     onError: (error: any) => {
+      console.error("Add expense error:", error);
       toast.error(error.response?.data?.message || "Failed to add expense");
     },
   });
