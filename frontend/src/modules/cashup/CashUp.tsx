@@ -23,7 +23,7 @@ import Card from "../../ui/components/Card";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import { Label } from "../../ui/components/Form";
-import { useCashUp } from "./useCashUp";
+import { useCashUp, useCashUpById, useDailySnapshot } from "./useCashUp";
 import toast from "react-hot-toast";
 
 // ============================================================================
@@ -99,10 +99,10 @@ const StatCard = styled(Card)<{
 }>`
   padding: 1.5rem;
   background: ${({ theme, $variant }) => {
-    if ($variant === "success") return theme.color.green50;
-    if ($variant === "warning") return theme.color.yellow50;
-    if ($variant === "error") return theme.color.red50;
-    if ($variant === "info") return theme.color.blue50;
+    if ($variant === "success") return theme.color.green100;
+    if ($variant === "warning") return theme.color.yellow100;
+    if ($variant === "error") return theme.color.red100;
+    if ($variant === "info") return theme.color.blue100;
     return theme.color.panel;
   }};
   border: 1px solid
@@ -430,10 +430,8 @@ export default function CashUpModule({
   onComplete,
   onSave,
 }: CashUpModuleProps) {
-  // Hooks
+  // Hooks - FIXED: Use individual hooks instead of functions
   const {
-    getQuery,
-    dailySnapshotQuery,
     createMutation,
     updateMutation,
     completeMutation,
@@ -444,10 +442,12 @@ export default function CashUpModule({
     deleteSafeDropMutation,
   } = useCashUp();
 
-  // Load session data
-  const { data: cashUpData, isLoading } = cashUpId
-    ? getQuery(cashUpId)
-    : dailySnapshotQuery;
+  // Use the appropriate query hook based on whether we have a cashUpId
+  const cashUpByIdQuery = useCashUpById(cashUpId ?? "");
+  const dailySnapshotQuery = useDailySnapshot();
+
+  const cashUpQuery = cashUpId ? cashUpByIdQuery : dailySnapshotQuery;
+  const { data: cashUpData, isLoading } = cashUpQuery;
 
   // Local state
   const [sessionId, setSessionId] = useState<string | null>(cashUpId || null);
@@ -465,10 +465,21 @@ export default function CashUpModule({
   // Initialize from backend data
   useEffect(() => {
     if (cashUpData) {
+      console.log("Cash-up data updated:", cashUpData);
       setSessionId(cashUpData.id);
       setOpeningFloatInput(cashUpData.openingFloat?.toString() || "0");
-      setExpenses(cashUpData.expenses || []);
-      setSafeDrops(cashUpData.safeDrops || []);
+
+      // Update expenses from backend
+      if (cashUpData.expenses && Array.isArray(cashUpData.expenses)) {
+        console.log("Setting expenses:", cashUpData.expenses);
+        setExpenses(cashUpData.expenses);
+      }
+
+      // Update safe drops from backend
+      if (cashUpData.safeDrops && Array.isArray(cashUpData.safeDrops)) {
+        setSafeDrops(cashUpData.safeDrops);
+      }
+
       if (cashUpData.actualCash) {
         setActualCash(cashUpData.actualCash.toString());
       }
@@ -525,20 +536,21 @@ export default function CashUpModule({
         });
         currentSessionId = result.data.data.cashUp.id;
         setSessionId(currentSessionId);
-        toast.success("Cash-up session created");
         console.log("Session created:", currentSessionId);
       }
 
       // Now add the expense to the session
       console.log("Adding expense to session:", currentSessionId);
       const expenseResult = await addExpenseMutation.mutateAsync({
-        cashUpId: currentSessionId,
+        cashUpId: currentSessionId ?? "",
         data: {
           description: newExpense.description,
           amount: parseFloat(newExpense.amount),
           category: newExpense.category,
         },
       });
+
+      setExpenses((prev) => [...prev, expenseResult.data.data.expense]);
 
       console.log("Expense added successfully:", expenseResult);
       setNewExpense({ description: "", amount: "", category: "general" });
@@ -561,6 +573,8 @@ export default function CashUpModule({
         cashUpId: sessionId,
         expenseId,
       });
+
+      setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
     } catch (error) {
       console.error("Failed to delete expense:", error);
     }

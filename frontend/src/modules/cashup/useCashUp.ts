@@ -2,43 +2,51 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cashUpClient } from "../../services/cashUpClient";
 import toast from "react-hot-toast";
 
-export function useCashUp() {
-  const qc = useQueryClient();
+// List hook
+export function useCashUpList(filters?: any) {
+  return useQuery({
+    queryKey: ["cash-ups", "list", filters],
+    queryFn: () =>
+      cashUpClient.getAll(filters).then((res) => res.data.data.cashUps),
+  });
+}
 
-  // List query
-  const listQuery = (filters?: any) =>
-    useQuery({
-      queryKey: ["cash-ups", filters],
-      queryFn: () =>
-        cashUpClient.getAll(filters).then((res) => res.data.data.cashUps),
-    });
+// Get by ID hook
+export function useCashUpById(id?: string) {
+  return useQuery({
+    queryKey: ["cash-ups", id],
+    queryFn: () =>
+      cashUpClient.getById(id!).then((res) => res.data.data.cashUp),
+    enabled: !!id,
+    staleTime: 0, // Always refetch to get latest data
+  });
+}
 
-  // Get by ID query
-  const getQuery = (id: string) =>
-    useQuery({
-      queryKey: ["cash-ups", id],
-      queryFn: () =>
-        cashUpClient.getById(id).then((res) => res.data.data.cashUp),
-      enabled: !!id,
-    });
-
-  // Daily snapshot query
-  const dailySnapshotQuery = useQuery({
+// Daily snapshot hook
+export function useDailySnapshot() {
+  return useQuery({
     queryKey: ["cash-ups", "daily-snapshot"],
     queryFn: () =>
       cashUpClient.getDailySnapshot().then((res) => res.data.data.snapshot),
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 10000, // Refresh every 10 seconds
+    staleTime: 0,
   });
+}
 
-  // Summary query
-  const summaryQuery = (startDate?: string, endDate?: string) =>
-    useQuery({
-      queryKey: ["cash-ups", "summary", startDate, endDate],
-      queryFn: () =>
-        cashUpClient
-          .getSummary(startDate, endDate)
-          .then((res) => res.data.data.summary),
-    });
+// Summary hook
+export function useCashUpSummary(startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ["cash-ups", "summary", startDate, endDate],
+    queryFn: () =>
+      cashUpClient
+        .getSummary(startDate, endDate)
+        .then((res) => res.data.data.summary),
+  });
+}
+
+// Main hook with all mutations
+export function useCashUp() {
+  const qc = useQueryClient();
 
   // Create mutation
   const createMutation = useMutation({
@@ -100,9 +108,6 @@ export function useCashUp() {
     onSuccess: (response, variables) => {
       // Invalidate all cash-up queries to refetch
       qc.invalidateQueries({ queryKey: ["cash-ups"] });
-      // Also refetch the specific session
-      qc.invalidateQueries({ queryKey: ["cash-ups", variables.cashUpId] });
-      qc.invalidateQueries({ queryKey: ["cash-ups", "daily-snapshot"] });
       toast.success("Expense added");
     },
     onError: (error: any) => {
@@ -199,10 +204,6 @@ export function useCashUp() {
   });
 
   return {
-    listQuery,
-    getQuery,
-    dailySnapshotQuery,
-    summaryQuery,
     createMutation,
     updateMutation,
     completeMutation,

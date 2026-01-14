@@ -234,7 +234,7 @@ export class CashUpService {
     ]);
 
     return {
-      cashUps: dataResult.rows.map(this.formatCashUp.bind(this)),
+      cashUps: dataResult.rows.map((row) => this.formatCashUp(row, false)),
       total: parseInt(countResult.rows[0].count),
       page,
       limit,
