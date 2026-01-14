@@ -79,7 +79,7 @@ const DateInfo = styled.div`
   align-items: center;
   gap: 1rem;
   color: ${({ theme }) => theme.color.mutedText};
-  font-size: 0.95rem;
+  font-size: 1.2rem;
 
   svg {
     width: 16px;
@@ -116,7 +116,7 @@ const StatCard = styled(Card)<{
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: ${({ theme }) => theme.color.mutedText};
   margin-bottom: 0.5rem;
   display: flex;
@@ -390,7 +390,7 @@ const BreakdownTitle = styled.div`
 const BreakdownGrid = styled.div`
   display: grid;
   gap: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
 `;
 
 const BreakdownRow = styled.div<{ $color?: string }>`
@@ -465,13 +465,11 @@ export default function CashUpModule({
   // Initialize from backend data
   useEffect(() => {
     if (cashUpData) {
-      console.log("Cash-up data updated:", cashUpData);
       setSessionId(cashUpData.id);
       setOpeningFloatInput(cashUpData.openingFloat?.toString() || "0");
 
       // Update expenses from backend
       if (cashUpData.expenses && Array.isArray(cashUpData.expenses)) {
-        console.log("Setting expenses:", cashUpData.expenses);
         setExpenses(cashUpData.expenses);
       }
 
@@ -521,26 +519,20 @@ export default function CashUpModule({
       return;
     }
 
-    console.log("Adding expense:", newExpense);
-    console.log("Current session ID:", sessionId);
-
     try {
       // Create session if it doesn't exist
       let currentSessionId = sessionId;
 
       if (!currentSessionId) {
-        console.log("Creating new session...");
         const result = await createMutation.mutateAsync({
           openingFloat: parseFloat(openingFloatInput) || 0,
           sessionDate: new Date().toISOString().split("T")[0],
         });
         currentSessionId = result.data.data.cashUp.id;
         setSessionId(currentSessionId);
-        console.log("Session created:", currentSessionId);
       }
 
       // Now add the expense to the session
-      console.log("Adding expense to session:", currentSessionId);
       const expenseResult = await addExpenseMutation.mutateAsync({
         cashUpId: currentSessionId ?? "",
         data: {
@@ -552,7 +544,6 @@ export default function CashUpModule({
 
       setExpenses((prev) => [...prev, expenseResult.data.data.expense]);
 
-      console.log("Expense added successfully:", expenseResult);
       setNewExpense({ description: "", amount: "", category: "general" });
     } catch (error: any) {
       console.error("Failed to add expense:", error);
@@ -906,7 +897,7 @@ export default function CashUpModule({
               />
               <div
                 style={{
-                  fontSize: "0.75rem",
+                  fontSize: "0.9rem",
                   color: "#6b7280",
                   textAlign: "center",
                 }}
