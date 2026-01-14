@@ -135,7 +135,7 @@ func (s *SyncService) PerformSync(ctx context.Context, userID string) (*models.S
 		_, exists := metadataByClientID[localClient.ID]
 		if !exists {
 			// New client in backend, not in Google - export it
-			if err := s.createGoogleContact(ctx, userID, token, &localClient, result); err != nil {
+			if err := s.exportClientToGoogle(ctx, userID, token, &localClient, result); err != nil {
 				s.logger.Error("Failed to export client to Google",
 					zap.String("client_id", localClient.ID),
 					zap.Error(err),
@@ -282,12 +282,22 @@ func (s *SyncService) SyncSingleClient(ctx context.Context, userID string, clien
 		return fmt.Errorf("failed to get sync metadata: %w", err)
 	}
 
-	if meta == nil || meta.GoogleContactID == nil {
-		// Create in Google
-		resourceName, err := s.googleService.CreateContact(ctx, token, client)
-		if err != nil {
-			return fmt.Errorf("failed to create Google contact: %w", err)
-		}
+  if meta == nil || meta.GoogleContactID == nil {
+
+	// 🔒 HARD VALIDATION — prevent Google 400
+	if !hasGoogleContactData(client) {
+		s.logger.Debug("Skipping Google contact creation — no usable contact data",
+			zap.String("client_id", clientID),
+			zap.String("user_id", userID),
+		)
+		return nil // graceful skip, NOT an error
+	}
+
+	// Create in Google
+	resourceName, err := s.googleService.CreateContact(ctx, token, client)
+	if err != nil {
+		return fmt.Errorf("failed to create Google contact: %w", err)
+	}
 
 		// Save metadata
 		now := time.Now()
@@ -381,6 +391,16 @@ func (s *SyncService) createGoogleContact(
 	client *models.Client,
 	result *models.SyncResult,
 ) error {
+	
+	if !hasGoogleContactData(client) {
+	  s.logger.Warn("Skipping Google contact creation — no usable data",
+			zap.String("client_id", client.ID),
+			zap.String("user_id", userID),
+		)
+		result.Skipped++
+		return nil
+	}
+
 	resourceName, err := s.googleService.CreateContact(ctx, token, client)
 	if err != nil {
 		return err
@@ -534,6 +554,84 @@ func (s *SyncService) updateLocalClient(
 	}
 
 	result.Updated++
+	return nil
+}
+
+// hasGoogleContactData ensures we never send an empty contact to Google
+func hasGoogleContactData(client *models.Client) bool {
+	if client == nil {
+		return false
+	}
+
+	// Name alone is valid for Google
+	if client.Name != "" && client.Name != "Unknown" {
+		return true
+	}
+
+	if client.Phone != "" {
+		return true
+	}
+
+	if client.Email != nil && *client.Email != "" {
+		return true
+	}
+
+	if client.Address != nil && *client.Address != "" {
+		return true
+	}
+
+	if client.Notes != nil && *client.Notes != "" {
+		return true
+	}
+
+	return false
+}
+
+// exportClientToGoogle creates a Google contact from a backend client
+func (s *SyncService) exportClientToGoogle(
+	ctx context.Context,
+	userID string,
+	token *oauth2.Token,
+	client *models.Client,
+	result *models.SyncResult,
+) error {
+	
+	// 🔒 HARD VALIDATION — prevent empty Google contacts
+  if !hasGoogleContactData(client) {
+	  s.logger.Warn("Skipping Google export — client has no contact data",
+		zap.String("client_id", client.ID),
+		zap.String("user_id", userID),
+	)
+	result.Skipped++
+	return nil
+ }
+
+resourceName, err := s.googleService.CreateContact(ctx, token, client)
+if err != nil {
+	return fmt.Errorf("failed to create Google contact: %w", err)
+}
+
+	// Save sync metadata
+	now := time.Now()
+	meta := &models.SyncMetadata{
+		ClientID:           client.ID,
+		GoogleContactID:    &resourceName,
+		UserID:             userID,
+		LastSyncedAt:       &now,
+		LastModifiedSource: "local",
+		SyncStatus:         "synced",
+	}
+
+	if err := s.db.SaveSyncMetadata(ctx, meta); err != nil {
+		return err
+	}
+
+	s.logger.Info("Exported client to Google",
+		zap.String("client_id", client.ID),
+		zap.String("client_name", client.Name),
+	)
+
+	result.Created++
 	return nil
 }
 

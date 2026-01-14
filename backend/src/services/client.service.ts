@@ -72,7 +72,7 @@ export class ClientService {
 
     // Check if client with same phone exists
     const existingClient = await pool.query(
-      "SELECT id FROM clients WHERE phone = $1 AND is_active = true AND user_id = $2",
+      "SELECT id FROM clients WHERE phone = $1 AND is_active = true",
       [data.phone, userId]
     );
 
@@ -131,69 +131,61 @@ export class ClientService {
     const { search, page = 1, limit = 50 } = filters;
     const offset = (page - 1) * limit;
 
-    let query = `
-      SELECT 
-        c.*,
-        COUNT(DISTINCT b.id) as total_appointments,
-        COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as completed_appointments,
-        COUNT(DISTINCT s.id) as total_purchases,
-        SUM(s.final_amount) as lifetime_value,
-        MAX(b.booking_date) as last_appointment_date,
-        MAX(s.sale_date) as last_purchase_date
-      FROM clients c
-      LEFT JOIN bookings b ON c.id = b.client_id
-      LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.is_active = true AND c.user_id = $1
-    `;
-    // TODO remove user_id condition for all queries
+    const params: any[] = [];
+    let paramIndex = 1;
 
-    const params: any[] = [userId];
-    let paramIndex = 2;
+    let whereClause = `WHERE c.is_active = true`;
 
     if (search) {
-      query += ` AND (
-        c.first_name ILIKE $${paramIndex} OR 
-        c.last_name ILIKE $${paramIndex} OR 
-        c.phone ILIKE $${paramIndex} OR
-        c.email ILIKE $${paramIndex}
-      )`;
+      whereClause += ` AND (
+      c.first_name ILIKE $${paramIndex} OR
+      c.last_name ILIKE $${paramIndex} OR
+      c.phone ILIKE $${paramIndex} OR
+      c.email ILIKE $${paramIndex}
+    )`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    query += `
-      GROUP BY c.id
-      ORDER BY c.created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
+    const dataQuery = `
+    SELECT 
+      c.*,
+      COUNT(DISTINCT b.id) AS total_appointments,
+      COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') AS completed_appointments,
+      COUNT(DISTINCT s.id) AS total_purchases,
+      COALESCE(SUM(s.final_amount), 0) AS lifetime_value,
+      MAX(b.booking_date) AS last_appointment_date,
+      MAX(s.sale_date) AS last_purchase_date
+    FROM clients c
+    LEFT JOIN bookings b ON c.id = b.client_id
+    LEFT JOIN sales s ON c.id = s.client_id
+    ${whereClause}
+    GROUP BY c.id
+    ORDER BY c.first_name ASC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
 
     params.push(limit, offset);
 
-    // Count query
-    let countQuery = `SELECT COUNT(*) FROM clients WHERE is_active = true AND user_id = $1`;
-    const countParams: any[] = [userId];
+    const countQuery = `
+    SELECT COUNT(*)::int AS count
+    FROM clients c
+    ${whereClause}
+  `;
 
-    if (search) {
-      countQuery += ` AND (
-        first_name ILIKE $2 OR 
-        last_name ILIKE $2 OR 
-        phone ILIKE $2 OR 
-        email ILIKE $2
-      )`;
-      countParams.push(`%${search}%`);
-    }
+    const countParams = params.slice(0, search ? 1 : 0);
 
     const [dataResult, countResult] = await Promise.all([
-      pool.query(query, params),
+      pool.query(dataQuery, params),
       pool.query(countQuery, countParams),
     ]);
 
     return {
       clients: dataResult.rows.map(this.formatClient.bind(this)),
-      total: parseInt(countResult.rows[0].count),
+      total: countResult.rows[0].count,
       page,
       limit,
-      totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit),
+      totalPages: Math.ceil(countResult.rows[0].count / limit),
     };
   }
 
@@ -213,7 +205,6 @@ export class ClientService {
         whatsapp
       FROM clients 
       WHERE is_active = true
-        AND user_id = $1
         AND (
           first_name ILIKE $2 OR 
           last_name ILIKE $2 OR 
@@ -252,7 +243,7 @@ export class ClientService {
       FROM clients c
       LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.id = $1 AND c.user_id = $2
+      WHERE c.id = $1
       GROUP BY c.id`,
       [id, userId]
     );
@@ -307,7 +298,7 @@ export class ClientService {
     const result = await pool.query(
       `UPDATE clients 
        SET ${fields.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIndex + 1} AND user_id = $${paramIndex}
+       WHERE id = $${paramIndex + 1}
        RETURNING *`,
       values
     );
@@ -334,7 +325,7 @@ export class ClientService {
   async getHistory(userId: string, id: string) {
     // Verify client exists and belongs to user
     const clientCheck = await pool.query(
-      "SELECT id FROM clients WHERE id = $1 AND user_id = $2",
+      "SELECT id FROM clients WHERE id = $1",
       [id, userId]
     );
 
@@ -420,7 +411,7 @@ export class ClientService {
       LEFT JOIN bookings b ON c.id = b.client_id
       LEFT JOIN services srv ON b.treatment_id = srv.id
       LEFT JOIN sales s ON c.id = s.client_id
-      WHERE c.id = $1 AND c.user_id = $2
+      WHERE c.id = $1
       GROUP BY c.id`,
       [id, userId]
     );
@@ -452,7 +443,7 @@ export class ClientService {
     const result = await pool.query(
       `UPDATE clients 
        SET is_active = false, updated_at = NOW()
-       WHERE id = $1 AND user_id = $2
+       WHERE id = $1
        RETURNING id`,
       [id, userId]
     );

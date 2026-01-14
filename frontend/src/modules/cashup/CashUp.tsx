@@ -444,7 +444,7 @@ export default function CashUpModule({
 
   // Use the appropriate query hook based on whether we have a cashUpId
   const cashUpByIdQuery = useCashUpById(cashUpId ?? "");
-  const dailySnapshotQuery = useDailySnapshot();
+  const dailySnapshotQuery = useDailySnapshot(true);
 
   const cashUpQuery = cashUpId ? cashUpByIdQuery : dailySnapshotQuery;
   const { data: cashUpData, isLoading } = cashUpQuery;

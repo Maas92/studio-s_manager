@@ -23,13 +23,14 @@ export function useCashUpById(id?: string) {
 }
 
 // Daily snapshot hook
-export function useDailySnapshot() {
+export function useDailySnapshot(enabled = true) {
   return useQuery({
     queryKey: ["cash-ups", "daily-snapshot"],
     queryFn: () =>
       cashUpClient.getDailySnapshot().then((res) => res.data.data.snapshot),
-    refetchInterval: 10000, // Refresh every 10 seconds
-    staleTime: 0,
+    enabled,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
