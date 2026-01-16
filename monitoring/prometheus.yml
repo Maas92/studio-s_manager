@@ -1,0 +1,44 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: "studio-s-monitor"
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Node Exporter (if you add it)
+  - job_name: "node"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Docker containers metrics
+  - job_name: "docker"
+    static_configs:
+      - targets: ["host.docker.internal:9323"]
+
+  # Your services (if they expose Prometheus metrics)
+  - job_name: "gateway"
+    static_configs:
+      - targets: ["gateway:4000"]
+    metrics_path: "/metrics"
+
+  - job_name: "backend"
+    static_configs:
+      - targets: ["backend:5003"]
+    metrics_path: "/metrics"
+
+  - job_name: "auth"
+    static_configs:
+      - targets: ["auth:5002"]
+    metrics_path: "/metrics"

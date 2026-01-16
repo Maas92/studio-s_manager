@@ -26,7 +26,7 @@ providers:
 certificatesResolvers:
   cloudflare:
     acme:
-      email: your-email@yourdomain.com
+      email: info@studiosbeautybar.com
       storage: acme.json
       dnsChallenge:
         provider: cloudflare

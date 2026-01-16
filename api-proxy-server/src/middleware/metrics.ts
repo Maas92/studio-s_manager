@@ -1,21 +1,38 @@
 import promClient from "prom-client";
 import { Request, Response, NextFunction } from "express";
 
-// Create a Registry
+/**
+ * Prometheus Registry
+ */
 const register = new promClient.Registry();
 
-// Add default metrics (CPU, memory, etc.)
+/**
+ * Global default labels (VERY IMPORTANT for multi-service setups)
+ */
+register.setDefaultLabels({
+  service: process.env.SERVICE_NAME || "unknown",
+  env: process.env.NODE_ENV || "development",
+});
+
+/**
+ * Collect default Node.js metrics (CPU, memory, GC, event loop, etc.)
+ */
 promClient.collectDefaultMetrics({ register });
 
-// Custom metrics
+/**
+ * =========================
+ * HTTP METRICS
+ * =========================
+ */
+
 const httpRequestDuration = new promClient.Histogram({
   name: "http_request_duration_seconds",
   help: "Duration of HTTP requests in seconds",
   labelNames: ["method", "route", "status_code"],
-  buckets: [0.1, 0.5, 1, 2, 5],
+  buckets: [0.05, 0.1, 0.2, 0.3, 0.5, 1, 2],
 });
 
-const httpRequestTotal = new promClient.Counter({
+const httpRequestsTotal = new promClient.Counter({
   name: "http_requests_total",
   help: "Total number of HTTP requests",
   labelNames: ["method", "route", "status_code"],
@@ -27,11 +44,17 @@ const httpRequestsInProgress = new promClient.Gauge({
   labelNames: ["method", "route"],
 });
 
+/**
+ * =========================
+ * DOMAIN-SPECIFIC METRICS
+ * =========================
+ */
+
 const databaseQueryDuration = new promClient.Histogram({
   name: "database_query_duration_seconds",
   help: "Duration of database queries in seconds",
   labelNames: ["query_type", "table"],
-  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2],
+  buckets: [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2],
 });
 
 const authenticationAttempts = new promClient.Counter({
@@ -45,81 +68,95 @@ const activeUsers = new promClient.Gauge({
   help: "Number of currently active users",
 });
 
-// Register all metrics
-register.registerMetric(httpRequestDuration);
-register.registerMetric(httpRequestTotal);
-register.registerMetric(httpRequestsInProgress);
-register.registerMetric(databaseQueryDuration);
-register.registerMetric(authenticationAttempts);
-register.registerMetric(activeUsers);
+/**
+ * Register metrics
+ */
+[
+  httpRequestDuration,
+  httpRequestsTotal,
+  httpRequestsInProgress,
+  databaseQueryDuration,
+  authenticationAttempts,
+  activeUsers,
+].forEach((metric) => register.registerMetric(metric as promClient.Metric));
 
-// Middleware to track HTTP metrics
-export const metricsMiddleware = (
+/**
+ * =========================
+ * HTTP METRICS MIDDLEWARE
+ * =========================
+ *
+ * IMPORTANT:
+ * - Must be mounted AFTER routes are registered
+ * - Never use req.path as a label
+ */
+export function metricsMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
-) => {
-  const start = Date.now();
-  const route = req.route?.path || req.path;
+) {
+  const startTime = process.hrtime();
 
-  // Track request in progress
-  httpRequestsInProgress.inc({ method: req.method, route });
+  // Use normalized route path ONLY
+  const route =
+    (req.route && req.route.path) ||
+    (req.baseUrl ? `${req.baseUrl}` : "unknown");
 
-  // Override res.end to capture metrics
-  const originalEnd = res.end.bind(res);
-  res.end = function (...args: any[]) {
-    const duration = (Date.now() - start) / 1000;
+  const method = req.method;
 
-    // Record metrics
-    httpRequestDuration.observe(
-      { method: req.method, route, status_code: res.statusCode },
-      duration
-    );
+  httpRequestsInProgress.inc({ method, route });
 
-    httpRequestTotal.inc({
-      method: req.method,
+  res.on("finish", () => {
+    const [seconds, nanoseconds] = process.hrtime(startTime);
+    const duration = seconds + nanoseconds / 1e9;
+
+    const labels = {
+      method,
       route,
       status_code: res.statusCode,
-    });
+    };
 
-    httpRequestsInProgress.dec({ method: req.method, route });
-
-    return originalEnd(...args);
-  } as any;
+    httpRequestDuration.observe(labels, duration);
+    httpRequestsTotal.inc(labels);
+    httpRequestsInProgress.dec({ method, route });
+  });
 
   next();
-};
+}
 
-// Metrics endpoint
-export const metricsEndpoint = async (req: Request, res: Response) => {
-  res.set("Content-Type", register.contentType);
+/**
+ * =========================
+ * /metrics ENDPOINT
+ * =========================
+ */
+export async function metricsEndpoint(_req: Request, res: Response) {
+  res.setHeader("Content-Type", register.contentType);
   res.end(await register.metrics());
-};
+}
 
-// Helper functions to track custom events
-export const trackAuthAttempt = (
+/**
+ * =========================
+ * HELPER FUNCTIONS
+ * =========================
+ */
+
+export function trackAuthAttempt(
   status: "success" | "failure",
   method: string
-) => {
+) {
   authenticationAttempts.inc({ status, method });
-};
+}
 
-export const trackDatabaseQuery = (
+export function trackDatabaseQuery(
   queryType: string,
   table: string,
-  duration: number
-) => {
-  databaseQueryDuration.observe({ query_type: queryType, table }, duration);
-};
+  durationSeconds: number
+) {
+  databaseQueryDuration.observe(
+    { query_type: queryType, table },
+    durationSeconds
+  );
+}
 
-export const updateActiveUsers = (count: number) => {
+export function updateActiveUsers(count: number) {
   activeUsers.set(count);
-};
-
-// Usage in your app:
-// import express from 'express';
-// import { metricsMiddleware, metricsEndpoint } from './metrics';
-//
-// const app = express();
-// app.use(metricsMiddleware);
-// app.get('/metrics', metricsEndpoint);
+}

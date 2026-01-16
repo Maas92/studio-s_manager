@@ -28,6 +28,7 @@ scrape_configs:
           expressions:
             level: level
             message: message
+            service: service
             timestamp: timestamp
       - labels:
           level:

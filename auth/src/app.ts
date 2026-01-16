@@ -20,10 +20,6 @@ import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
 const app: Application = express();
 
-// Use metrics middleware
-app.use(metricsMiddleware);
-app.get("/metrics", metricsEndpoint);
-
 // Trust proxy (for rate limiting and IP detection)
 app.set("trust proxy", env.TRUST_PROXY);
 
@@ -105,6 +101,10 @@ app.get("/health", (req: Request, res: Response) => {
 // API routes
 app.use("/", authRouter);
 app.use("/api/v1/users", globalLimiter, userRouter);
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
 
 // 404 handler
 app.use((req: Request, res: Response, next: NextFunction) => {

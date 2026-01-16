@@ -16,10 +16,6 @@ import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
 const app: Application = express();
 
-// Use metrics middleware
-app.use(metricsMiddleware);
-app.get("/metrics", metricsEndpoint);
-
 // Trust proxy
 app.set("trust proxy", 1);
 
@@ -95,6 +91,10 @@ setupRoutes(app);
 app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
 
 // Global error handler
 app.use(errorHandler);

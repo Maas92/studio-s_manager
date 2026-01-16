@@ -12,10 +12,6 @@ import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
 const app: Application = express();
 
-// Use metrics middleware
-app.use(metricsMiddleware);
-app.get('/metrics', metricsEndpoint);
-
 // 1) GLOBAL MIDDLEWARES
 app.use(helmet());
 
@@ -58,6 +54,10 @@ app.use("", api);
 app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
 
 // Global error handler
 app.use(globalErrorHandler);
