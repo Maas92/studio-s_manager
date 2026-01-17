@@ -1,5 +1,4 @@
 import express, { Application, Request, Response, NextFunction } from "express";
-import morgan from "morgan";
 import helmet from "helmet";
 import cors from "cors";
 import AppError from "./utils/appError.js";
@@ -7,6 +6,7 @@ import globalErrorHandler from "./controllers/errorController.js";
 import { extractUser } from "./middleware/userMiddleware.js";
 import api from "./routes/index.js";
 import { requestId } from "./middleware/requestId.js";
+import { httpLogger } from "./utils/logger.js";
 import verifyGateway from "./middleware/verifyGateway.js";
 import { metricsMiddleware, metricsEndpoint } from "./middleware/metrics.js";
 
@@ -14,10 +14,6 @@ const app: Application = express();
 
 // 1) GLOBAL MIDDLEWARES
 app.use(helmet());
-
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
 
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
@@ -38,6 +34,8 @@ app.use(requestId);
 
 // Apply gateway check as broadly as possible (protect service)
 app.use(verifyGateway);
+
+app.use(httpLogger);
 
 // Extract user info from headers (set by API Gateway)
 app.use(extractUser);

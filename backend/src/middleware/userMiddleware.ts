@@ -7,7 +7,12 @@ import { logger } from "../utils/logger.js";
  * We still keep runtime defensive checks.
  */
 export interface UserRequest extends Request {
-  user?: { id?: string; role?: string; email?: string; isInternal?: boolean };
+  user?: {
+    id?: string;
+    role?: string;
+    email?: string;
+    isInternal?: boolean;
+  };
 }
 
 /**
@@ -21,15 +26,21 @@ export const extractUser = (
   next: NextFunction
 ) => {
   try {
-    // Check if request is from internal service (Google Contacts, etc.)
     const gatewayKey = req.headers["x-gateway-key"] as string | undefined;
 
+    // 🔐 Internal service authentication
     if (gatewayKey && gatewayKey === process.env.GATEWAY_SECRET) {
-      // Internal service authentication
       const internalUserId = req.headers["x-user-id"] as string | undefined;
 
       if (!internalUserId) {
-        logger.warn("Internal service request missing x-user-id");
+        logger.warn(
+          {
+            path: req.path,
+            method: req.method,
+          },
+          "⚠️ Internal service request missing x-user-id"
+        );
+
         return next(
           AppError.unauthorized("User ID required for internal requests")
         );
@@ -37,17 +48,20 @@ export const extractUser = (
 
       req.user = {
         id: internalUserId,
-        isInternal: true, // Mark as internal service request
+        isInternal: true,
       };
 
-      logger.debug("Authenticated internal service request", {
-        userId: internalUserId,
-      });
+      logger.debug(
+        {
+          userId: internalUserId,
+        },
+        "🔐 Authenticated internal service request"
+      );
 
       return next();
     }
 
-    // Normal gateway-forwarded request (from frontend via gateway)
+    // 🌐 Gateway-forwarded user headers
     const id = req.headers["x-user-id"]
       ? String(req.headers["x-user-id"])
       : undefined;
@@ -60,18 +74,37 @@ export const extractUser = (
 
     if (id || role || email) {
       req.user = { id, role, email };
-      logger.debug("Extracted user from gateway headers", {
-        userId: id,
-        role,
-      });
+
+      logger.debug(
+        {
+          userId: id,
+          role,
+        },
+        "👤 Extracted user from gateway headers"
+      );
     } else {
       req.user = undefined;
-      logger.debug("No user headers found in request");
+
+      logger.debug(
+        {
+          path: req.path,
+          method: req.method,
+        },
+        "👻 No user headers found in request"
+      );
     }
 
     next();
   } catch (err) {
-    logger.error("Failed to extract user from headers", { err });
+    logger.error(
+      {
+        err,
+        path: req.path,
+        method: req.method,
+      },
+      "💥 Failed to extract user from headers"
+    );
+
     next(AppError.internal("Failed to extract user"));
   }
 };
@@ -85,12 +118,17 @@ export const requireAuth = (
   next: NextFunction
 ) => {
   if (!req.user || !req.user.id) {
-    logger.warn("Authentication required but no user found", {
-      path: req.path,
-      method: req.method,
-    });
+    logger.warn(
+      {
+        path: req.path,
+        method: req.method,
+      },
+      "🔒 Authentication required but no user found"
+    );
+
     return next(AppError.unauthorized("You are not logged in"));
   }
+
   next();
 };
 
@@ -104,26 +142,33 @@ export const restrictTo = (...roles: string[]) => {
       return next(AppError.unauthorized("You are not logged in"));
     }
 
-    // Internal service requests bypass role restrictions
+    // 🛠 Internal services bypass role checks
     if (req.user.isInternal) {
-      logger.debug("Internal service bypassing role check", {
-        userId: req.user.id,
-      });
+      logger.debug(
+        {
+          userId: req.user.id,
+        },
+        "🛠 Internal service bypassing role check"
+      );
+
       return next();
     }
 
-    // Check role for regular user requests
     if (!req.user.role) {
       return next(AppError.unauthorized("User role not found"));
     }
 
     if (!roles.includes(req.user.role)) {
-      logger.warn("Permission denied", {
-        required: roles,
-        role: req.user.role,
-        userId: req.user.id,
-        requestId: (req as any).id,
-      });
+      logger.warn(
+        {
+          requiredRoles: roles,
+          role: req.user.role,
+          userId: req.user.id,
+          requestId: (req as any).id,
+        },
+        "⛔ Permission denied"
+      );
+
       return next(AppError.forbidden("You do not have permission"));
     }
 

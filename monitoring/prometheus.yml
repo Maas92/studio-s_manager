@@ -22,11 +22,6 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
 
-  # Docker containers metrics
-  - job_name: "docker"
-    static_configs:
-      - targets: ["host.docker.internal:9323"]
-
   # Your services (if they expose Prometheus metrics)
   - job_name: "gateway"
     static_configs:

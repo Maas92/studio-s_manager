@@ -1,5 +1,4 @@
 import express, { Application, Request, Response, NextFunction } from "express";
-import morgan from "morgan";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -9,6 +8,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { setupRoutes } from "./routes/index.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLogger } from "./middleware/requestLogger.js";
+import { httpLogger } from "./utils/logger.js";
 import { env } from "./config/env.js";
 import { queryParser } from "./middleware/queryParser.js";
 import bodyParser from "body-parser";
@@ -47,10 +47,6 @@ app.use(
   })
 );
 
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
-
 // CORS
 app.use(cors(corsOptions));
 
@@ -83,6 +79,8 @@ if (env.NODE_ENV !== "test") {
 }
 
 app.use(queryParser);
+
+app.use(httpLogger);
 
 // Setup routes
 setupRoutes(app);

@@ -18,47 +18,45 @@ let publicJwk: JWK | undefined;
 export async function initKeys(): Promise<void> {
   try {
     if (env.JWT_PRIVATE_PEM && env.JWT_PUBLIC_PEM) {
-      // Import both private and public keys from env (production)
+      // 🔐 Production: import matching key pair
       privateKey = await importPKCS8(env.JWT_PRIVATE_PEM, "RS256");
       publicKey = await importSPKI(env.JWT_PUBLIC_PEM, "RS256");
       publicJwk = await exportJWK(publicKey);
-      logger.info("Imported JWT private and public keys from environment");
+
+      logger.info("🔐 Imported JWT private and public keys from environment");
     } else if (env.JWT_PRIVATE_PEM && !env.JWT_PUBLIC_PEM) {
-      // If only private provided, fail loudly in prod — better to require public as well.
-      logger.warn(
-        "JWT_PRIVATE_PEM provided but JWT_PUBLIC_PEM missing. This is unsafe; generating new pair (dev fallback)."
+      // ❌ Never allow mismatched keys
+      logger.error(
+        "❌ JWT_PRIVATE_PEM provided without JWT_PUBLIC_PEM — refusing to start"
       );
-      const kp = await generateKeyPair("RS256", { modulusLength: 2048 });
-      privateKey = await importPKCS8(env.JWT_PRIVATE_PEM, "RS256");
-      // Use generated public key to verify — but note: generated public won't match imported private.
-      // This fallback is strictly for dev; in prod you must provide matching public key.
-      publicKey = kp.publicKey;
-      publicJwk = await exportJWK(publicKey);
+      throw new Error("JWT_PUBLIC_PEM is required when JWT_PRIVATE_PEM is set");
     } else {
-      // Development: generate key pair
-      logger.warn("Generating new JWT keys (development only)");
+      // 🧪 Development-only fallback
+      logger.warn("⚠️ Generating ephemeral JWT keys (development only)");
+
       const kp = await generateKeyPair("RS256", { modulusLength: 2048 });
       privateKey = kp.privateKey;
       publicKey = kp.publicKey;
       publicJwk = await exportJWK(publicKey);
     }
 
-    // Ensure JWK metadata
     if (!publicJwk) {
       throw new Error("Public JWK not initialized");
     }
+
+    // JWK metadata
     publicJwk.alg = "RS256";
     publicJwk.use = "sig";
     publicJwk.kid = env.JWT_KID || publicJwk.kid || "dev-key";
 
-    logger.info("JWT keys initialized successfully");
-  } catch (error) {
-    logger.error("Failed to initialize JWT keys:", error);
-    throw error;
+    logger.info("✅ JWT keys initialized successfully");
+  } catch (err) {
+    logger.error({ err }, "❌ Failed to initialize JWT keys");
+    throw err;
   }
 }
 
-export function getPublicJwks(): { keys: any[] } {
+export function getPublicJwks(): { keys: JWK[] } {
   if (!publicJwk) {
     throw new Error("Public JWK not initialized");
   }
@@ -83,8 +81,11 @@ export async function signToken(
   payload: JWTPayload,
   expiresIn: string
 ): Promise<string> {
-  if (!privateKey) throw new Error("Private key not initialized");
-  return await new SignJWT(payload)
+  if (!privateKey) {
+    throw new Error("Private key not initialized");
+  }
+
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: "RS256", kid: publicJwk?.kid })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
@@ -97,8 +98,11 @@ export async function verifyToken(token: string): Promise<{
   payload: JWTPayload;
   protectedHeader: any;
 }> {
-  if (!publicKey) throw new Error("Public key not initialized");
-  return await jwtVerify(token, publicKey, {
+  if (!publicKey) {
+    throw new Error("Public key not initialized");
+  }
+
+  return jwtVerify(token, publicKey, {
     issuer: env.JWT_ISSUER,
     audience: env.JWT_AUDIENCE,
   });

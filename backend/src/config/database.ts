@@ -1,69 +1,71 @@
 import { Pool, PoolConfig, QueryResultRow } from "pg";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "./env.js";
-import {
-  logger,
-  logStartup,
-  logShutdown,
-  logDatabaseConnection,
-} from "../utils/logger.js";
+import { logger, logDatabaseConnection } from "../utils/logger.js";
 
-// Database configuration
+/**
+ * PostgreSQL pool configuration
+ */
 const config: PoolConfig = {
   connectionString: env.DATABASE_URL,
   max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-  // NOTE: acceptSupabaseHostedCert is true by default in many examples
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
   ssl:
     env.DB_SSL === "true" || Boolean(env.DATABASE_URL)
       ? { rejectUnauthorized: env.DB_SSL === "true" ? false : true }
       : false,
 };
 
-// Create the connection pool
+/**
+ * Create PostgreSQL connection pool
+ */
 export const pool = new Pool(config);
 
-// Handle pool errors
-pool.on("error", (err, client) => {
-  logger.error("Unexpected error on idle client", err);
-  // Don't exit the process, but log the error
+/**
+ * Pool-level error handling
+ */
+pool.on("error", (err) => {
+  logger.error({ err }, "🚨 Unexpected PostgreSQL pool error");
 });
 
-// Handle pool connection events
+/**
+ * Pool connection events
+ */
 pool.on("connect", () => {
   logDatabaseConnection("success", {
-    host: "localhost",
-    database: "postgres",
+    engine: "postgres",
   });
 });
 
 pool.on("remove", () => {
-  logger.info("🔌 Database client removed from pool");
+  logger.info("🔌 PostgreSQL client removed from pool");
 });
 
 /**
- * Test database connection
- * @returns Promise<boolean> - true if connection successful
+ * Test database connectivity
  */
 export const testConnection = async (): Promise<boolean> => {
   try {
     const res = await pool.query("SELECT NOW() as now, version() as version");
-    logger.info("✅ PostgreSQL connected successfully");
-    logger.info(`   Time: ${res.rows[0].now}`);
-    logger.info(`   Version: ${res.rows[0].version.split(",")[0]}`);
+
+    logger.info(
+      {
+        time: res.rows[0].now,
+        version: res.rows[0].version.split(",")[0],
+      },
+      "✅ PostgreSQL connected successfully"
+    );
+
     return true;
   } catch (err) {
-    logger.error("❌ Database connection failed:", err);
+    logger.error({ err }, "❌ PostgreSQL connection failed");
     return false;
   }
 };
 
 /**
- * Execute a query with type safety
- * @param text - SQL query string
- * @param params - Query parameters
- * @returns Promise with typed result
+ * Typed query helper
  */
 export const query = <T extends QueryResultRow = any>(
   text: string,
@@ -71,47 +73,53 @@ export const query = <T extends QueryResultRow = any>(
 ) => pool.query<T>(text, params);
 
 /**
- * Get a client from the pool for transactions
- * @returns Promise with PoolClient
+ * Get a pooled client (for transactions)
  */
 export const getClient = () => pool.connect();
 
 /**
- * Close all pool connections gracefully
+ * Gracefully close PostgreSQL pool
  */
 export const closePool = async (): Promise<void> => {
   try {
     await pool.end();
-    logger.warn("🔒 Database pool closed successfully");
+    logger.warn("🔒 PostgreSQL pool closed");
   } catch (err) {
-    logger.error("Error closing database pool:", err);
+    logger.error({ err }, "❌ Error closing PostgreSQL pool");
     throw err;
   }
 };
 
+/**
+ * Supabase client (service role)
+ */
 const supabaseUrl = env.SUPABASE_URL || "";
 const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
- * Initialize storage buckets
- * Run this once to set up the storage bucket
+ * Initialize Supabase storage buckets
  */
-export async function initializeStorage() {
-  // Create expense-receipts bucket if it doesn't exist
-
+export async function initializeStorage(): Promise<void> {
   try {
-    const { data: buckets } = await supabase.storage.listBuckets();
+    const { data: buckets, error } = await supabase.storage.listBuckets();
 
-    const receiptsBucket = buckets?.find((b) => b.name === "expense-receipts");
+    if (error) {
+      logger.error({ error }, "❌ Failed to list Supabase buckets");
+      throw error;
+    }
+
+    const receiptsBucket = buckets?.find(
+      (bucket) => bucket.name === "expense-receipts"
+    );
 
     if (!receiptsBucket) {
       const { data, error } = await supabase.storage.createBucket(
         "expense-receipts",
         {
           public: true,
-          fileSizeLimit: 5242880, // 5MB
+          fileSizeLimit: 5 * 1024 * 1024, // 5MB
           allowedMimeTypes: [
             "image/jpeg",
             "image/png",
@@ -122,16 +130,16 @@ export async function initializeStorage() {
       );
 
       if (error) {
-        console.error("Failed to create bucket:", error);
+        logger.error({ error }, "❌ Failed to create storage bucket");
         throw error;
       }
 
-      console.log("✅ Storage bucket created:", data);
+      logger.info({ bucket: data?.name }, "✅ Supabase storage bucket created");
     } else {
-      console.log("✅ Storage bucket already exists");
+      logger.info("✅ Supabase storage bucket already exists");
     }
   } catch (error) {
-    console.error("Error initializing storage:", error);
+    logger.error({ error }, "❌ Storage initialization failed");
     throw error;
   }
 }

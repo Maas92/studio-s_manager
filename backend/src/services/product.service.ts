@@ -33,7 +33,6 @@ export class ProductService {
       let paramIndex = 1;
       const conditions: string[] = [];
 
-      // Build WHERE conditions
       if (category_id) {
         conditions.push(`p.category_id = $${paramIndex++}`);
         params.push(category_id);
@@ -65,7 +64,6 @@ export class ProductService {
       const whereClause =
         conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-      // Build ORDER BY clause
       const sortMap: Record<string, string> = {
         name: "p.name",
         sku: "p.sku",
@@ -79,7 +77,6 @@ export class ProductService {
       const sortField = sort.replace(/^-/, "");
       const orderBy = sortMap[sortField] || "p.created_at";
 
-      // Pagination
       const offset = (page - 1) * limit;
       params.push(limit, offset);
 
@@ -112,7 +109,7 @@ export class ProductService {
         totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit),
       };
     } catch (error) {
-      logger.error("Error in ProductService.findAll:", error);
+      logger.error({ err: error, filters }, "❌ ProductService.findAll failed");
       throw error;
     }
   }
@@ -154,7 +151,10 @@ export class ProductService {
 
       return result.rows[0];
     } catch (error) {
-      logger.error("Error in ProductService.findById:", error);
+      logger.error(
+        { err: error, productId: id },
+        "❌ ProductService.findById failed"
+      );
       throw error;
     }
   }
@@ -190,13 +190,18 @@ export class ProductService {
         ]
       );
 
-      logger.info(`Product created: ${result.rows[0].id}`);
+      logger.info({ productId: result.rows[0].id }, "✅ Product created");
+
       return result.rows[0];
     } catch (error: any) {
       if (error.code === "23505") {
         throw new AppError("A product with this SKU already exists", 409);
       }
-      logger.error("Error in ProductService.create:", error);
+
+      logger.error(
+        { err: error, sku: data.sku },
+        "❌ ProductService.create failed"
+      );
       throw error;
     }
   }
@@ -210,7 +215,6 @@ export class ProductService {
       const values: any[] = [];
       let paramIndex = 1;
 
-      // Build SET clause dynamically
       const updateFields: Array<{ key: keyof Product; dbColumn: string }> = [
         { key: "sku", dbColumn: "sku" },
         { key: "name", dbColumn: "name" },
@@ -247,10 +251,14 @@ export class ProductService {
         throw new AppError("Product not found", 404);
       }
 
-      logger.info(`Product updated: ${id}`);
+      logger.info({ productId: id }, "✏️ Product updated");
+
       return result.rows[0];
     } catch (error) {
-      logger.error("Error in ProductService.update:", error);
+      logger.error(
+        { err: error, productId: id },
+        "❌ ProductService.update failed"
+      );
       throw error;
     }
   }
@@ -269,7 +277,8 @@ export class ProductService {
         throw new AppError("Product not found", 404);
       }
 
-      logger.info(`Product deleted: ${id}`);
+      logger.info({ productId: id }, "🗑️ Product deleted");
+
       return true;
     } catch (error: any) {
       if (error.code === "23503") {
@@ -278,7 +287,11 @@ export class ProductService {
           400
         );
       }
-      logger.error("Error in ProductService.delete:", error);
+
+      logger.error(
+        { err: error, productId: id },
+        "❌ ProductService.delete failed"
+      );
       throw error;
     }
   }

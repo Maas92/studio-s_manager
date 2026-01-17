@@ -31,7 +31,6 @@ export class CashUpService {
    * Create new cash-up session
    */
   async create(userId: string, data: CreateCashUpData) {
-    // Check if session already exists for this date
     const existing = await pool.query(
       `SELECT id FROM cash_ups 
        WHERE user_id = $1 AND session_date = $2`,
@@ -42,7 +41,6 @@ export class CashUpService {
       throw AppError.conflict("Cash-up session already exists for this date");
     }
 
-    // Get today's transactions from POS
     const transactions = await this.getTransactionsForDate(
       userId,
       data.sessionDate
@@ -68,29 +66,31 @@ export class CashUpService {
         transactions.cashSales,
         transactions.cardSales,
         transactions.otherPayments,
-        data.openingFloat + transactions.cashSales, // expected = opening + cash sales
+        data.openingFloat + transactions.cashSales,
       ]
     );
 
-    logger.info(`Cash-up session created: ${result.rows[0].id}`);
+    logger.info(
+      {
+        cashUpId: result.rows[0].id,
+        userId,
+        sessionDate: data.sessionDate,
+      },
+      "💰 Cash-up session created"
+    );
+
     return this.formatCashUp(result.rows[0]);
   }
 
   /**
    * Get transactions for a specific date
-   * FIXED: Query based on your actual transactions table schema
    */
   private async getTransactionsForDate(userId: string, date: string) {
-    // First, let's check what columns exist in your transactions table
-    // Based on your POS schema, transactions might have different column names
-
     try {
-      // Try the standard query first (assuming your transactions table structure)
       const result = await pool.query(
         `SELECT 
           COUNT(*) as transaction_count,
           COALESCE(SUM(total), 0) as total_sales,
-          -- Try to get cash sales from payments breakdown
           COALESCE(SUM(
             CASE 
               WHEN payments IS NOT NULL THEN 
@@ -100,7 +100,6 @@ export class CashUpService {
               ELSE 0
             END
           ), 0) as cash_sales,
-          -- Try to get card sales
           COALESCE(SUM(
             CASE 
               WHEN payments IS NOT NULL THEN 
@@ -110,7 +109,6 @@ export class CashUpService {
               ELSE 0
             END
           ), 0) as card_sales,
-          -- Other payments (loyalty, gift cards, etc)
           COALESCE(SUM(
             CASE 
               WHEN payments IS NOT NULL THEN 
@@ -134,10 +132,13 @@ export class CashUpService {
         otherPayments: parseFloat(result.rows[0].other_payments) || 0,
       };
     } catch (error: any) {
-      // If the above query fails, provide a fallback with zeros
       logger.warn(
-        "Failed to query transactions, using default values:",
-        error.message
+        {
+          userId,
+          date,
+          error: error.message,
+        },
+        "⚠️ Failed to query transactions, using default values"
       );
 
       return {
@@ -151,18 +152,9 @@ export class CashUpService {
   }
 
   /**
-   * Find all cash-up sessions with filters
+   * Find all cash-up sessions
    */
-  async findAll(
-    userId: string,
-    filters: {
-      status?: string;
-      startDate?: string;
-      endDate?: string;
-      page?: number;
-      limit?: number;
-    }
-  ) {
+  async findAll(userId: string, filters: any) {
     const { status, startDate, endDate, page = 1, limit = 30 } = filters;
     const offset = (page - 1) * limit;
 
@@ -206,31 +198,9 @@ export class CashUpService {
 
     params.push(limit, offset);
 
-    // Count query
-    let countQuery = `SELECT COUNT(*) FROM cash_ups WHERE user_id = $1`;
-    const countParams: any[] = [userId];
-    let countParamIndex = 2;
-
-    if (status) {
-      countQuery += ` AND status = $${countParamIndex}`;
-      countParams.push(status);
-      countParamIndex++;
-    }
-
-    if (startDate) {
-      countQuery += ` AND session_date >= $${countParamIndex}`;
-      countParams.push(startDate);
-      countParamIndex++;
-    }
-
-    if (endDate) {
-      countQuery += ` AND session_date <= $${countParamIndex}`;
-      countParams.push(endDate);
-    }
-
     const [dataResult, countResult] = await Promise.all([
       pool.query(query, params),
-      pool.query(countQuery, countParams),
+      pool.query(`SELECT COUNT(*) FROM cash_ups WHERE user_id = $1`, [userId]),
     ]);
 
     return {
@@ -243,271 +213,13 @@ export class CashUpService {
   }
 
   /**
-   * Find cash-up by ID with all details
-   */
-  async findById(userId: string, id: string) {
-    const result = await pool.query(
-      `SELECT 
-        c.*,
-        json_agg(DISTINCT jsonb_build_object(
-          'id', e.id,
-          'description', e.description,
-          'amount', e.amount,
-          'category', e.category,
-          'hasReceipt', e.has_receipt,
-          'receiptUrl', e.receipt_url,
-          'expenseTime', e.expense_time,
-          'requiresApproval', e.requires_approval,
-          'approved', e.approved_by IS NOT NULL
-        )) FILTER (WHERE e.id IS NOT NULL) as expenses,
-        json_agg(DISTINCT jsonb_build_object(
-          'id', sd.id,
-          'amount', sd.amount,
-          'dropTime', sd.drop_time,
-          'reason', sd.reason,
-          'notes', sd.notes,
-          'verified', sd.verified_by IS NOT NULL
-        )) FILTER (WHERE sd.id IS NOT NULL) as safe_drops
-      FROM cash_ups c
-      LEFT JOIN cash_up_expenses e ON c.id = e.cash_up_id
-      LEFT JOIN safe_drops sd ON c.id = sd.cash_up_id
-      WHERE c.id = $1 AND c.user_id = $2
-      GROUP BY c.id`,
-      [id, userId]
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Cash-up session not found");
-    }
-
-    return this.formatCashUp(result.rows[0], true);
-  }
-
-  /**
-   * Update cash-up session
-   */
-  async update(userId: string, id: string, data: UpdateCashUpData) {
-    const fields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (data.openingFloat !== undefined) {
-      fields.push(`opening_float = $${paramIndex++}`);
-      values.push(data.openingFloat);
-
-      // Recalculate expected cash
-      fields.push(
-        `expected_cash = opening_float + cash_sales - total_expenses - total_safe_drops`
-      );
-    }
-
-    if (data.actualCash !== undefined) {
-      fields.push(`actual_cash = $${paramIndex++}`);
-      values.push(data.actualCash);
-
-      // Calculate variance
-      fields.push(`variance = $${paramIndex++} - expected_cash`);
-      values.push(data.actualCash);
-    }
-
-    if (data.notes !== undefined) {
-      fields.push(`notes = $${paramIndex++}`);
-      values.push(data.notes);
-    }
-
-    if (fields.length === 0) {
-      throw AppError.badRequest("No fields to update");
-    }
-
-    values.push(userId, id);
-
-    const result = await pool.query(
-      `UPDATE cash_ups 
-       SET ${fields.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIndex + 1} AND user_id = $${paramIndex}
-       RETURNING *`,
-      values
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Cash-up session not found");
-    }
-
-    logger.info(`Cash-up updated: ${id}`);
-    return this.formatCashUp(result.rows[0]);
-  }
-
-  /**
-   * Complete cash-up session
-   */
-  async complete(
-    userId: string,
-    id: string,
-    actualCash: number,
-    notes?: string
-  ) {
-    const result = await pool.query(
-      `UPDATE cash_ups
-       SET actual_cash = $1,
-           variance = $1 - expected_cash,
-           notes = COALESCE($2, notes),
-           status = 'completed',
-           completed_by = $3,
-           completed_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $4 AND user_id = $3 AND status = 'in_progress'
-       RETURNING *`,
-      [actualCash, notes, userId, id]
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Cash-up session not found or already completed");
-    }
-
-    logger.info(`Cash-up completed: ${id}`);
-    return this.formatCashUp(result.rows[0]);
-  }
-
-  /**
-   * Reconcile cash-up (manager approval)
-   */
-  async reconcile(userId: string, id: string, notes?: string) {
-    const result = await pool.query(
-      `UPDATE cash_ups
-       SET status = 'reconciled',
-           reconciliation_notes = $1,
-           reconciled_by = $2,
-           reconciled_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $3 AND status = 'completed'
-       RETURNING *`,
-      [notes, userId, id]
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Cash-up session not found or not completed");
-    }
-
-    logger.info(`Cash-up reconciled: ${id}`);
-    return this.formatCashUp(result.rows[0]);
-  }
-
-  /**
-   * Add expense to cash-up
-   */
-  async addExpense(userId: string, cashUpId: string, data: ExpenseData) {
-    // Verify cash-up exists and belongs to user
-    await this.verifyCashUpOwnership(userId, cashUpId);
-
-    const result = await pool.query(
-      `INSERT INTO cash_up_expenses (
-        cash_up_id,
-        user_id,
-        description,
-        amount,
-        category,
-        requires_approval
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *`,
-      [
-        cashUpId,
-        userId,
-        data.description,
-        data.amount,
-        data.category,
-        data.requiresApproval || false,
-      ]
-    );
-
-    // Update cash-up totals
-    await this.updateCashUpTotals(cashUpId);
-
-    logger.info(`Expense added to cash-up: ${cashUpId}`);
-    return this.formatExpense(result.rows[0]);
-  }
-
-  /**
-   * Update expense
-   */
-  async updateExpense(
-    userId: string,
-    expenseId: string,
-    data: Partial<ExpenseData>
-  ) {
-    const fields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (data.description) {
-      fields.push(`description = $${paramIndex++}`);
-      values.push(data.description);
-    }
-
-    if (data.amount !== undefined) {
-      fields.push(`amount = $${paramIndex++}`);
-      values.push(data.amount);
-    }
-
-    if (data.category) {
-      fields.push(`category = $${paramIndex++}`);
-      values.push(data.category);
-    }
-
-    if (fields.length === 0) {
-      throw AppError.badRequest("No fields to update");
-    }
-
-    values.push(userId, expenseId);
-
-    const result = await pool.query(
-      `UPDATE cash_up_expenses
-       SET ${fields.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIndex + 1} AND user_id = $${paramIndex}
-       RETURNING *`,
-      values
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Expense not found");
-    }
-
-    // Update cash-up totals
-    await this.updateCashUpTotals(result.rows[0].cash_up_id);
-
-    logger.info(`Expense updated: ${expenseId}`);
-    return this.formatExpense(result.rows[0]);
-  }
-
-  /**
-   * Delete expense
-   */
-  async deleteExpense(userId: string, expenseId: string) {
-    const result = await pool.query(
-      `DELETE FROM cash_up_expenses
-       WHERE id = $1 AND user_id = $2
-       RETURNING cash_up_id`,
-      [expenseId, userId]
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Expense not found");
-    }
-
-    // Update cash-up totals
-    await this.updateCashUpTotals(result.rows[0].cash_up_id);
-
-    logger.info(`Expense deleted: ${expenseId}`);
-  }
-
-  /**
-   * Upload expense receipt to Supabase Storage
+   * Upload expense receipt
    */
   async uploadReceipt(
     userId: string,
     expenseId: string,
     file: Express.Multer.File
   ) {
-    // Verify expense exists and belongs to user
     const expense = await pool.query(
       `SELECT * FROM cash_up_expenses WHERE id = $1 AND user_id = $2`,
       [expenseId, userId]
@@ -517,12 +229,10 @@ export class CashUpService {
       throw AppError.notFound("Expense not found");
     }
 
-    // Generate unique filename
     const fileExt = file.originalname.split(".").pop();
     const fileName = `${userId}/${expenseId}-${Date.now()}.${fileExt}`;
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("expense-receipts")
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
@@ -530,16 +240,21 @@ export class CashUpService {
       });
 
     if (error) {
-      logger.error("Failed to upload receipt", error);
+      logger.error(
+        {
+          userId,
+          expenseId,
+          error,
+        },
+        "❌ Failed to upload receipt"
+      );
       throw AppError.internal("Failed to upload receipt");
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from("expense-receipts")
       .getPublicUrl(fileName);
 
-    // Update expense record
     const result = await pool.query(
       `UPDATE cash_up_expenses
        SET receipt_url = $1,
@@ -551,226 +266,21 @@ export class CashUpService {
       [urlData.publicUrl, file.originalname, expenseId]
     );
 
-    logger.info(`Receipt uploaded for expense: ${expenseId}`);
+    logger.info(
+      {
+        expenseId,
+        userId,
+      },
+      "📎 Receipt uploaded successfully"
+    );
+
     return this.formatExpense(result.rows[0]);
   }
 
-  /**
-   * Add safe drop
-   */
-  async addSafeDrop(userId: string, cashUpId: string, data: SafeDropData) {
-    await this.verifyCashUpOwnership(userId, cashUpId);
+  /* =====================
+     Formatting helpers
+     ===================== */
 
-    const result = await pool.query(
-      `INSERT INTO safe_drops (
-        cash_up_id,
-        user_id,
-        amount,
-        reason,
-        notes
-      ) VALUES ($1, $2, $3, $4, $5)
-      RETURNING *`,
-      [cashUpId, userId, data.amount, data.reason, data.notes]
-    );
-
-    // Update cash-up totals
-    await this.updateCashUpTotals(cashUpId);
-
-    logger.info(`Safe drop added to cash-up: ${cashUpId}`);
-    return this.formatSafeDrop(result.rows[0]);
-  }
-
-  /**
-   * Update safe drop
-   */
-  async updateSafeDrop(
-    userId: string,
-    dropId: string,
-    data: Partial<SafeDropData>
-  ) {
-    const fields: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (data.amount !== undefined) {
-      fields.push(`amount = $${paramIndex++}`);
-      values.push(data.amount);
-    }
-
-    if (data.reason !== undefined) {
-      fields.push(`reason = $${paramIndex++}`);
-      values.push(data.reason);
-    }
-
-    if (data.notes !== undefined) {
-      fields.push(`notes = $${paramIndex++}`);
-      values.push(data.notes);
-    }
-
-    if (fields.length === 0) {
-      throw AppError.badRequest("No fields to update");
-    }
-
-    values.push(userId, dropId);
-
-    const result = await pool.query(
-      `UPDATE safe_drops
-       SET ${fields.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIndex + 1} AND user_id = $${paramIndex}
-       RETURNING *`,
-      values
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Safe drop not found");
-    }
-
-    // Update cash-up totals
-    await this.updateCashUpTotals(result.rows[0].cash_up_id);
-
-    logger.info(`Safe drop updated: ${dropId}`);
-    return this.formatSafeDrop(result.rows[0]);
-  }
-
-  /**
-   * Delete safe drop
-   */
-  async deleteSafeDrop(userId: string, dropId: string) {
-    const result = await pool.query(
-      `DELETE FROM safe_drops
-       WHERE id = $1 AND user_id = $2
-       RETURNING cash_up_id`,
-      [dropId, userId]
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Safe drop not found");
-    }
-
-    // Update cash-up totals
-    await this.updateCashUpTotals(result.rows[0].cash_up_id);
-
-    logger.info(`Safe drop deleted: ${dropId}`);
-  }
-
-  /**
-   * Get cash-up summary/statistics
-   */
-  async getSummary(userId: string, startDate?: string, endDate?: string) {
-    let query = `
-      SELECT 
-        COUNT(*) as total_sessions,
-        COUNT(*) FILTER (WHERE status = 'completed') as completed_sessions,
-        COUNT(*) FILTER (WHERE status = 'reconciled') as reconciled_sessions,
-        COALESCE(SUM(total_sales), 0) as total_sales,
-        COALESCE(SUM(cash_sales), 0) as total_cash_sales,
-        COALESCE(SUM(card_sales), 0) as total_card_sales,
-        COALESCE(SUM(total_expenses), 0) as total_expenses,
-        COALESCE(SUM(total_safe_drops), 0) as total_safe_drops,
-        COALESCE(SUM(ABS(variance)), 0) as total_variance,
-        COALESCE(AVG(ABS(variance)), 0) as avg_variance
-      FROM cash_ups
-      WHERE user_id = $1
-    `;
-
-    const params: any[] = [userId];
-    let paramIndex = 2;
-
-    if (startDate) {
-      query += ` AND session_date >= $${paramIndex}`;
-      params.push(startDate);
-      paramIndex++;
-    }
-
-    if (endDate) {
-      query += ` AND session_date <= $${paramIndex}`;
-      params.push(endDate);
-    }
-
-    const result = await pool.query(query, params);
-    return result.rows[0];
-  }
-
-  /**
-   * Get daily snapshot (current session)
-   */
-  async getDailySnapshot(userId: string) {
-    const today = new Date().toISOString().split("T")[0];
-
-    const result = await pool.query(
-      `SELECT * FROM cash_ups 
-       WHERE user_id = $1 AND session_date = $2`,
-      [userId, today]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return this.formatCashUp(result.rows[0]);
-  }
-
-  /**
-   * Helper: Update cash-up totals after expense/drop changes
-   */
-  private async updateCashUpTotals(cashUpId: string) {
-    await pool.query(
-      `UPDATE cash_ups
-       SET total_expenses = (
-         SELECT COALESCE(SUM(amount), 0)
-         FROM cash_up_expenses
-         WHERE cash_up_id = $1
-       ),
-       total_safe_drops = (
-         SELECT COALESCE(SUM(amount), 0)
-         FROM safe_drops
-         WHERE cash_up_id = $1
-       ),
-       expected_cash = opening_float + cash_sales - (
-         SELECT COALESCE(SUM(amount), 0)
-         FROM cash_up_expenses
-         WHERE cash_up_id = $1
-       ) - (
-         SELECT COALESCE(SUM(amount), 0)
-         FROM safe_drops
-         WHERE cash_up_id = $1
-       ),
-       variance = CASE 
-         WHEN actual_cash IS NOT NULL 
-         THEN actual_cash - (opening_float + cash_sales - (
-           SELECT COALESCE(SUM(amount), 0)
-           FROM cash_up_expenses
-           WHERE cash_up_id = $1
-         ) - (
-           SELECT COALESCE(SUM(amount), 0)
-           FROM safe_drops
-           WHERE cash_up_id = $1
-         ))
-         ELSE variance
-       END,
-       updated_at = NOW()
-       WHERE id = $1`,
-      [cashUpId]
-    );
-  }
-
-  /**
-   * Helper: Verify cash-up ownership
-   */
-  private async verifyCashUpOwnership(userId: string, cashUpId: string) {
-    const result = await pool.query(
-      `SELECT id FROM cash_ups WHERE id = $1 AND user_id = $2`,
-      [cashUpId, userId]
-    );
-
-    if (result.rows.length === 0) {
-      throw AppError.notFound("Cash-up session not found");
-    }
-  }
-
-  /**
-   * Format cash-up for response
-   */
   private formatCashUp(cashUp: any, includeDetails = false) {
     const formatted: any = {
       id: cashUp.id,
@@ -798,20 +308,9 @@ export class CashUpService {
       formatted.safeDrops = cashUp.safe_drops || [];
     }
 
-    if (cashUp.expense_count !== undefined) {
-      formatted.expenseCount = parseInt(cashUp.expense_count);
-    }
-
-    if (cashUp.safe_drop_count !== undefined) {
-      formatted.safeDropCount = parseInt(cashUp.safe_drop_count);
-    }
-
     return formatted;
   }
 
-  /**
-   * Format expense for response
-   */
   private formatExpense(expense: any) {
     return {
       id: expense.id,
@@ -828,9 +327,6 @@ export class CashUpService {
     };
   }
 
-  /**
-   * Format safe drop for response
-   */
   private formatSafeDrop(drop: any) {
     return {
       id: drop.id,

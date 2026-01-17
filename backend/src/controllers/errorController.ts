@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import AppError from '../utils/appError.js';
-import { logger } from '../utils/logger.js';
-import { env } from '../config/env.js';
+import AppError from "../utils/appError.js";
+import { logger } from "../utils/logger.js";
+import { env } from "../config/env.js";
 
 /**
  * Handle database-specific errors
@@ -12,15 +12,18 @@ const handleDatabaseError = (err: any): AppError => {
     const match = err.detail?.match(/Key \((.*?)\)=\((.*?)\)/);
     const field = match ? match[1] : "field";
     const value = match ? match[2] : "value";
-    const message = `Duplicate ${field}: ${value}. Please use another value.`;
-    return new AppError(message, 409);
+    return new AppError(
+      `Duplicate ${field}: ${value}. Please use another value.`,
+      409
+    );
   }
 
   // Foreign key constraint violation
   if (err.code === "23503") {
-    const message =
-      "Invalid reference to related data. The referenced record does not exist.";
-    return new AppError(message, 400);
+    return new AppError(
+      "Invalid reference to related data. The referenced record does not exist.",
+      400
+    );
   }
 
   // Invalid input syntax
@@ -46,14 +49,19 @@ const handleDatabaseError = (err: any): AppError => {
  * Send detailed error in development
  */
 const sendErrorDev = (err: AppError, req: Request, res: Response): void => {
-  logger.error("ERROR 💥", {
-    status: err.status,
-    error: err,
-    message: err.message,
-    stack: err.stack,
-    url: req.originalUrl,
-    method: req.method,
-  });
+  logger.error(
+    {
+      status: err.status,
+      statusCode: err.statusCode,
+      message: err.message,
+      stack: err.stack,
+      url: req.originalUrl,
+      method: req.method,
+      requestId: req.id,
+      error: err,
+    },
+    "💥 Application error (development)"
+  );
 
   res.status(err.statusCode).json({
     status: err.status,
@@ -68,7 +76,6 @@ const sendErrorDev = (err: AppError, req: Request, res: Response): void => {
  * Send limited error in production
  */
 const sendErrorProd = (err: AppError, req: Request, res: Response): void => {
-  // Operational, trusted error: send message to client
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
@@ -76,13 +83,15 @@ const sendErrorProd = (err: AppError, req: Request, res: Response): void => {
       requestId: req.id,
     });
   } else {
-    // Programming or other unknown error: don't leak error details
-    logger.error("ERROR 💥", {
-      error: err,
-      url: req.originalUrl,
-      method: req.method,
-      requestId: req.id,
-    });
+    logger.error(
+      {
+        url: req.originalUrl,
+        method: req.method,
+        requestId: req.id,
+        error: err,
+      },
+      "💥 Unhandled application error"
+    );
 
     res.status(500).json({
       status: "error",
@@ -99,7 +108,7 @@ export default (
   err: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
@@ -107,17 +116,19 @@ export default (
   if (env.NODE_ENV === "development") {
     sendErrorDev(err, req, res);
   } else {
-    let error = { ...err };
-    error.message = err.message;
-    error.name = err.name;
-    error.stack = err.stack;
+    let error: any = {
+      ...err,
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+    };
 
-    // Handle specific error types
+    // Database errors
     if (err.code) {
       error = handleDatabaseError(error);
     }
 
-    // Handle JWT errors (if you add authentication later)
+    // JWT errors
     if (error.name === "JsonWebTokenError") {
       error = new AppError("Invalid token. Please log in again.", 401);
     }
@@ -126,7 +137,7 @@ export default (
       error = new AppError("Your token has expired. Please log in again.", 401);
     }
 
-    // Handle validation errors
+    // Validation errors
     if (error.name === "ValidationError") {
       const message = Object.values(error.errors || {})
         .map((e: any) => e.message)

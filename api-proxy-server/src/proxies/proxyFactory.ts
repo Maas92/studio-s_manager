@@ -21,21 +21,25 @@ export const createProxy = (config: ProxyConfig) => {
   return proxy(target, {
     timeout,
 
-    proxyReqPathResolver: (req) => {
+    proxyReqPathResolver: (req: Request) => {
       let newPath = `${req.baseUrl}${req.url}`;
+
       if (pathRewrite) {
         for (const [pattern, replacement] of Object.entries(pathRewrite)) {
-          const regex = new RegExp(pattern);
-          newPath = newPath.replace(regex, replacement);
+          newPath = newPath.replace(new RegExp(pattern), replacement);
         }
       }
-      logger.debug("🔁 Proxying request", {
-        method: req.method,
-        baseUrl: req.baseUrl,
-        url: req.url,
-        newPath,
-        target,
-      });
+
+      logger.debug(
+        {
+          method: req.method,
+          originalPath: `${req.baseUrl}${req.url}`,
+          newPath,
+          target,
+          requestId: req.requestId,
+        },
+        "🔁 Proxying request"
+      );
 
       return newPath;
     },
@@ -43,33 +47,30 @@ export const createProxy = (config: ProxyConfig) => {
     parseReqBody: true,
 
     proxyReqOptDecorator: (proxyReqOpts, srcReq: Request) => {
-      // Inject gateway secret for backend services
+      proxyReqOpts.headers = proxyReqOpts.headers || {};
+
+      // 🔐 Inject gateway secret for backend services
       if (isBackendService && env.GATEWAY_SECRET) {
-        proxyReqOpts.headers = proxyReqOpts.headers || {};
         proxyReqOpts.headers["x-gateway-key"] = env.GATEWAY_SECRET;
       }
 
-      // Forward cookies
+      // 🍪 Forward cookies
       if (srcReq.headers.cookie) {
-        proxyReqOpts.headers = proxyReqOpts.headers || {};
         proxyReqOpts.headers["cookie"] = srcReq.headers.cookie;
       }
 
-      // Forward or create Authorization header from JWT cookie
+      // 🔑 Forward Authorization header or derive from JWT cookie
       if (srcReq.headers.authorization) {
-        proxyReqOpts.headers = proxyReqOpts.headers || {};
         proxyReqOpts.headers["authorization"] = srcReq.headers.authorization;
       } else if (srcReq.headers.cookie) {
         const jwtMatch = srcReq.headers.cookie.match(/(?:^|;\s*)jwt=([^;]+)/);
-        if (jwtMatch && jwtMatch[1]) {
-          proxyReqOpts.headers = proxyReqOpts.headers || {};
+        if (jwtMatch?.[1]) {
           proxyReqOpts.headers["authorization"] = `Bearer ${jwtMatch[1]}`;
         }
       }
 
-      // Forward user context headers (this is the key part!)
+      // 👤 Forward authenticated user context
       if (srcReq.user) {
-        proxyReqOpts.headers = proxyReqOpts.headers || {};
         if (srcReq.user.id) {
           proxyReqOpts.headers["x-user-id"] = String(srcReq.user.id);
         }
@@ -80,34 +81,45 @@ export const createProxy = (config: ProxyConfig) => {
           proxyReqOpts.headers["x-user-role"] = String(srcReq.user.role);
         }
 
-        logger.debug("✅ Forwarding user headers:", {
-          "x-user-id": srcReq.user.id,
-          "x-user-email": srcReq.user.email,
-          "x-user-role": srcReq.user.role,
-        });
+        logger.debug(
+          {
+            userId: srcReq.user.id,
+            role: srcReq.user.role,
+            requestId: srcReq.requestId,
+          },
+          "✅ Forwarding user context headers"
+        );
       } else {
-        logger.warn("⚠️ No user found in request - headers not forwarded");
+        logger.warn(
+          {
+            requestId: srcReq.requestId,
+            target,
+          },
+          "⚠️ No authenticated user found — user headers not forwarded"
+        );
       }
 
       return proxyReqOpts;
     },
 
-    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    userResDecorator: (_proxyRes, proxyResData) => {
       return proxyResData;
     },
 
-    proxyErrorHandler: (err, res: Response, next) => {
-      logger.error("Proxy error", {
-        target,
-        error: err?.message || String(err),
-      });
+    proxyErrorHandler: (err, res: Response) => {
+      logger.error(
+        {
+          err,
+          target,
+        },
+        "🚨 Proxy request failed"
+      );
 
       if (!res.headersSent) {
         res.status(503).json({
           status: "error",
           message: "Upstream service unavailable",
           service: target,
-          error: err?.message,
         });
       }
     },

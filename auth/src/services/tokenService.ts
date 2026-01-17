@@ -14,11 +14,12 @@ export class TokenService {
       role: user.role,
     };
 
-    return await signToken(payload, `${env.ACCESS_TOKEN_TTL_SEC}s`);
+    return signToken(payload, `${env.ACCESS_TOKEN_TTL_SEC}s`);
   }
 
   async generateRefreshToken(user: IUser): Promise<string> {
     const jti = crypto.randomBytes(32).toString("hex");
+
     const payload: JWTPayload = {
       sub: String(user._id),
       email: user.email,
@@ -26,7 +27,7 @@ export class TokenService {
       jti,
     };
 
-    return await signToken(payload, `${env.REFRESH_TOKEN_TTL_SEC}s`);
+    return signToken(payload, `${env.REFRESH_TOKEN_TTL_SEC}s`);
   }
 
   async generateTokenPair(
@@ -39,9 +40,11 @@ export class TokenService {
       this.generateRefreshToken(user),
     ]);
 
-    // Store refresh token session
     const jti = this.extractJtiFromToken(refreshToken);
+
     await this.storeRefreshSession(user, jti, refreshToken, ip, userAgent);
+
+    logger.debug({ userId: user._id, jti }, "🔐 Token pair generated");
 
     return { accessToken, refreshToken };
   }
@@ -64,7 +67,7 @@ export class TokenService {
       ua: userAgent,
     });
 
-    logger.info(`Refresh session created for user ${user._id}`);
+    logger.info({ userId: user._id, jti, ip }, "💾 Refresh session created");
   }
 
   async validateRefreshToken(
@@ -77,35 +80,42 @@ export class TokenService {
       const session = await Session.findOne({ jti });
 
       if (!session) {
-        logger.warn(`Session not found for jti: ${jti}`);
+        logger.warn({ jti }, "⚠️ Refresh session not found");
         return { valid: false };
       }
 
       if (session.revokedAt) {
-        logger.warn(`Revoked token used: ${jti}`);
+        logger.warn(
+          { jti, revokedAt: session.revokedAt },
+          "🚫 Revoked refresh token used"
+        );
         return { valid: false };
       }
 
       if (session.expiresAt < new Date()) {
-        logger.warn(`Expired token used: ${jti}`);
+        logger.warn(
+          { jti, expiresAt: session.expiresAt },
+          "⏰ Expired refresh token used"
+        );
         return { valid: false };
       }
 
       if (session.tokenHash !== tokenHash) {
-        logger.warn(`Token hash mismatch for jti: ${jti}`);
+        logger.warn({ jti }, "🔍 Refresh token hash mismatch");
         return { valid: false };
       }
 
       return { valid: true, jti, userId: String(session.user) };
-    } catch (error) {
-      logger.error("Token validation error:", error);
+    } catch (err) {
+      logger.error({ err }, "❌ Refresh token validation error");
       return { valid: false };
     }
   }
 
   async revokeRefreshToken(jti: string): Promise<void> {
     await Session.updateOne({ jti }, { $set: { revokedAt: new Date() } });
-    logger.info(`Refresh token revoked: ${jti}`);
+
+    logger.info({ jti }, "🧹 Refresh token revoked");
   }
 
   async revokeAllUserTokens(userId: string): Promise<void> {
@@ -113,11 +123,11 @@ export class TokenService {
       { user: userId, revokedAt: null },
       { $set: { revokedAt: new Date() } }
     );
-    logger.info(`All tokens revoked for user: ${userId}`);
+
+    logger.info({ userId }, "🧹 All refresh tokens revoked for user");
   }
 
   private extractJtiFromToken(token: string): string {
-    // Decode JWT without verification (we'll verify separately)
     const parts = token.split(".");
     if (parts.length !== 3) {
       throw new Error("Invalid token format");
@@ -136,7 +146,11 @@ export class TokenService {
     const result = await Session.deleteMany({
       expiresAt: { $lt: new Date() },
     });
-    logger.info(`Cleaned up ${result.deletedCount} expired sessions`);
+
+    logger.info(
+      { deletedCount: result.deletedCount },
+      "🗑️ Expired refresh sessions cleaned up"
+    );
   }
 }
 

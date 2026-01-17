@@ -7,26 +7,30 @@ export async function connectDatabase(): Promise<void> {
     await mongoose.connect(env.MONGODB_URI, {
       maxPoolSize: 10,
       minPoolSize: 5,
-      socketTimeoutMS: 45000,
-      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45_000,
+      serverSelectionTimeoutMS: 5_000,
     });
 
     logger.info("✅ MongoDB connected successfully");
 
     mongoose.connection.on("error", (err) => {
-      logger.error("MongoDB connection error:", err);
+      logger.error({ err }, "❌ MongoDB connection error");
     });
 
     mongoose.connection.on("disconnected", () => {
-      logger.warn("MongoDB disconnected");
+      logger.warn("⚠️ MongoDB disconnected");
     });
-  } catch (error) {
-    logger.error("❌ MongoDB connection failed:", error);
-    throw error;
+  } catch (err) {
+    logger.error({ err }, "❌ MongoDB connection failed");
+    throw err;
   }
 }
 
 export async function disconnectDatabase(): Promise<void> {
-  await mongoose.connection.close();
-  logger.info("MongoDB connection closed");
+  try {
+    await mongoose.connection.close();
+    logger.info("🛑 MongoDB connection closed");
+  } catch (err) {
+    logger.error({ err }, "❌ Failed to close MongoDB connection");
+  }
 }

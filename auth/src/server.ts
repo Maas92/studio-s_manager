@@ -1,97 +1,99 @@
-import app from "./app.js";
-import { env, isProduction } from "./config/env.js";
-import { connectDatabase, disconnectDatabase } from "./config/database.js";
-import { initKeys } from "./config/jwt.js";
-import { logger } from "./utils/logger.js";
-import { tokenService } from "./services/tokenService.js";
+import pino from "pino";
 
-// Handle uncaught exceptions
-process.on("uncaughtException", (err: Error) => {
-  logger.error("UNCAUGHT EXCEPTION! Shutting down...", {
-    error: err.name,
-    message: err.message,
-    stack: err.stack,
-  });
-  process.exit(1);
+const NODE_ENV = process.env.NODE_ENV || "development";
+const LOG_LEVEL =
+  process.env.LOG_LEVEL || (NODE_ENV === "production" ? "info" : "debug");
+
+const SERVICE_NAME = process.env.SERVICE_NAME || "app-service";
+
+/**
+ * Base Pino logger
+ */
+export const logger = pino({
+  level: LOG_LEVEL,
+  base: {
+    service: SERVICE_NAME,
+    env: NODE_ENV,
+  },
+
+  // Loki prefers epoch millis or RFC3339
+  timestamp: pino.stdTimeFunctions.epochTime,
+
+  formatters: {
+    level(label) {
+      return { level: label };
+    },
+  },
 });
 
-let server: any;
+/**
+ * Create a child logger for modules
+ */
+export const createModuleLogger = (module: string) => logger.child({ module });
 
-async function bootstrap() {
-  try {
-    // Initialize JWT keys
-    await initKeys();
-    logger.info("JWT keys initialized");
+/**
+ * Express HTTP logger (Morgan replacement)
+ */
+export function httpLogger(req: any, res: any, next: any) {
+  const start = process.hrtime.bigint();
 
-    // Connect to database
-    await connectDatabase();
+  res.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
 
-    // Start session cleanup job (every hour)
-    setInterval(async () => {
-      try {
-        await tokenService.cleanupExpiredSessions();
-      } catch (error) {
-        logger.error("Session cleanup error:", error);
-      }
-    }, 60 * 60 * 1000); // 1 hour
+    logger.info(
+      {
+        method: req.method,
+        path: req.originalUrl,
+        statusCode: res.statusCode,
+        durationMs,
+        requestId: req.requestId ?? req.id,
+      },
+      "🌐 HTTP request completed"
+    );
+  });
 
-    // Start server
-    server = app.listen(env.PORT, () => {
-      logger.info(`🚀 Auth service running on port ${env.PORT}`);
-      logger.info(`Environment: ${env.NODE_ENV}`);
-      logger.info(`CORS origin: ${env.CORS_ORIGIN}`);
-    });
-  } catch (error) {
-    logger.error("Bootstrap error:", error);
-    process.exit(1);
+  next();
+}
+
+/**
+ * Startup logging
+ */
+export function logStartup(config: {
+  service: string;
+  port: number;
+  env: string;
+  version?: string;
+}) {
+  logger.info(
+    {
+      service: config.service,
+      port: config.port,
+      env: config.env,
+      version: config.version,
+    },
+    "🚀 Service starting"
+  );
+}
+
+/**
+ * Database connection logging
+ */
+export function logDatabaseConnection(
+  status: "success" | "error",
+  details?: Record<string, any>
+) {
+  if (status === "success") {
+    logger.info(details ?? {}, "🗄️ Database connected");
+  } else {
+    logger.error(details ?? {}, "❌ Database connection failed");
   }
 }
 
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err: Error) => {
-  logger.error("UNHANDLED REJECTION! Shutting down...", {
-    error: err.name,
-    message: err.message,
-    stack: err.stack,
-  });
+/**
+ * Graceful shutdown logging
+ */
+export function logShutdown(reason?: string) {
+  logger.info({ reason }, "🛑 Service shutting down gracefully");
+}
 
-  if (server) {
-    server.close(async () => {
-      await disconnectDatabase();
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
-});
-
-// Handle SIGTERM
-process.on("SIGTERM", () => {
-  logger.info("SIGTERM received. Shutting down gracefully...");
-
-  if (server) {
-    server.close(async () => {
-      logger.info("HTTP server closed");
-      await disconnectDatabase();
-      logger.info("Process terminated");
-      process.exit(0);
-    });
-  }
-});
-
-// Handle SIGINT (Ctrl+C)
-process.on("SIGINT", () => {
-  logger.info("SIGINT received. Shutting down gracefully...");
-
-  if (server) {
-    server.close(async () => {
-      logger.info("HTTP server closed");
-      await disconnectDatabase();
-      logger.info("Process terminated");
-      process.exit(0);
-    });
-  }
-});
-
-// Start the application
-bootstrap();
+export default logger;

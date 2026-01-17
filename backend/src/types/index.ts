@@ -84,11 +84,172 @@ export interface SaleItem {
   created_at: Date;
 }
 
-export interface Payment {
-  id: string;
-  sale_id: string;
-  method: "cash" | "card" | "loyalty" | "gift-card";
-  amount: number;
-  reference?: string;
+export type SyncStatus = "pending" | "syncing" | "synced" | "failed";
+export type EventType = string; // e.g., 'booking_created', 'client_updated'
+export type EntityType = "bookings" | "clients" | "payments" | "staff";
+
+export interface OutboxEntry {
+  id: number;
+  event_type: EventType;
+  entity_type: EntityType;
+  entity_id: string | null;
+  payload: Record<string, any>;
+  sync_status: SyncStatus;
+  retry_count: number;
+  last_retry_at: Date | null;
+  error_message: string | null;
   created_at: Date;
+  synced_at: Date | null;
+}
+
+export interface SyncLogEntry {
+  id: number;
+  outbox_id: number;
+  sync_started_at: Date;
+  sync_completed_at: Date | null;
+  sync_status: string;
+  error_message: string | null;
+  retry_attempt: number;
+}
+
+export interface HealthCheck {
+  id: number;
+  service_name: string;
+  status: string;
+  checked_at: Date;
+  response_time_ms: number | null;
+  error_message: string | null;
+}
+
+export interface Conflict {
+  id: number;
+  entity_type: string;
+  entity_id: string;
+  local_data: Record<string, any>;
+  server_data: Record<string, any>;
+  resolution_status: "pending" | "resolved";
+  resolved_at: Date | null;
+  resolved_by: string | null;
+  resolution_strategy: string | null;
+  created_at: Date;
+}
+
+export interface SyncStatistics {
+  pending_count: number;
+  failed_count: number;
+  synced_today: number;
+  avg_retry_count: number;
+  oldest_pending: Date | null;
+}
+
+export interface ConnectionStatus {
+  supabase: boolean;
+  lastCheck: Date;
+  consecutiveFailures: number;
+}
+
+export interface WorkerStatus {
+  isRunning: boolean;
+  syncInterval: number;
+  consecutiveFailures: number;
+  batchSize: number;
+}
+
+export interface WriteResult {
+  success: boolean;
+  offline?: boolean;
+  data?: any;
+  message?: string;
+}
+
+export interface SyncResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+export interface APIResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: "admin" | "stylist" | "receptionist";
+}
+
+export interface RequestWithUser extends Express.Request {
+  user?: AuthUser;
+}
+
+export interface Booking {
+  id?: string | number;
+  client_id: string;
+  treatment_id: string;
+  staff_id?: string;
+  booking_date: string;
+  start_time: string;
+  end_time?: string;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  treatment_location_id?: string;
+  total_price?: number;
+  deposit_paid?: number;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+}
+
+export interface Client {
+  id?: string | number;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  is_active: boolean;
+  marketing_consent: boolean;
+  status: "active" | "inactive";
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Payment {
+  id?: string | number;
+  booking_id: string | number;
+  amount: number;
+  payment_method:
+    | "cash"
+    | "card"
+    | "transfer"
+    | "other"
+    | "loyalty"
+    | "gift-card";
+  status: "pending" | "completed" | "failed" | "refunded";
+  created_at?: Date;
+  sale_id: string;
+  reference?: string;
+}
+
+export interface HealthCheckResponse {
+  status: "healthy" | "degraded" | "unhealthy";
+  timestamp: string;
+  services: {
+    supabase: "online" | "offline";
+    localDatabase: "online" | "offline";
+    syncWorker: "running" | "stopped";
+  };
+  queue: {
+    pending: number;
+    failed: number;
+  };
+  error?: string;
+}
+
+export interface ConflictResolutionRequest {
+  resolution: "use_local" | "use_server" | "merge";
+  data?: Record<string, any>;
 }

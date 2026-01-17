@@ -12,7 +12,6 @@ common:
       rules_directory: /loki/rules
   replication_factor: 1
   ring:
-    instance_addr: 127.0.0.1
     kvstore:
       store: inmemory
 
@@ -31,6 +30,6 @@ ruler:
 
 # Limits
 limits_config:
-  retention_period: 744h  # 31 days
+  retention_period: 744h # 31 days
   ingestion_rate_mb: 10
   ingestion_burst_size_mb: 20

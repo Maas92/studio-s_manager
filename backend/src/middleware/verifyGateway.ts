@@ -17,40 +17,63 @@ export default function verifyGateway(
     (req.headers["x-gateway-key"] as string | undefined) || undefined;
   const secret = env.GATEWAY_SECRET || undefined;
 
-  // If secret isn't configured, fail fast and loudly (safe default)
+  // ❌ Fail fast if secret is missing (safe default)
   if (!secret) {
     logger.error(
-      "GATEWAY_SECRET is not configured in env - refusing requests by default"
+      {
+        path: req.path,
+        method: req.method,
+      },
+      "🚨 GATEWAY_SECRET is not configured in env - refusing requests by default"
     );
+
     return next(
       AppError.internal("Server misconfiguration: gateway secret missing")
     );
   }
 
-  // Allow some safe public endpoints (whitelist)
+  // ✅ Allow safe public endpoints
   const whitelist = ["/health", "/healthcheck", "/"];
   if (whitelist.includes(req.path)) {
     return next();
   }
 
   if (!provided) {
-    logger.warn("Blocked request without gateway header", {
-      path: req.path,
-      ip: req.ip,
-      requestId: (req as any).id,
-    });
+    logger.warn(
+      {
+        path: req.path,
+        ip: req.ip,
+        requestId: (req as any).id,
+      },
+      "⛔ Blocked request without gateway header"
+    );
+
     return next(AppError.unauthorized("Request not from API Gateway"));
   }
 
   if (provided !== secret) {
-    logger.warn("Blocked request with invalid gateway header", {
-      path: req.path,
-      ip: req.ip,
-      requestId: (req as any).id,
-    });
+    logger.warn(
+      {
+        path: req.path,
+        ip: req.ip,
+        requestId: (req as any).id,
+      },
+      "⛔ Blocked request with invalid gateway header"
+    );
+
     return next(AppError.unauthorized("Request not from API Gateway"));
   }
 
+  // ✅ Mark request as trusted gateway traffic
   (req as any).isFromGateway = true;
+
+  logger.debug(
+    {
+      path: req.path,
+      requestId: (req as any).id,
+    },
+    "🔐 Gateway request verified"
+  );
+
   next();
 }

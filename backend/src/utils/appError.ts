@@ -18,29 +18,40 @@ class AppError extends Error {
 
     Error.captureStackTrace(this, this.constructor);
 
-    // Log immediately with logger – include stack & requestId if present in meta
-    logger.error(message, {
-      statusCode: this.statusCode,
-      stack: this.stack,
-    });
+    // ✅ Pino-style structured logging
+    logger.error(
+      {
+        err: this,
+        statusCode: this.statusCode,
+        isOperational: this.isOperational,
+      },
+      "🚨 AppError created"
+    );
   }
 
+  // ---------------------------------------------------------------------------
   // Helpers
+  // ---------------------------------------------------------------------------
   static badRequest(msg = "Bad request") {
     return new AppError(msg, 400);
   }
+
   static unauthorized(msg = "Unauthorized") {
     return new AppError(msg, 401);
   }
+
   static forbidden(msg = "Forbidden") {
     return new AppError(msg, 403);
   }
+
   static notFound(msg = "Not found") {
     return new AppError(msg, 404);
   }
+
   static conflict(msg = "Conflict") {
     return new AppError(msg, 409);
   }
+
   static internal(msg = "Internal server error") {
     return new AppError(msg, 500);
   }
