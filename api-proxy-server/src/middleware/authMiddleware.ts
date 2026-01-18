@@ -27,8 +27,8 @@ export interface AuthRequest extends Request {
 const JWKS = createRemoteJWKSet(new URL(env.JWKS_URL));
 
 export const protect = catchAsync(
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    logger.debug("\n🔒 PROTECT MIDDLEWARE");
+  async (req: AuthRequest, _res: Response, next: NextFunction) => {
+    logger.debug("🔒 PROTECT middleware invoked");
 
     // 1) Get token from header or cookie
     let token: string | undefined;
@@ -38,14 +38,17 @@ export const protect = catchAsync(
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
-      logger.info("✅ Token from Authorization header");
-    } else if (req.cookies.jwt) {
+      logger.info("Token extracted from Authorization header");
+    } else if (req.cookies?.jwt) {
       token = req.cookies.jwt;
-      logger.info("✅ Token from jwt cookie");
+      logger.info("Token extracted from jwt cookie");
     }
 
     if (!token) {
-      logger.warn("❌ No token found");
+      logger.warn(
+        { path: req.path, method: req.method },
+        "No authentication token found"
+      );
       return next(
         new AppError("You are not logged in! Please log in to get access.", 401)
       );
@@ -54,22 +57,32 @@ export const protect = catchAsync(
     // 2) Verify token using RSA public key from JWKS
     let decoded: JwtPayload;
     try {
-      logger.info("🔍 Verifying token with JWKS...");
+      logger.debug("Verifying JWT using JWKS");
+
       const { payload } = await jwtVerify(token, JWKS, {
         issuer: env.JWT_ISSUER,
         audience: env.JWT_AUDIENCE,
       });
 
       decoded = payload as unknown as JwtPayload;
-      logger.info("✅ Token verified successfully");
-      logger.info("User:", decoded.sub, decoded.email, decoded.role);
+
+      logger.info(
+        {
+          userId: decoded.sub,
+          email: decoded.email,
+          role: decoded.role,
+        },
+        "JWT verified successfully"
+      );
     } catch (err: any) {
-      logger.warn("❌ Token verification failed:", err.message);
+      logger.warn({ err }, "JWT verification failed");
+
       if (err.code === "ERR_JWT_EXPIRED") {
         return next(
           new AppError("Your token has expired! Please log in again.", 401)
         );
       }
+
       return next(new AppError("Invalid token. Please log in again!", 401));
     }
 
@@ -80,14 +93,19 @@ export const protect = catchAsync(
       role: decoded.role,
     };
 
-    logger.debug("✅ User attached to request\n");
+    logger.debug({ userId: decoded.sub }, "User attached to request");
+
     next();
   }
 );
 
 export const restrictTo = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, _res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
+      logger.warn(
+        { userId: req.user?.id, requiredRoles: roles },
+        "Access denied due to insufficient permissions"
+      );
       return next(
         new AppError("You do not have permission to perform this action", 403)
       );

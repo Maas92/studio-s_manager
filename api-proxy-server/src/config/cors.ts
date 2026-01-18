@@ -8,7 +8,7 @@ function parseAllowedOrigins(): string[] {
   const urls = env.FRONTEND_URLS || env.FRONTEND_URL;
 
   if (!urls) {
-    logger.warn("[CORS] No FRONTEND_URLS or FRONTEND_URL configured!");
+    logger.warn("[CORS] No FRONTEND_URLS or FRONTEND_URL configured");
     return [];
   }
 
@@ -25,7 +25,10 @@ function parseAllowedOrigins(): string[] {
       .filter((url) => url.length > 0);
   }
 
-  logger.warn("[CORS] FRONTEND_URLS has unexpected type:", typeof urls);
+  logger.warn(
+    { type: typeof urls },
+    "[CORS] FRONTEND_URLS has unexpected type"
+  );
   return [];
 }
 
@@ -33,8 +36,8 @@ const allowedOrigins = parseAllowedOrigins();
 
 // Log configuration on startup
 logger.info("[CORS] Configuration loaded");
-logger.info("[CORS] Allowed origins:", allowedOrigins);
-logger.info("[CORS] Node environment:", env.NODE_ENV);
+logger.info({ allowedOrigins }, "[CORS] Allowed origins");
+logger.info({ env: env.NODE_ENV }, "[CORS] Node environment");
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
@@ -48,7 +51,7 @@ export const corsOptions: CorsOptions = {
     if (env.NODE_ENV === "development") {
       const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin);
       if (isLocalhost) {
-        logger.info("[CORS] Allowing localhost origin (dev mode):", origin);
+        logger.info({ origin }, "[CORS] Allowing localhost origin (dev mode)");
         return callback(null, true);
       }
     }
@@ -56,13 +59,13 @@ export const corsOptions: CorsOptions = {
     // Check if origin is in allowed list
     const isAllowed = allowedOrigins.includes(origin);
     if (isAllowed) {
-      logger.info("[CORS] Allowing whitelisted origin:", origin);
+      logger.info({ origin }, "[CORS] Allowing whitelisted origin");
       return callback(null, true);
     }
 
     // Block all other origins
-    logger.warn("[CORS] BLOCKED origin:", origin);
-    logger.warn("[CORS] Allowed origins are:", allowedOrigins);
+    logger.warn({ origin, allowedOrigins }, "[CORS] BLOCKED origin");
+
     const error = new Error(`Origin ${origin} not allowed by CORS policy`);
     return callback(error);
   },

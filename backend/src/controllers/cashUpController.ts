@@ -44,7 +44,7 @@ export const getAllCashUps = catchAsync(
       limit: req.query.limit ? parseInt(req.query.limit as string) : 30,
     };
 
-    const result = await cashUpService.findAll(userId, filters);
+    const result = await cashUpService.findAll(filters);
 
     res.status(200).json({
       status: "success",
@@ -63,7 +63,7 @@ export const getAllCashUps = catchAsync(
  */
 export const getCashUp = catchAsync(async (req: UserRequest, res: Response) => {
   const userId = req.user?.id ?? "";
-  const cashUp = await cashUpService.findById(userId, req.params.id);
+  const cashUp = await cashUpService.findById(req.params.id);
 
   res.status(200).json({
     status: "success",
@@ -78,7 +78,7 @@ export const getCashUp = catchAsync(async (req: UserRequest, res: Response) => {
 export const updateCashUp = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
-    const cashUp = await cashUpService.update(userId, req.params.id, req.body);
+    const cashUp = await cashUpService.update(req.params.id, req.body);
 
     res.status(200).json({
       status: "success",
@@ -156,7 +156,6 @@ export const updateExpense = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
     const expense = await cashUpService.updateExpense(
-      userId,
       req.params.expenseId,
       req.body
     );
@@ -175,7 +174,7 @@ export const updateExpense = catchAsync(
 export const deleteExpense = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
-    await cashUpService.deleteExpense(userId, req.params.expenseId);
+    await cashUpService.deleteExpense(req.params.expenseId);
 
     res.status(204).json({
       status: "success",
@@ -237,7 +236,6 @@ export const updateSafeDrop = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
     const safeDrop = await cashUpService.updateSafeDrop(
-      userId,
       req.params.dropId,
       req.body
     );
@@ -256,7 +254,7 @@ export const updateSafeDrop = catchAsync(
 export const deleteSafeDrop = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
-    await cashUpService.deleteSafeDrop(userId, req.params.dropId);
+    await cashUpService.deleteSafeDrop(req.params.dropId);
 
     res.status(204).json({
       status: "success",
@@ -275,7 +273,6 @@ export const getCashUpSummary = catchAsync(
     const { startDate, endDate } = req.query;
 
     const summary = await cashUpService.getSummary(
-      userId,
       startDate as string,
       endDate as string
     );
@@ -294,7 +291,7 @@ export const getCashUpSummary = catchAsync(
 export const getDailySnapshot = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
-    const snapshot = await cashUpService.getDailySnapshot(userId);
+    const snapshot = await cashUpService.getDailySnapshot();
 
     res.status(200).json({
       status: "success",

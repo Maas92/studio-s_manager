@@ -25,10 +25,16 @@ export const validate = (schema: ZodObject<any>) => {
           code: iss.code,
         }));
 
-        logger.warn(`Validation failed for ${req.method} ${req.path}`, {
-          errors,
-          requestId: (req as any).id,
-        });
+        logger.warn(
+          {
+            method: req.method,
+            path: req.path,
+            requestId: (req as any).id,
+            errors,
+          },
+          "⚠️ Validation failed"
+        );
+
         return next(
           AppError.badRequest(
             "Validation failed: " + errors.map((e) => e.message).join(", ")
@@ -48,9 +54,15 @@ export const validateUUID = (paramName = "id") => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     if (!uuid || !uuidRegex.test(uuid)) {
-      logger.warn(`Invalid UUID for param ${paramName}: ${uuid}`, {
-        requestId: (req as any).id,
-      });
+      logger.warn(
+        {
+          paramName,
+          value: uuid,
+          requestId: (req as any).id,
+        },
+        "⚠️ Invalid UUID parameter"
+      );
+
       return next(
         AppError.badRequest(`Invalid ${paramName}. Must be a valid UUID.`)
       );

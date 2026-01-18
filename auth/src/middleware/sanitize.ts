@@ -23,22 +23,20 @@ const hasDangerousKeys = (obj: any, path: string = ""): string | null => {
   for (const key in obj) {
     const fullPath = path ? `${path}.${key}` : key;
 
-    // Check for MongoDB operators
+    // MongoDB operators
     if (key.startsWith("$")) {
       return fullPath;
     }
 
-    // Check for dots in keys (prototype pollution)
+    // Prototype pollution
     if (key.includes(".")) {
       return fullPath;
     }
 
-    // Check for __proto__ or constructor
     if (key === "__proto__" || key === "constructor" || key === "prototype") {
       return fullPath;
     }
 
-    // Recursively check nested objects
     const result = hasDangerousKeys(obj[key], fullPath);
     if (result) return result;
   }
@@ -56,17 +54,20 @@ export const mongoSanitize = (
 
   return (req: Request, _res: Response, next: NextFunction) => {
     try {
-      // Check body
+      // BODY
       if (req.body) {
         const dangerousKey = hasDangerousKeys(req.body, "body");
         if (dangerousKey) {
           if (logAttempts) {
-            logger.warn("NoSQL injection attempt detected", {
-              ip: req.ip,
-              path: req.path,
-              key: dangerousKey,
-              body: req.body,
-            });
+            logger.warn(
+              {
+                ip: req.ip,
+                path: req.path,
+                key: dangerousKey,
+                body: req.body,
+              },
+              "🚨 NoSQL injection attempt detected in body"
+            );
           }
 
           if (onSanitize === "error") {
@@ -79,16 +80,19 @@ export const mongoSanitize = (
         }
       }
 
-      // Check params
+      // PARAMS
       if (req.params) {
         const dangerousKey = hasDangerousKeys(req.params, "params");
         if (dangerousKey) {
           if (logAttempts) {
-            logger.warn("NoSQL injection attempt in params", {
-              ip: req.ip,
-              path: req.path,
-              key: dangerousKey,
-            });
+            logger.warn(
+              {
+                ip: req.ip,
+                path: req.path,
+                key: dangerousKey,
+              },
+              "🚨 NoSQL injection attempt detected in params"
+            );
           }
 
           if (onSanitize === "error") {
@@ -101,16 +105,19 @@ export const mongoSanitize = (
         }
       }
 
-      // Check query
+      // QUERY
       if (req.query) {
         const dangerousKey = hasDangerousKeys(req.query, "query");
         if (dangerousKey) {
           if (logAttempts) {
-            logger.warn("NoSQL injection attempt in query", {
-              ip: req.ip,
-              path: req.path,
-              key: dangerousKey,
-            });
+            logger.warn(
+              {
+                ip: req.ip,
+                path: req.path,
+                key: dangerousKey,
+              },
+              "🚨 NoSQL injection attempt detected in query"
+            );
           }
 
           if (onSanitize === "error") {

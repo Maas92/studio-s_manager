@@ -4,7 +4,7 @@ import AppError from "../utils/appError.js";
 import * as jwtUtils from "../config/jwt.js";
 import User from "../models/userModel.js";
 import { JWTPayload } from "jose";
-import { logger } from "../utils/logger.js";
+import logger from "../utils/logger.js";
 
 export const protect = catchAsync(
   async (req: any, res: Response, next: NextFunction) => {
@@ -18,6 +18,7 @@ export const protect = catchAsync(
 
     const token = tokenFromHeader || tokenFromCookie;
     if (!token) {
+      logger.warn("❌ No JWT token provided");
       return next(
         AppError.unauthorized(
           "You are not logged in! Please log in to get access."
@@ -30,22 +31,25 @@ export const protect = catchAsync(
     try {
       verified = await jwtUtils.verifyToken(token);
     } catch (err: any) {
-      // Token invalid/expired
+      logger.warn({ err }, "❌ Invalid or expired JWT");
       return next(AppError.unauthorized("Invalid or expired token"));
     }
 
     const payload = verified.payload as JWTPayload;
-    // payload.sub is the standard subject claim; your signToken should set sub to user id
+
+    // payload.sub should contain user id
     const userId = payload.sub as string | undefined;
     if (!userId) {
+      logger.warn("❌ JWT payload missing subject (sub)");
       return next(
         AppError.unauthorized("Token does not contain subject (sub)")
       );
     }
 
     // 3) ensure user still exists
-    const user = await User.findById(userId).select("+role +email"); // adjust select as needed
+    const user = await User.findById(userId).select("+role +email");
     if (!user) {
+      logger.warn({ userId }, "❌ User not found for valid JWT");
       return next(
         AppError.unauthorized(
           "The user belonging to this token no longer exists."
@@ -60,6 +64,11 @@ export const protect = catchAsync(
       role: user.role,
     };
 
+    logger.debug(
+      { userId: user.id, role: user.role },
+      "✅ Authenticated user attached to request"
+    );
+
     next();
   }
 );
@@ -67,13 +76,20 @@ export const protect = catchAsync(
 export const restrictTo = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
+      logger.warn("⚠️ restrictTo called without authenticated user");
       return next(AppError.unauthorized("You are not logged in"));
     }
 
     if (!roles.includes(req.user.role)) {
       logger.warn(
-        `Unauthorized access attempt by user ${req.user.id} with role ${req.user.role}`
+        {
+          userId: req.user.id,
+          role: req.user.role,
+          allowedRoles: roles,
+        },
+        "🚫 Unauthorized role access attempt"
       );
+
       return next(
         AppError.forbidden("You do not have permission to perform this action")
       );

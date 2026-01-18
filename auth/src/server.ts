@@ -1,99 +1,76 @@
-import pino from "pino";
+import app from "./app.js";
+import { env } from "./config/env.js";
+import { logStartup, logger } from "./utils/logger.js";
+import { connectDatabase, disconnectDatabase } from "./config/database.js";
+import { initKeys } from "./config/jwt.js";
+import { tokenService } from "./services/tokenService.js";
 
-const NODE_ENV = process.env.NODE_ENV || "development";
-const LOG_LEVEL =
-  process.env.LOG_LEVEL || (NODE_ENV === "production" ? "info" : "debug");
-
-const SERVICE_NAME = process.env.SERVICE_NAME || "app-service";
-
-/**
- * Base Pino logger
- */
-export const logger = pino({
-  level: LOG_LEVEL,
-  base: {
-    service: SERVICE_NAME,
-    env: NODE_ENV,
-  },
-
-  // Loki prefers epoch millis or RFC3339
-  timestamp: pino.stdTimeFunctions.epochTime,
-
-  formatters: {
-    level(label) {
-      return { level: label };
+// Handle uncaught exceptions
+process.on("uncaughtException", (err: Error) => {
+  logger.error(
+    {
+      error: err.name,
+      message: err.message,
+      stack: err.stack,
     },
-  },
+    "UNCAUGHT EXCEPTION! Shutting down..."
+  );
+  process.exit(1);
 });
 
-/**
- * Create a child logger for modules
- */
-export const createModuleLogger = (module: string) => logger.child({ module });
+let server: any;
 
-/**
- * Express HTTP logger (Morgan replacement)
- */
-export function httpLogger(req: any, res: any, next: any) {
-  const start = process.hrtime.bigint();
+async function bootstrap() {
+  try {
+    // Initialize JWT keys
+    await initKeys();
+    logger.info("JWT keys initialized");
 
-  res.on("finish", () => {
-    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
+    // Connect to database
+    await connectDatabase();
+    logger.info("Database connected successfully");
 
-    logger.info(
-      {
-        method: req.method,
-        path: req.originalUrl,
-        statusCode: res.statusCode,
-        durationMs,
-        requestId: req.requestId ?? req.id,
+    // Start session cleanup job (every hour)
+    setInterval(
+      async () => {
+        try {
+          await tokenService.cleanupExpiredSessions();
+        } catch (error) {
+          logger.error({ error }, "Session cleanup error");
+        }
       },
-      "🌐 HTTP request completed"
-    );
-  });
+      60 * 60 * 1000
+    ); // 1 hour
 
-  next();
-}
+    // Start Express server
+    const PORT = env.PORT || 5002;
+    server = app.listen(PORT, () => {
+      logStartup({
+        service: env.SERVICE_NAME || "auth-service",
+        port: PORT,
+        env: env.NODE_ENV || "development",
+      });
 
-/**
- * Startup logging
- */
-export function logStartup(config: {
-  service: string;
-  port: number;
-  env: string;
-  version?: string;
-}) {
-  logger.info(
-    {
-      service: config.service,
-      port: config.port,
-      env: config.env,
-      version: config.version,
-    },
-    "🚀 Service starting"
-  );
-}
+      logger.info(`🚀 Auth service running on port ${PORT}`);
+      logger.info(`Environment: ${env.NODE_ENV}`);
+      logger.info(`CORS origin: ${env.CORS_ORIGIN}`);
+    });
 
-/**
- * Database connection logging
- */
-export function logDatabaseConnection(
-  status: "success" | "error",
-  details?: Record<string, any>
-) {
-  if (status === "success") {
-    logger.info(details ?? {}, "🗄️ Database connected");
-  } else {
-    logger.error(details ?? {}, "❌ Database connection failed");
+    // Graceful shutdown on SIGTERM / SIGINT
+    const shutdown = async (signal: string) => {
+      logger.info(`Received ${signal}. Shutting down gracefully...`);
+      if (server) server.close();
+      await disconnectDatabase();
+      logger.info("Shutdown complete");
+      process.exit(0);
+    };
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+  } catch (error) {
+    logger.error({ error }, "Bootstrap error, shutting down");
+    process.exit(1);
   }
 }
 
-/**
- * Graceful shutdown logging
- */
-export function logShutdown(reason?: string) {
-  logger.info({ reason }, "🛑 Service shutting down gracefully");
-}
-
-export default logger;
+// Run bootstrap
+bootstrap();

@@ -33,7 +33,7 @@ export default function verifyGateway(
   }
 
   // ✅ Allow safe public endpoints
-  const whitelist = ["/health", "/healthcheck", "/"];
+  const whitelist = ["/health", "/healthcheck", "/", "/metrics"];
   if (whitelist.includes(req.path)) {
     return next();
   }

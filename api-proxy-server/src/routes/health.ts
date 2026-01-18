@@ -23,15 +23,15 @@ const checkService = async (url: string, timeout = 2000): Promise<boolean> => {
       timeout,
       validateStatus: (status) => status === 200,
     });
-    return response.data.ok === true || response.status === 200;
-  } catch (error) {
+    return response.data?.ok === true || response.status === 200;
+  } catch {
     return false;
   }
 };
 
 router.get(
   "/",
-  catchAsync(async (req: Request, res: Response) => {
+  catchAsync(async (_req: Request, res: Response) => {
     const [authHealthy, inventoryHealthy] = await Promise.all([
       checkService(env.AUTH_SERVICE_URL),
       checkService(env.INVENTORY_SERVICE_URL),
@@ -48,36 +48,42 @@ router.get(
       },
     };
 
-    // Determine overall status
     if (!authHealthy || !inventoryHealthy) {
       health.status = "degraded";
     }
 
     const statusCode = health.status === "ok" ? 200 : 503;
 
-    logger.info("Health check performed", {
-      status: health.status,
-      services: health.services,
-    });
+    logger.info(
+      {
+        status: health.status,
+        services: health.services,
+        uptime: health.uptime,
+      },
+      "💓 Health check performed"
+    );
 
     res.status(statusCode).json(health);
   })
 );
 
 // Liveness probe (always returns 200 if server is running)
-router.get("/live", (req: Request, res: Response) => {
+router.get("/live", (_req: Request, res: Response) => {
+  logger.debug("🫀 Liveness probe OK");
   res.status(200).json({ status: "alive" });
 });
 
 // Readiness probe (checks if ready to accept traffic)
 router.get(
   "/ready",
-  catchAsync(async (req: Request, res: Response) => {
+  catchAsync(async (_req: Request, res: Response) => {
     const authHealthy = await checkService(env.AUTH_SERVICE_URL, 1000);
 
     if (authHealthy) {
+      logger.info("✅ Readiness probe OK");
       res.status(200).json({ status: "ready" });
     } else {
+      logger.warn("⚠️ Readiness probe failed");
       res.status(503).json({ status: "not ready" });
     }
   })

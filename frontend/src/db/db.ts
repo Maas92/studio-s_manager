@@ -1,4 +1,3 @@
-// src/db/db.ts
 import Dexie, { type Table } from "dexie";
 import {
   type Booking,

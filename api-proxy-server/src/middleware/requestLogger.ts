@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { logger } from "../utils/logger.js";
+import logger from "../utils/logger.js";
 
 export const requestLogger = (
   req: Request,
@@ -10,20 +10,21 @@ export const requestLogger = (
 
   res.on("finish", () => {
     const duration = Date.now() - start;
+
     const logData = {
       requestId: req.requestId,
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
-      duration: `${duration}ms`,
+      durationMs: duration,
       userAgent: req.get("user-agent"),
       ip: req.ip,
     };
 
     if (res.statusCode >= 400) {
-      logger.warn("HTTP Request", logData);
+      logger.warn(logData, "⚠️ HTTP request completed with error");
     } else {
-      logger.info("HTTP Request", logData);
+      logger.info(logData, "✅ HTTP request completed");
     }
   });
 

@@ -11,17 +11,27 @@ export const mapAuthToUser = (
       id: req.auth.sub,
       email: req.auth.email,
       role: req.auth.role,
-      // Map any other fields you need
       firstName: req.auth.firstName,
       lastName: req.auth.lastName,
     };
-    logger.debug("✅ Mapped req.auth to req.user:", {
-      id: req.user.id,
-      email: req.user.email,
-      role: req.user.role,
-    });
+
+    logger.debug(
+      {
+        userId: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+      },
+      "Mapped req.auth to req.user"
+    );
   } else {
-    logger.warn("⚠️ No req.auth found - user not authenticated");
+    logger.warn(
+      {
+        path: req.path,
+        method: req.method,
+      },
+      "No req.auth found – user not authenticated"
+    );
   }
+
   next();
 };

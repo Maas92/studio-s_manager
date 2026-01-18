@@ -84,33 +84,8 @@ export interface SaleItem {
   created_at: Date;
 }
 
-export type SyncStatus = "pending" | "syncing" | "synced" | "failed";
 export type EventType = string; // e.g., 'booking_created', 'client_updated'
 export type EntityType = "bookings" | "clients" | "payments" | "staff";
-
-export interface OutboxEntry {
-  id: number;
-  event_type: EventType;
-  entity_type: EntityType;
-  entity_id: string | null;
-  payload: Record<string, any>;
-  sync_status: SyncStatus;
-  retry_count: number;
-  last_retry_at: Date | null;
-  error_message: string | null;
-  created_at: Date;
-  synced_at: Date | null;
-}
-
-export interface SyncLogEntry {
-  id: number;
-  outbox_id: number;
-  sync_started_at: Date;
-  sync_completed_at: Date | null;
-  sync_status: string;
-  error_message: string | null;
-  retry_attempt: number;
-}
 
 export interface HealthCheck {
   id: number;
@@ -160,12 +135,6 @@ export interface WriteResult {
   offline?: boolean;
   data?: any;
   message?: string;
-}
-
-export interface SyncResult {
-  success: boolean;
-  data?: any;
-  error?: string;
 }
 
 export interface APIResponse<T = any> {

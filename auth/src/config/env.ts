@@ -39,6 +39,7 @@ const envSchema = z.object({
 
   // Logging
   LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
+  SERVICE_NAME: z.string().default("auth-service"),
 });
 
 export type Environment = z.infer<typeof envSchema>;
