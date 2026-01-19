@@ -4,6 +4,7 @@ import ActionButton from "./components/ActionButton";
 import {
   Calendar,
   DollarSign,
+  Mails,
   Package,
   Paintbrush,
   ShoppingCart,
@@ -22,6 +23,7 @@ type Tab = {
 
 const DEFAULT_TABS: Tab[] = [
   { id: "dashboard", to: "/", label: "Dashboard", icon: TrendingUp },
+  { id: "outbox", to: "/outbox", label: "Offline Manager", icon: Mails },
   {
     id: "appointments",
     to: "/appointments",

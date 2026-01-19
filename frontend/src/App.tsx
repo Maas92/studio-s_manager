@@ -10,7 +10,7 @@ import { router } from "./routes/router.js";
 // import { theme } from "./ui/Theme.js";
 import { ThemeProvider } from "./contexts/ThemeContext.js";
 import { useEffect } from "react";
-import { setupInterceptors } from "./services/api.js";
+import { outboxManager } from "./utils/outboxManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +23,17 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  useEffect(() => {
+    // Initialize the outbox manager when app loads
+    outboxManager.initialize();
+  }, []);
+
+  outboxManager.updateConfig({
+    maxRetries: 5,
+    retryDelays: [2000, 5000, 10000, 30000, 60000],
+    // apiBaseUrl: "https://api.yourapp.com",
+  });
+
   return (
     <QueryClientProvider client={queryClient}>
       <ReactQueryDevtools initialIsOpen={false} />

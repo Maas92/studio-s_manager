@@ -20,6 +20,11 @@ import { useStaff } from "../staff/useStaff";
 import { useStock } from "../stock/useStock";
 import { usePos } from "./usePOS";
 import useAuth from "../../hooks/useAuth";
+import { useOutbox } from "../../hooks/useOutbox";
+import {
+  useCreateTransactionWithOutbox,
+  useCreateClientWithOutbox,
+} from "./apiWithOutbox";
 
 import type { CartItem } from "./POSSchema";
 
@@ -139,20 +144,22 @@ export default function PointOfSale() {
   // ============================================================================
   // HOOKS
   // ============================================================================
-  const { listQuery: clientsQuery, createMutation: createClientMutation } =
-    useClients();
+  const { listQuery: clientsQuery } = useClients();
   const { listQuery: appointmentsQuery } = useAppointments();
   const { listQuery: treatmentsQuery } = useTreatments();
   const { listQuery: staffQuery } = useStaff();
   const { listQuery: stockQuery, updateMutation: stockUpdateMutation } =
     useStock();
-  const { createMutation: createTransactionMutation } = usePos();
+  // const { createMutation: createTransactionMutation } = usePos();
+  const createTransactionMutation = useCreateTransactionWithOutbox();
+  const { isOnline, stats } = useOutbox();
 
   const clients = clientsQuery.data ?? [];
   const appointments = appointmentsQuery.data ?? [];
   const treatments = treatmentsQuery.data ?? [];
   const staff = staffQuery.data ?? [];
   const stockItems = stockQuery.data ?? [];
+  const createClientMutation = useCreateClientWithOutbox();
 
   // ============================================================================
   // PRODUCT STOCK MAP
@@ -460,23 +467,31 @@ export default function PointOfSale() {
 
         const tx = await createTransactionMutation.mutateAsync(payload as any);
 
-        // Update stock for products
-        const productItems = cart.filter((i) => i.type === "product");
-        await Promise.allSettled(
-          productItems.map((p) => {
-            const stockItem = stockItems.find(
-              (s) => s.id === (p.productId || p.id) && s.location === "retail"
-            );
-            if (!stockItem) return Promise.resolve();
+        if (isOnline) {
+          // Update stock for products
+          const productItems = cart.filter((i) => i.type === "product");
+          await Promise.allSettled(
+            productItems.map((p) => {
+              const stockItem = stockItems.find(
+                (s) => s.id === (p.productId || p.id) && s.location === "retail"
+              );
+              if (!stockItem) return Promise.resolve();
 
-            return stockUpdateMutation.mutateAsync({
-              id: stockItem.id,
-              updates: {
-                quantity: Math.max(0, stockItem.quantity - p.quantity),
-              },
-            });
-          })
-        );
+              return stockUpdateMutation.mutateAsync({
+                id: stockItem.id,
+                updates: {
+                  quantity: Math.max(0, stockItem.quantity - p.quantity),
+                },
+              });
+            })
+          );
+        } else {
+          // If offline, show message that stock will be updated on sync
+          toast.error(
+            "Stock updates will be applied when connection is restored",
+            { duration: 4000 }
+          );
+        }
 
         setCompletedTransaction(tx);
         setCurrentStep(5);
@@ -504,6 +519,7 @@ export default function PointOfSale() {
       stockUpdateMutation,
       qc,
       clearDraft,
+      isOnline,
     ]
   );
 
@@ -532,6 +548,51 @@ export default function PointOfSale() {
         <Header>
           <Title>Point of Sale</Title>
           <HeaderActions>
+            {/* ADD: Show pending transaction indicator */}
+            {stats.pending > 0 && (
+              <div
+                style={{
+                  padding: "0.5rem 1rem",
+                  background: "var(--color-yellow100)",
+                  border: "1px solid var(--color-yellow700)",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <span
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "var(--color-yellow700)",
+                    animation: "pulse 2s ease-in-out infinite",
+                  }}
+                />
+                {stats.pending} pending sync
+              </div>
+            )}
+
+            {/* ADD: Show offline indicator if offline */}
+            {!isOnline && (
+              <div
+                style={{
+                  padding: "0.5rem 1rem",
+                  background: "var(--color-red100)",
+                  border: "1px solid var(--color-red500)",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  color: "var(--color-red600)",
+                }}
+              >
+                Offline Mode
+              </div>
+            )}
+
             {currentStep > 1 && currentStep < 5 && (
               <>
                 <Button

@@ -2,6 +2,8 @@ import styled from "styled-components";
 import Button from "./components/Button";
 import { useAuth } from "../modules/auth/AuthContext";
 import ThemeSwitch from "./components/ThemeSwitch.js";
+import OutboxIndicator from "./components/OutboxIndicator";
+import OfflineWarningBanner from "./components/OfflineWarningBanner";
 
 const Bar = styled.header`
   grid-area: topbar;
@@ -30,6 +32,8 @@ export default function Topbar() {
       <div style={{ marginRight: "auto", opacity: 0.8 }}>
         Welcome {user?.name}
       </div>
+      <OutboxIndicator />
+      <OfflineWarningBanner showSyncButton />
       <ThemeSwitch />
       <Button onClick={signOut}>Sign out</Button>
     </Bar>

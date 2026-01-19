@@ -12,6 +12,7 @@ import NotFound from "../ui/NotFound.js";
 import Staff from "../modules/staff/Staff";
 import POS from "../modules/POS/POS";
 import CashUp from "../modules/cashup/CashUp";
+import OutboxManager from "../modules/outbox/Admin.js";
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: "staff", element: <Staff /> },
       { path: "appointments", element: <Appointments /> },
       { path: "cashup", element: <CashUp /> },
+      { path: "outbox", element: <OutboxManager /> },
       // 👇 catch-all for unknown routes inside the app shell
       { path: "*", element: <NotFound /> },
     ],
