@@ -22,6 +22,7 @@ def combine_code(root_path, output_file="combined_code.txt", pattern=None):
         "__pycache__",
         ".next",
         "venv",
+        ".venv",
         "env",
     ]
 

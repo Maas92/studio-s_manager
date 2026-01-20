@@ -5,7 +5,7 @@ Provides REST API to trigger and manage workflows
 
 import asyncio
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -65,14 +65,14 @@ class MarketingCampaignRequest(BaseModel):
 class WorkflowStatusResponse(BaseModel):
     workflow_id: str
     status: str
-    result: Optional[dict] = None
+    result: Optional[Dict[str, Any]] = None
 
 
 # Startup/Shutdown events
 
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     """Initialize Temporal client on startup"""
     global temporal_client
 
@@ -82,10 +82,12 @@ async def startup():
 
 
 @app.on_event("shutdown")
-async def shutdown():
+async def shutdown() -> None:
     """Close Temporal client on shutdown"""
-    if temporal_client:
-        await temporal_client.close()
+    global temporal_client
+    if temporal_client is not None:
+        # Temporal client doesn't have a close method, just set to None
+        temporal_client = None
     logger.info("Disconnected from Temporal server")
 
 
@@ -93,7 +95,7 @@ async def shutdown():
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> Dict[str, Any]:
     """Health check endpoint"""
     return {
         "status": "healthy",
@@ -105,7 +107,9 @@ async def health_check():
 
 
 @app.post("/workflows/booking/start", response_model=WorkflowStatusResponse)
-async def start_booking_workflow(request: StartBookingWorkflowRequest):
+async def start_booking_workflow(
+    request: StartBookingWorkflowRequest,
+) -> WorkflowStatusResponse:
     """
     Start a new appointment booking workflow.
     This will send confirmation immediately and schedule reminders/aftercare.
@@ -129,7 +133,7 @@ async def start_booking_workflow(request: StartBookingWorkflowRequest):
         )
 
         # Start workflow
-        handle = await temporal_client.start_workflow(
+        handle: WorkflowHandle = await temporal_client.start_workflow(
             AppointmentBookingWorkflow.run,
             workflow_input,
             id=workflow_id,
@@ -139,7 +143,7 @@ async def start_booking_workflow(request: StartBookingWorkflowRequest):
         )
 
         logger.info(
-            f"Started booking workflow",
+            "Started booking workflow",
             workflow_id=workflow_id,
             booking_id=request.booking_id,
         )
@@ -155,7 +159,7 @@ async def start_booking_workflow(request: StartBookingWorkflowRequest):
 
 
 @app.post("/workflows/booking/cancel")
-async def cancel_booking_workflow(request: CancelWorkflowRequest):
+async def cancel_booking_workflow(request: CancelWorkflowRequest) -> Dict[str, Any]:
     """
     Cancel an existing booking workflow and send cancellation notification.
     This will stop all pending reminders/aftercare.
@@ -175,13 +179,13 @@ async def cancel_booking_workflow(request: CancelWorkflowRequest):
             )
 
         # Get workflow handle
-        handle = temporal_client.get_workflow_handle(workflow_id)
+        handle: WorkflowHandle = temporal_client.get_workflow_handle(workflow_id)
 
         # Send cancellation signal to stop the workflow
         await handle.signal(AppointmentBookingWorkflow.cancel)
 
         logger.info(
-            f"Sent cancellation signal to workflow",
+            "Sent cancellation signal to workflow",
             workflow_id=workflow_id,
             booking_id=request.booking_id,
         )
@@ -222,7 +226,9 @@ async def cancel_booking_workflow(request: CancelWorkflowRequest):
 
 
 @app.post("/workflows/booking/reschedule")
-async def reschedule_booking_workflow(request: RescheduleWorkflowRequest):
+async def reschedule_booking_workflow(
+    request: RescheduleWorkflowRequest,
+) -> Dict[str, Any]:
     """
     Reschedule a booking by cancelling old workflow and starting new one.
     """
@@ -235,7 +241,9 @@ async def reschedule_booking_workflow(request: RescheduleWorkflowRequest):
         old_workflow_id = await _find_booking_workflow(request.booking_id)
 
         if old_workflow_id:
-            handle = temporal_client.get_workflow_handle(old_workflow_id)
+            handle: WorkflowHandle = temporal_client.get_workflow_handle(
+                old_workflow_id
+            )
             await handle.signal(AppointmentBookingWorkflow.cancel)
             logger.info(f"Cancelled old workflow: {old_workflow_id}")
 
@@ -296,7 +304,7 @@ async def reschedule_booking_workflow(request: RescheduleWorkflowRequest):
 
 
 @app.post("/workflows/marketing/start")
-async def start_marketing_campaign(request: MarketingCampaignRequest):
+async def start_marketing_campaign(request: MarketingCampaignRequest) -> Dict[str, str]:
     """
     Start a marketing campaign workflow.
     This will send messages to all eligible clients with rate limiting.
@@ -310,7 +318,7 @@ async def start_marketing_campaign(request: MarketingCampaignRequest):
     )
 
     try:
-        handle = await temporal_client.start_workflow(
+        handle: WorkflowHandle = await temporal_client.start_workflow(
             MarketingCampaignWorkflow.run,
             args=[request.campaign_id, request.message_template],
             id=workflow_id,
@@ -318,7 +326,7 @@ async def start_marketing_campaign(request: MarketingCampaignRequest):
         )
 
         logger.info(
-            f"Started marketing campaign workflow",
+            "Started marketing campaign workflow",
             workflow_id=workflow_id,
             campaign_id=request.campaign_id,
         )
@@ -334,23 +342,23 @@ async def start_marketing_campaign(request: MarketingCampaignRequest):
 
 
 @app.get("/workflows/{workflow_id}/status")
-async def get_workflow_status(workflow_id: str):
+async def get_workflow_status(workflow_id: str) -> Dict[str, Any]:
     """Get the current status of a workflow"""
 
     if not temporal_client:
         raise HTTPException(status_code=503, detail="Temporal client not connected")
 
     try:
-        handle = temporal_client.get_workflow_handle(workflow_id)
+        handle: WorkflowHandle = temporal_client.get_workflow_handle(workflow_id)
 
         # Try to get workflow description
         desc = await handle.describe()
 
-        result = None
+        result: Optional[Any] = None
         if desc.status.name in ["COMPLETED", "FAILED", "CANCELLED"]:
             try:
                 result = await handle.result()
-            except:
+            except Exception:
                 pass
 
         return {
@@ -367,7 +375,7 @@ async def get_workflow_status(workflow_id: str):
 
 
 @app.get("/workflows/booking/{booking_id}")
-async def get_booking_workflow(booking_id: int):
+async def get_booking_workflow(booking_id: int) -> Dict[str, Any]:
     """Find active workflow for a booking"""
 
     if not temporal_client:
@@ -383,7 +391,7 @@ async def get_booking_workflow(booking_id: int):
             )
 
         # Get workflow status
-        handle = temporal_client.get_workflow_handle(workflow_id)
+        handle: WorkflowHandle = temporal_client.get_workflow_handle(workflow_id)
         desc = await handle.describe()
 
         # Query workflow state

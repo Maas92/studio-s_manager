@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import structlog
+from config import get_settings
 from database import Booking, Client, NotificationLog, get_db_session
 from services.message_templates import MessageTemplates
 

@@ -2,11 +2,8 @@
 Configuration management using Pydantic settings
 """
 
-import os
 from functools import lru_cache
-from typing import Optional
 
-from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,21 +11,21 @@ class Settings(BaseSettings):
     """Application settings"""
 
     # Temporal Configuration
-    TEMPORAL_HOST: str = os.getenv("TEMPORAL_HOST", "temporal:7233")
-    TEMPORAL_NAMESPACE: str = os.getenv("TEMPORAL_NAMESPACE", "default")
-    TEMPORAL_TASK_QUEUE: str = os.getenv("TEMPORAL_TASK_QUEUE", "notifications-queue")
+    TEMPORAL_HOST: str = "temporal:7233"
+    TEMPORAL_NAMESPACE: str = "default"
+    TEMPORAL_TASK_QUEUE: str = "notifications-queue"
 
     # Database Configuration
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    DATABASE_URL: str
 
     # WhatsApp Provider (ChakraHQ)
-    CHAKRA_API_KEY: str = os.getenv("CHAKRA_API_KEY", "")
-    CHAKRA_API_URL: str = os.getenv("CHAKRA_API_URL", "https://api.chakrahq.com/v1")
+    CHAKRA_API_KEY: str
+    CHAKRA_API_URL: str = "https://api.chakrahq.com/v1"
 
     # Business Information
-    BUSINESS_NAME: str = os.getenv("BUSINESS_NAME", "STUDIO S BEAUTY BAR")
-    BUSINESS_PHONE: str = os.getenv("BUSINESS_PHONE", "")
-    BUSINESS_ADDRESS: str = os.getenv("BUSINESS_ADDRESS", "")
+    BUSINESS_NAME: str = "STUDIO S BEAUTY BAR"
+    BUSINESS_PHONE: str
+    BUSINESS_ADDRESS: str
 
     # Notification Settings
     MAX_RETRY_ATTEMPTS: int = 5
@@ -40,15 +37,15 @@ class Settings(BaseSettings):
     WHATSAPP_RATE_LIMIT_PER_MINUTE: int = 60
 
     # Timing Configuration
-    REMINDER_24H_HOURS_BEFORE: int = int(os.getenv("REMINDER_24H_HOURS_BEFORE", "24"))
-    REMINDER_1H_HOURS_BEFORE: int = int(os.getenv("REMINDER_1H_HOURS_BEFORE", "1"))
-    AFTERCARE_HOURS_AFTER: int = int(os.getenv("AFTERCARE_HOURS_AFTER", "3"))
+    REMINDER_24H_HOURS_BEFORE: int = 24
+    REMINDER_1H_HOURS_BEFORE: int = 1
+    AFTERCARE_HOURS_AFTER: int = 3
 
     # Marketing Campaign Settings
     MARKETING_INACTIVE_DAYS: int = 60
 
     # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_LEVEL: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env",

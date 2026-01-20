@@ -6,13 +6,13 @@ Executes workflows and activities
 import asyncio
 
 import structlog
-from activities import NotificationActivities
+from activities import NotificationActivities  # Changed
 from config import get_settings
 from services.message_templates import MessageTemplates
 from services.whatsapp_provider import WhatsAppProvider
 from temporalio.client import Client
 from temporalio.worker import Worker
-from workflow import (
+from workflow import (  # Changed
     AppointmentBookingWorkflow,
     CancellationWorkflow,
     MarketingCampaignWorkflow,
@@ -60,7 +60,7 @@ async def main():
     # Create worker
     worker = Worker(
         client,
-        task_queue="notifications-queue",
+        task_queue=settings.TEMPORAL_TASK_QUEUE,  # Use from config
         workflows=[
             AppointmentBookingWorkflow,
             CancellationWorkflow,
@@ -78,13 +78,13 @@ async def main():
             activities_instance.get_eligible_marketing_clients,
             activities_instance.send_marketing_message,
         ],
-        max_concurrent_activities=10,  # Limit concurrent activities
-        max_concurrent_workflow_tasks=50,  # Handle more workflows
+        max_concurrent_activities=10,
+        max_concurrent_workflow_tasks=50,
     )
 
     logger.info(
         "Starting Temporal worker",
-        task_queue="notifications-queue",
+        task_queue=settings.TEMPORAL_TASK_QUEUE,
         workflows=4,
         activities=9,
     )
