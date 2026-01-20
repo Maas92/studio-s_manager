@@ -46,16 +46,16 @@ app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "healthy", service: "inventory-service" });
 });
 
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
+
 app.use("", api);
 
 // Handle undefined routes
 app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
-
-// Use metrics middleware
-app.use(metricsMiddleware);
-app.get("/metrics", metricsEndpoint);
 
 // Global error handler
 app.use(globalErrorHandler);

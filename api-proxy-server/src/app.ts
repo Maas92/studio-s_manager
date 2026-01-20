@@ -22,8 +22,15 @@ app.set("trust proxy", 1);
 // Cookie parser
 app.use(cookieParser());
 
+// Whitelist public endpoints that don't need JWT
+const publicPaths = ["/health", "/healthcheck", "/metrics"];
+
 // middleware: if Authorization header missing, try jwt cookie
 app.use((req, _res, next) => {
+  if (publicPaths.includes(req.path)) {
+    return next();
+  }
+
   const authHeader = req.get("authorization") || req.headers.authorization;
   if (!authHeader) {
     // cookie-parser populates req.cookies
@@ -44,7 +51,7 @@ app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 // CORS
@@ -69,7 +76,7 @@ app.use(
     extended: true,
     limit: "10kb",
     parameterLimit: 1000,
-  })
+  }),
 );
 
 // Request ID for correlation
@@ -82,6 +89,10 @@ app.use(queryParser);
 
 app.use(httpLogger);
 
+// Use metrics middleware
+app.use(metricsMiddleware);
+app.get("/metrics", metricsEndpoint);
+
 // Setup routes
 setupRoutes(app);
 
@@ -89,10 +100,6 @@ setupRoutes(app);
 app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server`, 404));
 });
-
-// Use metrics middleware
-app.use(metricsMiddleware);
-app.get("/metrics", metricsEndpoint);
 
 // Global error handler
 app.use(errorHandler);

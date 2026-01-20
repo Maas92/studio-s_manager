@@ -30,14 +30,14 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 // Security HTTP headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 // request ID middlware
@@ -57,14 +57,14 @@ app.use(
   mongoSanitize({
     onSanitize: "error", // or "remove" to silently remove
     logAttempts: true,
-  })
+  }),
 );
 
 // Prevent parameter pollution
 app.use(
   hpp({
     whitelist: ["role", "specializations"],
-  })
+  }),
 );
 
 // Compression
@@ -77,6 +77,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use(httpLogger);
+
+// Use metrics middleware
+app.use(metricsMiddleware);
 
 // JWKS endpoint
 app.get("/.well-known/jwks.json", (req: Request, res: Response) => {
@@ -93,13 +96,11 @@ app.get("/health", (req: Request, res: Response) => {
   });
 });
 
+app.get("/metrics", metricsEndpoint);
+
 // API routes
 app.use("/", authRouter);
 app.use("/api/v1/users", globalLimiter, userRouter);
-
-// Use metrics middleware
-app.use(metricsMiddleware);
-app.get("/metrics", metricsEndpoint);
 
 // 404 handler
 app.use((req: Request, res: Response, next: NextFunction) => {

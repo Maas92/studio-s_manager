@@ -1,229 +1,158 @@
 """
-WhatsApp message templates for different notification types
+WhatsApp message templates
 """
 
 from datetime import datetime
-from typing import Any, Dict
-
-from config import settings
+from typing import Optional
 
 
 class MessageTemplates:
-    """Message template generator for various notification types"""
+    """Message template generator"""
 
-    @staticmethod
-    def format_datetime(dt: datetime) -> str:
-        """Format datetime for display"""
-        return dt.strftime("%A, %B %d, %Y at %I:%M %p")
+    def __init__(
+        self,
+        business_name: str,
+        business_phone: str,
+        business_address: str,
+    ):
+        self.business_name = business_name
+        self.business_phone = business_phone
+        self.business_address = business_address
 
-    @staticmethod
-    def format_date(dt: datetime) -> str:
-        """Format date only"""
-        return dt.strftime("%A, %B %d, %Y")
+    def confirmation_message(
+        self,
+        client_name: str,
+        appointment_date: str,
+        appointment_time: str,
+        treatment_name: str,
+        staff_name: str,
+        location: str,
+    ) -> str:
+        """Generate booking confirmation message"""
+        return f"""Hi {client_name}! ✨
 
-    @staticmethod
-    def format_time(dt: datetime) -> str:
-        """Format time only"""
-        return dt.strftime("%I:%M %p")
+Your appointment has been confirmed!
 
-    @staticmethod
-    def confirmation(booking_data: Dict[str, Any]) -> str:
-        """
-        Booking confirmation message
+📅 Date: {appointment_date}
+🕐 Time: {appointment_time}
+💆 Treatment: {treatment_name}
+👤 With: {staff_name}
+📍 Location: {location}
 
-        Args:
-            booking_data: Dict containing booking and client information
-        """
-        client_name = booking_data.get("client_name", "Valued Client")
-        booking_date = booking_data.get("booking_date", datetime.now())
-        start_time = booking_data.get("start_time", datetime.now())
-        treatment_name = booking_data.get("treatment_name", "your treatment")
-        staff_name = booking_data.get("staff_name", "our staff")
-        location = booking_data.get(
-            "location", settings.BUSINESS_ADDRESS or "our salon"
-        )
+We look forward to seeing you!
 
-        message = f"""✨ {settings.BUSINESS_NAME} - Booking Confirmed ✨
+If you need to reschedule, please contact us at {self.business_phone}.
 
-        Hello {client_name}!
-        
-        Your appointment has been confirmed:
-        
-        📅 Date: {MessageTemplates.format_date(booking_date)}
-        🕐 Time: {MessageTemplates.format_time(start_time)}
-        💆 Treatment: {treatment_name}
-        👤 With: {staff_name}
-        📍 Location: {location}
-        """
+- {self.business_name}"""
 
-        if booking_data.get("deposit_required"):
-            deposit = booking_data.get("deposit_amount", 0)
-            message += f"\n💳 Deposit Required: R{deposit:.2f}"
+    def reminder_24h_message(
+        self,
+        client_name: str,
+        appointment_date: str,
+        appointment_time: str,
+        treatment_name: str,
+        staff_name: str,
+    ) -> str:
+        """Generate 24-hour reminder message"""
+        return f"""Hi {client_name}! 👋
 
-        message += f"""
+Just a friendly reminder about your appointment tomorrow:
 
-        We look forward to seeing you! 
-        
-        If you need to reschedule or cancel, please contact us at least 24 hours in advance.
-        
-        {settings.BUSINESS_PHONE or ''}
-        {settings.SUPPORT_EMAIL or ''}
-        """
-        return message.strip()
+📅 {appointment_date} at {appointment_time}
+💆 {treatment_name} with {staff_name}
 
-    @staticmethod
-    def reminder_24h(booking_data: Dict[str, Any]) -> str:
-        """24-hour reminder message"""
-        client_name = booking_data.get("client_name", "Valued Client")
-        start_time = booking_data.get("start_time", datetime.now())
-        treatment_name = booking_data.get("treatment_name", "your treatment")
-        location = booking_data.get(
-            "location", settings.BUSINESS_ADDRESS or "our salon"
-        )
+See you soon!
 
-        message = f"""⏰ {settings.BUSINESS_NAME} - Appointment Reminder
+Need to reschedule? Call us at {self.business_phone}
 
-        Hello {client_name}!
-        
-        This is a friendly reminder that your appointment is tomorrow:
-        
-        🕐 Time: {MessageTemplates.format_time(start_time)}
-        💆 Treatment: {treatment_name}
-        📍 Location: {location}
-        
-        Please arrive 5-10 minutes early to complete any necessary forms.
-        
-        Looking forward to seeing you!
-        
-        To cancel or reschedule: {settings.BUSINESS_PHONE or 'Contact us'}
-        """
-        return message.strip()
+- {self.business_name}"""
 
-    @staticmethod
-    def reminder_1h(booking_data: Dict[str, Any]) -> str:
-        """1-hour reminder message"""
-        client_name = booking_data.get("client_name", "Valued Client")
-        start_time = booking_data.get("start_time", datetime.now())
-        treatment_name = booking_data.get("treatment_name", "your treatment")
-        location = booking_data.get(
-            "location", settings.BUSINESS_ADDRESS or "our salon"
-        )
+    def reminder_1h_message(
+        self,
+        client_name: str,
+        appointment_time: str,
+        treatment_name: str,
+    ) -> str:
+        """Generate 1-hour reminder message"""
+        return f"""Hi {client_name}!
 
-        message = f"""⏰ {settings.BUSINESS_NAME} - Starting Soon!
+Quick reminder: Your {treatment_name} appointment is at {appointment_time} (in about 1 hour).
 
-        Hello {client_name}!
-        
-        Your appointment starts in 1 hour:
-        
-        🕐 Time: {MessageTemplates.format_time(start_time)}
-        💆 Treatment: {treatment_name}
-        📍 Location: {location}
-        
-        See you soon! 💖
-        """
-        return message.strip()
+See you soon! ✨
 
-    @staticmethod
-    def cancellation(booking_data: Dict[str, Any]) -> str:
-        """Appointment cancellation message"""
-        client_name = booking_data.get("client_name", "Valued Client")
-        booking_date = booking_data.get("booking_date")
-        start_time = booking_data.get("start_time", datetime.now())
-        cancellation_reason = booking_data.get("cancellation_reason", "")
+- {self.business_name}"""
 
-        message = f"""❌ {settings.BUSINESS_NAME} - Appointment Cancelled
+    def aftercare_message(
+        self,
+        client_name: str,
+        treatment_name: str,
+    ) -> str:
+        """Generate aftercare message"""
+        return f"""Hi {client_name}! 💕
 
-        Hello {client_name},
-        
-        Your appointment has been cancelled:
-        
-        📅 Was scheduled for: {MessageTemplates.format_datetime(start_time)}
-        """
+Thank you for choosing {self.business_name}!
 
-        if cancellation_reason:
-            message += f"\nReason: {cancellation_reason}"
+We hope you loved your {treatment_name}. Here are some aftercare tips:
 
-        message += f"""
-        
-        We hope to see you again soon! To book a new appointment, please contact us.
-        
-        {settings.BUSINESS_PHONE or ''}
-        {settings.SUPPORT_EMAIL or ''}
-        """
-        return message.strip()
+- Avoid touching the treated area for 24 hours
+- Stay hydrated
+- Use gentle, fragrance-free products
+- Contact us if you have any concerns
 
-    @staticmethod
-    def reschedule(booking_data: Dict[str, Any]) -> str:
-        """Appointment reschedule message"""
-        client_name = booking_data.get("client_name", "Valued Client")
-        old_time = booking_data.get("old_start_time", datetime.now())
-        new_time = booking_data.get("start_time", datetime.now())
-        treatment_name = booking_data.get("treatment_name", "your treatment")
+We'd love to hear your feedback! Book your next appointment at {self.business_phone}.
 
-        message = f"""🔄 {settings.BUSINESS_NAME} - Appointment Rescheduled
+- {self.business_name}"""
 
-        Hello {client_name}!
-        
-        Your appointment has been rescheduled:
-        
-        ❌ Previous time: {MessageTemplates.format_datetime(old_time)}
-        ✅ New time: {MessageTemplates.format_datetime(new_time)}
-        💆 Treatment: {treatment_name}
-        
-        We look forward to seeing you at your new appointment time!
-        
-        Questions? Contact us:
-        {settings.BUSINESS_PHONE or ''}
-        """
-        return message.strip()
+    def cancellation_message(
+        self,
+        client_name: str,
+        appointment_date: str,
+        appointment_time: str,
+        cancellation_reason: Optional[str] = None,
+    ) -> str:
+        """Generate cancellation message"""
+        reason_text = f"\nReason: {cancellation_reason}" if cancellation_reason else ""
 
-    @staticmethod
-    def aftercare(booking_data: Dict[str, Any]) -> str:
-        """Post-appointment aftercare message"""
-        client_name = booking_data.get("client_name", "Valued Client")
-        treatment_name = booking_data.get("treatment_name", "treatment")
-        aftercare_instructions = booking_data.get("aftercare_instructions", "")
+        return f"""Hi {client_name},
 
-        message = f"""💖 {settings.BUSINESS_NAME} - Aftercare Tips
+Your appointment on {appointment_date} at {appointment_time} has been cancelled.{reason_text}
 
-        Hello {client_name}!
-        
-        Thank you for visiting us! We hope you enjoyed your {treatment_name}.
-        """
+We hope to see you again soon! To book a new appointment, contact us at {self.business_phone}.
 
-        if aftercare_instructions:
-            message += f"Aftercare instructions:\n{aftercare_instructions}\n\n"
-        else:
-            message += """General aftercare tips:
-            • Keep the treated area clean
-            • Avoid direct sunlight for 24-48 hours
-            • Stay hydrated
-            • Avoid heavy exercise for 24 hours
-            """
+- {self.business_name}"""
 
-        message += f"""If you have any concerns or questions, please don't hesitate to contact us.
+    def reschedule_message(
+        self,
+        client_name: str,
+        new_appointment_date: str,
+        new_appointment_time: str,
+        treatment_name: str,
+    ) -> str:
+        """Generate reschedule message"""
+        return f"""Hi {client_name}! 📅
 
-        We'd love to see you again! Book your next appointment:
-        {settings.BUSINESS_PHONE or ''}
-        
-        Rate your experience: [feedback_link]
-        """
-        return message.strip()
+Your appointment has been rescheduled:
 
-    @staticmethod
-    def marketing(client_name: str, offer_details: str) -> str:
-        """Marketing/promotional message"""
-        message = f"""✨ {settings.BUSINESS_NAME} - Special Offer! ✨
+New Date: {new_appointment_date}
+New Time: {new_appointment_time}
+Treatment: {treatment_name}
 
-        Hello {client_name}!
-        
-        {offer_details}
-        
-        Book now to take advantage of this limited-time offer!
-        
-        {settings.BUSINESS_PHONE or ''}
-        {settings.SUPPORT_EMAIL or ''}
-        
-        Reply STOP to unsubscribe from promotional messages.
-        """
-        return message.strip()
+See you then!
+
+- {self.business_name}"""
+
+    def marketing_message(
+        self,
+        client_name: str,
+        custom_message: str,
+    ) -> str:
+        """Generate marketing message"""
+        return f"""Hi {client_name}! 🎉
+
+{custom_message}
+
+Book now: {self.business_phone}
+
+Reply STOP to unsubscribe.
+
+- {self.business_name}"""

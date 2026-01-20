@@ -1,56 +1,63 @@
 """
-Configuration management for WhatsApp Notification Service
+Configuration management using Pydantic settings
 """
 
 import os
+from functools import lru_cache
 from typing import Optional
 
 from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
-
-# Load environment variables from .env file
-load_dotenv()
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings"""
+
+    # Temporal Configuration
+    TEMPORAL_HOST: str = os.getenv("TEMPORAL_HOST", "temporal:7233")
+    TEMPORAL_NAMESPACE: str = os.getenv("TEMPORAL_NAMESPACE", "default")
+    TEMPORAL_TASK_QUEUE: str = os.getenv("TEMPORAL_TASK_QUEUE", "notifications-queue")
+
     # Database Configuration
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
-    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "10"))
-    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "10"))
 
-    # WhatsApp Provider Configuration
-    WHATSAPP_PROVIDER: str = os.getenv("WHATSAPP_PROVIDER", "chakra")
-    WHATSAPP_API_KEY: str = os.getenv("WHATSAPP_API_KEY", "")
-    WHATSAPP_API_URL: Optional[str] = None
-    WHATSAPP_PHONE_NUMBER: str = os.getenv("WHATSAPP_PHONE_NUMBER", "")
-
-    # ChakraHQ Specific (if using)
+    # WhatsApp Provider (ChakraHQ)
     CHAKRA_API_KEY: str = os.getenv("CHAKRA_API_KEY", "")
-    CHAKRA_BASE_URL: str = os.getenv("CHAKRA_BASE_URL", "https://api.chakrahq.com/v1")
+    CHAKRA_API_URL: str = os.getenv("CHAKRA_API_URL", "https://api.chakrahq.com/v1")
 
-    # Message Configuration
+    # Business Information
     BUSINESS_NAME: str = os.getenv("BUSINESS_NAME", "STUDIO S BEAUTY BAR")
-    BUSINESS_ADDRESS: str = os.getenv("BUSINESS_ADDRESS", "")
     BUSINESS_PHONE: str = os.getenv("BUSINESS_PHONE", "")
-    SUPPORT_EMAIL: str = os.getenv("SUPPORT_EMAIL", "")
+    BUSINESS_ADDRESS: str = os.getenv("BUSINESS_ADDRESS", "")
 
-    # Timing Configuration
-    REMINDER_24H_ENABLED: bool = os.getenv("REMINDER_24H_ENABLED") == "True"
-    REMINDER_1H_ENABLED: bool = os.getenv("REMINDER_1H_ENABLED") == "True"
-    AFTERCARE_DELAY_HOURS: int = int(os.getenv("AFTERCARE_DELAY_HOURS", "24"))
-
-    # Retry Configuration
-    MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
-    RETRY_DELAY_SECONDS: int = int(os.getenv("RETRY_DELAY_SECONDS", "5"))
+    # Notification Settings
+    MAX_RETRY_ATTEMPTS: int = 5
+    RETRY_INITIAL_INTERVAL_SECONDS: int = 1
+    RETRY_MAX_INTERVAL_MINUTES: int = 15
+    RETRY_BACKOFF_COEFFICIENT: float = 2.0
 
     # Rate Limiting
-    RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
+    WHATSAPP_RATE_LIMIT_PER_MINUTE: int = 60
+
+    # Timing Configuration
+    REMINDER_24H_HOURS_BEFORE: int = int(os.getenv("REMINDER_24H_HOURS_BEFORE", "24"))
+    REMINDER_1H_HOURS_BEFORE: int = int(os.getenv("REMINDER_1H_HOURS_BEFORE", "1"))
+    AFTERCARE_HOURS_AFTER: int = int(os.getenv("AFTERCARE_HOURS_AFTER", "3"))
+
+    # Marketing Campaign Settings
+    MARKETING_INACTIVE_DAYS: int = 60
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+    )
 
 
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    """Get cached settings instance"""
+    return Settings()

@@ -1,206 +1,434 @@
-import logging
-from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
-from typing import Optional
+"""
+FastAPI Service for Temporal Workflow Management
+Provides REST API to trigger and manage workflows
+"""
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from config import settings
-from database import get_db, init_db
-from fastapi import Depends, FastAPI, HTTPException
-from models.schemas import NotificationStats, SendMessageRequest, SendMessageResponse
-from services.notification_service import NotificationService
-from services.whatsapp_provider import get_whatsapp_provider
+import asyncio
+from datetime import datetime
+from typing import List, Optional
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-# Initialize scheduler
-scheduler = AsyncIOScheduler()
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Manage application lifecycle - startup and shutdown"""
-    # Startup
-    logger.info("Starting WhatsApp Notification Service...")
-    init_db()
-
-    # Initialize notification service
-    provider = get_whatsapp_provider()
-    notification_service = NotificationService(provider)
-    app.state.notification_service = notification_service
-
-    # Schedule jobs
-    scheduler.add_job(
-        notification_service.send_confirmations,
-        CronTrigger(minute="*/5"),  # Every 5 minutes
-        id="send_confirmations",
-        name="Send appointment confirmations",
-    )
-
-    scheduler.add_job(
-        notification_service.send_24h_reminders,
-        CronTrigger(hour="9", minute="0"),  # Daily at 9 AM
-        id="send_24h_reminders",
-        name="Send 24-hour reminders",
-    )
-
-    scheduler.add_job(
-        notification_service.send_1h_reminders,
-        CronTrigger(minute="0"),  # Every hour
-        id="send_1h_reminders",
-        name="Send 1-hour reminders",
-    )
-
-    scheduler.add_job(
-        notification_service.send_aftercare_messages,
-        CronTrigger(hour="10", minute="0"),  # Daily at 10 AM
-        id="send_aftercare",
-        name="Send aftercare messages",
-    )
-
-    scheduler.start()
-    logger.info("Scheduler started with all jobs")
-
-    yield
-
-    # Shutdown
-    logger.info("Shutting down WhatsApp Notification Service...")
-    scheduler.shutdown()
-
-
-app = FastAPI(
-    title="WhatsApp Notification Service",
-    description="Beauty Salon appointment notifications via WhatsApp",
-    version="1.0.0",
-    lifespan=lifespan,
+import structlog
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from temporalio.client import Client, WorkflowHandle
+from temporalio.common import RetryPolicy
+from workflow import (
+    AppointmentBookingWorkflow,
+    BookingWorkflowInput,
+    CancellationInput,
+    CancellationWorkflow,
+    MarketingCampaignWorkflow,
+    RescheduleInput,
+    RescheduleWorkflow,
 )
 
+logger = structlog.get_logger()
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {
-        "service": "WhatsApp Notification Service",
-        "status": "healthy",
-        "version": "1.0.0",
-    }
+app = FastAPI(title="Temporal Notification Service", version="1.0.0")
+
+# Global Temporal client
+temporal_client: Optional[Client] = None
+
+
+# Pydantic models for API requests
+
+
+class StartBookingWorkflowRequest(BaseModel):
+    booking_id: int
+    client_id: int
+    appointment_datetime: datetime
+    client_phone: str
+    client_name: str
+    treatment_name: str = "Treatment"
+    staff_name: str = "Staff"
+
+
+class CancelWorkflowRequest(BaseModel):
+    booking_id: int
+    cancellation_reason: Optional[str] = None
+
+
+class RescheduleWorkflowRequest(BaseModel):
+    booking_id: int
+    new_appointment_datetime: datetime
+    client_phone: str
+    client_name: str
+    treatment_name: str
+    staff_name: str
+
+
+class MarketingCampaignRequest(BaseModel):
+    campaign_id: int
+    message_template: str
+
+
+class WorkflowStatusResponse(BaseModel):
+    workflow_id: str
+    status: str
+    result: Optional[dict] = None
+
+
+# Startup/Shutdown events
+
+
+@app.on_event("startup")
+async def startup():
+    """Initialize Temporal client on startup"""
+    global temporal_client
+
+    # Connect to Temporal server
+    temporal_client = await Client.connect("temporal:7233")
+    logger.info("Connected to Temporal server")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    """Close Temporal client on shutdown"""
+    if temporal_client:
+        await temporal_client.close()
+    logger.info("Disconnected from Temporal server")
+
+
+# Health check
 
 
 @app.get("/health")
-async def health():
-    """Detailed health check"""
+async def health_check():
+    """Health check endpoint"""
     return {
         "status": "healthy",
-        "scheduler": scheduler.running,
-        "jobs": [
-            {
-                "id": job.id,
-                "name": job.name,
-                "next_run": (
-                    job.next_run_time.isoformat() if job.next_run_time else None
-                ),
-            }
-            for job in scheduler.get_jobs()
-        ],
+        "temporal_connected": temporal_client is not None,
     }
 
 
-@app.post("/send-message", response_model=SendMessageResponse)
-async def send_message(request: SendMessageRequest):
-    """
-    Manually send a WhatsApp message
-    Useful for testing or manual notifications
-    """
-    try:
-        notification_service = app.state.notification_service
+# Workflow endpoints
 
-        result = await notification_service.send_manual_message(
-            phone_number=request.phone_number,
-            message=request.message,
-            # message_type=request.message_type,
+
+@app.post("/workflows/booking/start", response_model=WorkflowStatusResponse)
+async def start_booking_workflow(request: StartBookingWorkflowRequest):
+    """
+    Start a new appointment booking workflow.
+    This will send confirmation immediately and schedule reminders/aftercare.
+    """
+
+    if not temporal_client:
+        raise HTTPException(status_code=503, detail="Temporal client not connected")
+
+    workflow_id = f"booking-{request.booking_id}-{int(datetime.utcnow().timestamp())}"
+
+    try:
+        # Prepare workflow input
+        workflow_input = BookingWorkflowInput(
+            booking_id=request.booking_id,
+            client_id=request.client_id,
+            appointment_datetime=request.appointment_datetime,
+            client_phone=request.client_phone,
+            client_name=request.client_name,
+            treatment_name=request.treatment_name,
+            staff_name=request.staff_name,
         )
 
-        return SendMessageResponse(
-            success=result["success"],
-            message=(
-                "Message sent successfully"
-                if result["success"]
-                else f"Failed to send message - {result['error']}"
-            ),
+        # Start workflow
+        handle = await temporal_client.start_workflow(
+            AppointmentBookingWorkflow.run,
+            workflow_input,
+            id=workflow_id,
+            task_queue="notifications-queue",
+            # Workflow can run for weeks (appointment + 24h aftercare)
+            execution_timeout=None,
         )
+
+        logger.info(
+            f"Started booking workflow",
+            workflow_id=workflow_id,
+            booking_id=request.booking_id,
+        )
+
+        return WorkflowStatusResponse(
+            workflow_id=workflow_id,
+            status="started",
+        )
+
     except Exception as e:
-        logger.error(f"Error sending manual message: {e}")
+        logger.error(f"Failed to start booking workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/send-confirmation/{booking_id}")
-async def send_confirmation(booking_id: int):
-    """Manually trigger confirmation for a specific booking"""
+@app.post("/workflows/booking/cancel")
+async def cancel_booking_workflow(request: CancelWorkflowRequest):
+    """
+    Cancel an existing booking workflow and send cancellation notification.
+    This will stop all pending reminders/aftercare.
+    """
+
+    if not temporal_client:
+        raise HTTPException(status_code=503, detail="Temporal client not connected")
+
     try:
-        notification_service = app.state.notification_service
-        success = await notification_service.send_confirmation_for_booking(booking_id)
+        # Find the booking workflow
+        workflow_id = await _find_booking_workflow(request.booking_id)
+
+        if not workflow_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No active workflow found for booking {request.booking_id}",
+            )
+
+        # Get workflow handle
+        handle = temporal_client.get_workflow_handle(workflow_id)
+
+        # Send cancellation signal to stop the workflow
+        await handle.signal(AppointmentBookingWorkflow.cancel)
+
+        logger.info(
+            f"Sent cancellation signal to workflow",
+            workflow_id=workflow_id,
+            booking_id=request.booking_id,
+        )
+
+        # Start cancellation notification workflow
+        cancellation_workflow_id = (
+            f"cancellation-{request.booking_id}-{int(datetime.utcnow().timestamp())}"
+        )
+
+        # Get booking details from database for cancellation message
+        # (In production, you'd fetch this from your database)
+        cancellation_input = CancellationInput(
+            booking_id=request.booking_id,
+            client_phone="",  # Fetch from DB
+            client_name="",  # Fetch from DB
+            appointment_datetime=datetime.utcnow(),  # Fetch from DB
+            cancellation_reason=request.cancellation_reason,
+        )
+
+        await temporal_client.start_workflow(
+            CancellationWorkflow.run,
+            cancellation_input,
+            id=cancellation_workflow_id,
+            task_queue="notifications-queue",
+        )
 
         return {
-            "success": success,
-            "booking_id": booking_id,
-            "message": (
-                "Confirmation sent" if success else "Failed to send confirmation"
-            ),
+            "status": "cancelled",
+            "booking_workflow_id": workflow_id,
+            "cancellation_workflow_id": cancellation_workflow_id,
         }
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error sending confirmation for booking {booking_id}: {e}")
+        logger.error(f"Failed to cancel booking workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/send-cancellation/{booking_id}")
-async def send_cancellation(booking_id: int):
-    """Manually trigger cancellation notification for a specific booking"""
+@app.post("/workflows/booking/reschedule")
+async def reschedule_booking_workflow(request: RescheduleWorkflowRequest):
+    """
+    Reschedule a booking by cancelling old workflow and starting new one.
+    """
+
+    if not temporal_client:
+        raise HTTPException(status_code=503, detail="Temporal client not connected")
+
     try:
-        notification_service = app.state.notification_service
-        success = await notification_service.send_cancellation_for_booking(booking_id)
+        # Find and cancel old workflow
+        old_workflow_id = await _find_booking_workflow(request.booking_id)
+
+        if old_workflow_id:
+            handle = temporal_client.get_workflow_handle(old_workflow_id)
+            await handle.signal(AppointmentBookingWorkflow.cancel)
+            logger.info(f"Cancelled old workflow: {old_workflow_id}")
+
+        # Send reschedule notification
+        reschedule_workflow_id = (
+            f"reschedule-{request.booking_id}-{int(datetime.utcnow().timestamp())}"
+        )
+
+        reschedule_input = RescheduleInput(
+            booking_id=request.booking_id,
+            old_workflow_id=old_workflow_id or "",
+            new_appointment_datetime=request.new_appointment_datetime,
+            client_phone=request.client_phone,
+            client_name=request.client_name,
+            treatment_name=request.treatment_name,
+            staff_name=request.staff_name,
+        )
+
+        await temporal_client.start_workflow(
+            RescheduleWorkflow.run,
+            reschedule_input,
+            id=reschedule_workflow_id,
+            task_queue="notifications-queue",
+        )
+
+        # Start new booking workflow
+        new_workflow_id = (
+            f"booking-{request.booking_id}-{int(datetime.utcnow().timestamp())}"
+        )
+
+        new_booking_input = BookingWorkflowInput(
+            booking_id=request.booking_id,
+            client_id=0,  # Fetch from DB
+            appointment_datetime=request.new_appointment_datetime,
+            client_phone=request.client_phone,
+            client_name=request.client_name,
+            treatment_name=request.treatment_name,
+            staff_name=request.staff_name,
+        )
+
+        await temporal_client.start_workflow(
+            AppointmentBookingWorkflow.run,
+            new_booking_input,
+            id=new_workflow_id,
+            task_queue="notifications-queue",
+        )
 
         return {
-            "success": success,
-            "booking_id": booking_id,
-            "message": (
-                "Cancellation sent" if success else "Failed to send cancellation"
-            ),
+            "status": "rescheduled",
+            "old_workflow_id": old_workflow_id,
+            "reschedule_workflow_id": reschedule_workflow_id,
+            "new_workflow_id": new_workflow_id,
         }
+
     except Exception as e:
-        logger.error(f"Error sending cancellation for booking {booking_id}: {e}")
+        logger.error(f"Failed to reschedule booking workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/stats", response_model=NotificationStats)
-async def get_stats(days: int = 7):
-    """Get notification statistics for the last N days"""
-    try:
-        notification_service = app.state.notification_service
-        stats = await notification_service.get_stats(days)
-        return stats
-    except Exception as e:
-        logger.error(f"Error fetching stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/workflows/marketing/start")
+async def start_marketing_campaign(request: MarketingCampaignRequest):
+    """
+    Start a marketing campaign workflow.
+    This will send messages to all eligible clients with rate limiting.
+    """
 
+    if not temporal_client:
+        raise HTTPException(status_code=503, detail="Temporal client not connected")
 
-@app.post("/trigger-job/{job_id}")
-async def trigger_job(job_id: str):
-    """Manually trigger a scheduled job (for testing)"""
-    job = scheduler.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    workflow_id = (
+        f"marketing-campaign-{request.campaign_id}-{int(datetime.utcnow().timestamp())}"
+    )
 
     try:
-        job.modify(next_run_time=datetime.now())
-        return {"success": True, "message": f"Job {job_id} triggered successfully"}
+        handle = await temporal_client.start_workflow(
+            MarketingCampaignWorkflow.run,
+            args=[request.campaign_id, request.message_template],
+            id=workflow_id,
+            task_queue="notifications-queue",
+        )
+
+        logger.info(
+            f"Started marketing campaign workflow",
+            workflow_id=workflow_id,
+            campaign_id=request.campaign_id,
+        )
+
+        return {
+            "workflow_id": workflow_id,
+            "status": "started",
+        }
+
     except Exception as e:
-        logger.error(f"Error triggering job {job_id}: {e}")
+        logger.error(f"Failed to start marketing campaign: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/workflows/{workflow_id}/status")
+async def get_workflow_status(workflow_id: str):
+    """Get the current status of a workflow"""
+
+    if not temporal_client:
+        raise HTTPException(status_code=503, detail="Temporal client not connected")
+
+    try:
+        handle = temporal_client.get_workflow_handle(workflow_id)
+
+        # Try to get workflow description
+        desc = await handle.describe()
+
+        result = None
+        if desc.status.name in ["COMPLETED", "FAILED", "CANCELLED"]:
+            try:
+                result = await handle.result()
+            except:
+                pass
+
+        return {
+            "workflow_id": workflow_id,
+            "status": desc.status.name,
+            "start_time": desc.start_time.isoformat() if desc.start_time else None,
+            "close_time": desc.close_time.isoformat() if desc.close_time else None,
+            "result": result,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get workflow status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/workflows/booking/{booking_id}")
+async def get_booking_workflow(booking_id: int):
+    """Find active workflow for a booking"""
+
+    if not temporal_client:
+        raise HTTPException(status_code=503, detail="Temporal client not connected")
+
+    try:
+        workflow_id = await _find_booking_workflow(booking_id)
+
+        if not workflow_id:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No active workflow found for booking {booking_id}",
+            )
+
+        # Get workflow status
+        handle = temporal_client.get_workflow_handle(workflow_id)
+        desc = await handle.describe()
+
+        # Query workflow state
+        status = await handle.query(AppointmentBookingWorkflow.get_status)
+
+        return {
+            "workflow_id": workflow_id,
+            "booking_id": booking_id,
+            "status": desc.status.name,
+            "workflow_state": status,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get booking workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Helper functions
+
+
+async def _find_booking_workflow(booking_id: int) -> Optional[str]:
+    """
+    Find active workflow ID for a booking.
+    Uses Temporal's list API to search for workflows.
+    """
+
+    if not temporal_client:
+        return None
+
+    try:
+        # Search for workflows with booking ID in the workflow ID
+        # In production, you might want to store workflow IDs in your database
+        async for workflow in temporal_client.list_workflows(
+            query=f'WorkflowId STARTS_WITH "booking-{booking_id}-"'
+        ):
+            if workflow.status.name == "RUNNING":
+                return workflow.id
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Failed to find booking workflow: {e}")
+        return None
 
 
 if __name__ == "__main__":

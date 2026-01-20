@@ -8,6 +8,11 @@ import logger from "../utils/logger.js";
 
 export const protect = catchAsync(
   async (req: any, res: Response, next: NextFunction) => {
+    // Skip auth for public endpoints
+    if (req.path === "/metrics" || req.path === "/health") {
+      return next();
+    }
+
     // 1) get token from header or cookie
     const authHeader = req.get("authorization");
     const tokenFromHeader =
@@ -21,8 +26,8 @@ export const protect = catchAsync(
       logger.warn("❌ No JWT token provided");
       return next(
         AppError.unauthorized(
-          "You are not logged in! Please log in to get access."
-        )
+          "You are not logged in! Please log in to get access.",
+        ),
       );
     }
 
@@ -42,7 +47,7 @@ export const protect = catchAsync(
     if (!userId) {
       logger.warn("❌ JWT payload missing subject (sub)");
       return next(
-        AppError.unauthorized("Token does not contain subject (sub)")
+        AppError.unauthorized("Token does not contain subject (sub)"),
       );
     }
 
@@ -52,8 +57,8 @@ export const protect = catchAsync(
       logger.warn({ userId }, "❌ User not found for valid JWT");
       return next(
         AppError.unauthorized(
-          "The user belonging to this token no longer exists."
-        )
+          "The user belonging to this token no longer exists.",
+        ),
       );
     }
 
@@ -66,11 +71,11 @@ export const protect = catchAsync(
 
     logger.debug(
       { userId: user.id, role: user.role },
-      "✅ Authenticated user attached to request"
+      "✅ Authenticated user attached to request",
     );
 
     next();
-  }
+  },
 );
 
 export const restrictTo = (...roles: string[]) => {
@@ -87,11 +92,11 @@ export const restrictTo = (...roles: string[]) => {
           role: req.user.role,
           allowedRoles: roles,
         },
-        "🚫 Unauthorized role access attempt"
+        "🚫 Unauthorized role access attempt",
       );
 
       return next(
-        AppError.forbidden("You do not have permission to perform this action")
+        AppError.forbidden("You do not have permission to perform this action"),
       );
     }
 
