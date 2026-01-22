@@ -4,7 +4,7 @@ import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
 import styled from "styled-components";
 import { User, Search, Check, AlertCircle } from "lucide-react";
-import type { CartItem } from "./api";
+import { type CartItem } from "./POSSchema";
 
 interface Staff {
   id: string;
@@ -23,7 +23,7 @@ interface StaffAssignmentModalProps {
     itemId: string,
     itemType: string,
     staffId: string,
-    staffName: string
+    staffName: string,
   ) => void;
 }
 
@@ -195,9 +195,9 @@ export default function StaffAssignmentModal({
   const treatments = useMemo(
     () =>
       cartItems.filter(
-        (item) => item.type === "treatment" || item.type === "appointment"
+        (item) => item.type === "treatment" || item.type === "appointment",
       ),
-    [cartItems]
+    [cartItems],
   );
 
   // Check if all treatments have staff assigned
@@ -216,7 +216,7 @@ export default function StaffAssignmentModal({
       (s) =>
         s.name.toLowerCase().includes(query) ||
         s.role.toLowerCase().includes(query) ||
-        s.specialties?.some((spec) => spec.toLowerCase().includes(query))
+        s.specialties?.some((spec) => spec.toLowerCase().includes(query)),
     );
   }, [staff, searchQuery]);
 
@@ -224,7 +224,7 @@ export default function StaffAssignmentModal({
     itemId: string,
     itemType: string,
     staffId: string,
-    staffName: string
+    staffName: string,
   ) => {
     const key = `${itemId}-${itemType}`;
     setTempAssignments((prev) => ({
@@ -360,7 +360,7 @@ export default function StaffAssignmentModal({
                                 item.id,
                                 item.type,
                                 staffMember.id,
-                                staffMember.name
+                                staffMember.name,
                               )
                             }
                           >

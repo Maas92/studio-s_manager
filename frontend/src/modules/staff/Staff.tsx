@@ -216,7 +216,7 @@ function getInitials(firstName = "", lastName = "") {
 
 export default function StaffPage() {
   const navigate = useNavigate();
-  const { canManageStaff, isAdmin } = useAuth();
+  const { canManageStaff, isAdmin, user } = useAuth();
 
   const { listQuery, createMutation, updateMutation, deleteMutation } =
     useStaff();
@@ -227,6 +227,13 @@ export default function StaffPage() {
   const isLoading = listQuery.isLoading;
   const isError = listQuery.isError;
   const error = listQuery.error;
+
+  const currentUser = user
+    ? {
+        id: user.id,
+        name: user.name || user.email || "Admin",
+      }
+    : null;
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -249,7 +256,7 @@ export default function StaffPage() {
         },
       });
     },
-    [createMutation, createModal]
+    [createMutation, createModal],
   );
 
   const handleUpdate = useCallback(
@@ -264,10 +271,10 @@ export default function StaffPage() {
           onError: (error: any) => {
             toast.error(error?.message ?? "Failed to update staff member");
           },
-        }
+        },
       );
     },
-    [updateMutation, detailModal]
+    [updateMutation, detailModal],
   );
 
   const handleDelete = useCallback(
@@ -282,7 +289,7 @@ export default function StaffPage() {
         },
       });
     },
-    [deleteMutation, detailModal]
+    [deleteMutation, detailModal],
   );
 
   const handleBookStaff = useCallback(
@@ -297,7 +304,7 @@ export default function StaffPage() {
         },
       });
     },
-    [navigate, detailModal]
+    [navigate, detailModal],
   );
 
   if (isLoading) {
@@ -440,6 +447,7 @@ export default function StaffPage() {
         deleting={deleteMutation.isPending}
         appointments={appointments}
         isAdmin={isAdmin}
+        currentUser={currentUser}
       />
 
       {canManageStaff && (

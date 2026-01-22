@@ -29,7 +29,7 @@ router.get(
   "/:id/performance",
   validateUUID("id"),
   restrictTo("owner", "manager"),
-  getStaffPerformance
+  getStaffPerformance,
 );
 
 export default router;

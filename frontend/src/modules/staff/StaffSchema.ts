@@ -70,8 +70,112 @@ export const StaffLeaveSchema = z.object({
     .default("approved"),
 });
 
+// Individual KPI Item Schema
+export const KPIItemSchema = z.object({
+  name: z.string(),
+  score: z.number().min(1).max(5).nullable(),
+  notes: z.string().optional(),
+});
+
+// KPI Category Schema
+export const KPICategorySchema = z.object({
+  category: z.string(),
+  weight: z.number().min(0).max(1),
+  items: z.array(KPIItemSchema),
+  weightedScore: z.number().optional(),
+});
+
+// Staff KPI Schema
+export const StaffKPISchema = z.object({
+  id: z.string(),
+  staffId: z.string(),
+  month: z.string(), // Format: "YYYY-MM"
+  reviewerId: z.string(),
+  reviewerName: z.string(),
+  categories: z.array(KPICategorySchema),
+  totalScore: z.number(),
+  comments: z.string().optional(),
+  status: z.enum(["draft", "completed", "reviewed"]).default("draft"),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+// Create KPI Input Schema
+export const CreateStaffKPISchema = z.object({
+  staffId: z.string(),
+  month: z.string(),
+  reviewerId: z.string(),
+  reviewerName: z.string(),
+  categories: z.array(KPICategorySchema),
+  comments: z.string().optional(),
+  status: z.enum(["draft", "completed", "reviewed"]).default("draft"),
+});
+
 // Types
 export type StaffPerformance = z.infer<typeof StaffPerformanceSchema>;
 export type StaffMember = z.infer<typeof StaffMemberSchema>;
 export type CreateStaffMemberInput = z.infer<typeof CreateStaffMemberSchema>;
 export type StaffLeave = z.infer<typeof StaffLeaveSchema>;
+export type KPIItem = z.infer<typeof KPIItemSchema>;
+export type KPICategory = z.infer<typeof KPICategorySchema>;
+export type StaffKPI = z.infer<typeof StaffKPISchema>;
+export type CreateStaffKPIInput = z.infer<typeof CreateStaffKPISchema>;
+
+// Default KPI Template
+export const DEFAULT_KPI_TEMPLATE: Omit<KPICategory, "weightedScore">[] = [
+  {
+    category: "Attendance & Punctuality",
+    weight: 0.2,
+    items: [
+      { name: "On-time arrival rate", score: null },
+      { name: "Unplanned absences", score: null },
+      { name: "Shift coverage reliability", score: null },
+    ],
+  },
+  {
+    category: "Client Interaction",
+    weight: 0.25,
+    items: [
+      { name: "Friendliness & professionalism", score: null },
+      { name: "Client communication", score: null },
+      { name: "Handling complaints/issues", score: null },
+    ],
+  },
+  {
+    category: "Work Quality",
+    weight: 0.25,
+    items: [
+      { name: "Treatment accuracy", score: null },
+      { name: "Hygiene & safety compliance", score: null },
+      { name: "Consistency of results", score: null },
+    ],
+  },
+  {
+    category: "Behaviour & Conduct",
+    weight: 0.15,
+    items: [
+      { name: "Respect toward clients", score: null },
+      { name: "Respect toward colleagues", score: null },
+      { name: "Dress code & grooming", score: null },
+      { name: "Phone use during shifts", score: null },
+    ],
+  },
+  {
+    category: "Productivity & Sales",
+    weight: 0.1,
+    items: [
+      { name: "Treatments completed", score: null },
+      { name: "Rebooking rate", score: null },
+      { name: "Add-on / upsell effort", score: null },
+    ],
+  },
+  {
+    category: "Learning & Growth",
+    weight: 0.05,
+    items: [
+      { name: "Training attendance", score: null },
+      { name: "Skill improvement", score: null },
+      { name: "Initiative", score: null },
+    ],
+  },
+];

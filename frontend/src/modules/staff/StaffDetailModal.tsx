@@ -1,4 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import StaffKPIList from "./StaffKPIList";
+import StaffKPIModal from "./StaffKPIModal";
+import { useStaffKPIs } from "./useStaffKPI";
+import { useModalState } from "../../hooks/useModalState";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
@@ -7,6 +11,7 @@ import StatCard from "../../ui/components/StatCard";
 import styled from "styled-components";
 import type { StaffMember, CreateStaffMemberInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
+
 import {
   Edit2,
   Save,
@@ -29,6 +34,8 @@ import {
   Target,
   Activity,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import type { CreateStaffKPIInput, StaffKPI } from "./StaffSchema";
 
 interface StaffDetailModalProps {
   isOpen: boolean;
@@ -41,6 +48,7 @@ interface StaffDetailModalProps {
   deleting?: boolean;
   appointments?: Appointment[];
   isAdmin?: boolean;
+  currentUser: { id: string; name: string } | null;
 }
 
 const Content = styled.div`
@@ -359,6 +367,7 @@ export default function StaffDetailModal({
   deleting = false,
   appointments = [],
   isAdmin = false,
+  currentUser,
 }: StaffDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState<CreateStaffMemberInput>({
@@ -406,19 +415,19 @@ export default function StaffDetailModal({
 
     const totalRevenue = completed.reduce(
       (sum, appt) => sum + (appt.price || 0),
-      0
+      0,
     );
 
     const now = Date.now();
     const upcoming = staffAppts.filter(
       (a) =>
-        new Date(a.datetimeISO).getTime() >= now && a.status === "confirmed"
+        new Date(a.datetimeISO).getTime() >= now && a.status === "confirmed",
     );
 
     // Calculate total hours worked (assuming each appointment duration)
     const totalMinutes = completed.reduce(
       (sum, appt) => sum + (appt.duration || 60),
-      0
+      0,
     );
     const totalHours = totalMinutes / 60;
 
@@ -472,6 +481,73 @@ export default function StaffDetailModal({
     };
   }, [member, staffStats]);
 
+  const kpiModal = useModalState<StaffKPI>();
+  const {
+    listQuery: kpiListQuery,
+    createMutation: createKPIMutation,
+    updateMutation: updateKPIMutation,
+    deleteMutation: deleteKPIMutation,
+  } = useStaffKPIs(member?.id);
+
+  const kpis = kpiListQuery.data ?? [];
+
+  const handleCreateKPI = useCallback(() => {
+    kpiModal.open(undefined);
+  }, [kpiModal]);
+
+  const handleViewKPI = useCallback(
+    (kpi: StaffKPI) => {
+      kpiModal.open(kpi);
+    },
+    [kpiModal],
+  );
+
+  const handleSaveKPI = useCallback(
+    (data: CreateStaffKPIInput) => {
+      if (kpiModal.selectedItem) {
+        // Update existing
+        updateKPIMutation.mutate(
+          { id: kpiModal.selectedItem.id, updates: data },
+          {
+            onSuccess: () => {
+              kpiModal.close();
+              toast.success("KPI updated successfully!");
+            },
+            onError: (error: any) => {
+              toast.error(error?.message ?? "Failed to update KPI");
+            },
+          },
+        );
+      } else {
+        // Create new
+        createKPIMutation.mutate(data, {
+          onSuccess: () => {
+            kpiModal.close();
+            toast.success("KPI created successfully!");
+          },
+          onError: (error: any) => {
+            toast.error(error?.message ?? "Failed to create KPI");
+          },
+        });
+      }
+    },
+    [kpiModal, createKPIMutation, updateKPIMutation],
+  );
+
+  const handleDeleteKPI = useCallback(
+    (id: string) => {
+      deleteKPIMutation.mutate(id, {
+        onSuccess: () => {
+          toast.success("KPI deleted successfully!");
+        },
+        onError: (error: any) => {
+          toast.error(error?.message ?? "Failed to delete KPI");
+        },
+      });
+    },
+    [deleteKPIMutation],
+  );
+
   const handleSave = useCallback(() => {
     if (!member) return;
     onUpdate?.(member.id, formValues);
@@ -482,7 +558,7 @@ export default function StaffDetailModal({
     if (!member) return;
     if (
       window.confirm(
-        `Are you sure you want to remove ${member.firstName} ${member.lastName} from staff?`
+        `Are you sure you want to remove ${member.firstName} ${member.lastName} from staff?`,
       )
     ) {
       onDelete?.(member.id);
@@ -569,8 +645,8 @@ export default function StaffDetailModal({
                 staffStats.utilizationRate >= 80
                   ? "#15803d"
                   : staffStats.utilizationRate >= 60
-                  ? "#ca8a04"
-                  : "#dc2626"
+                    ? "#ca8a04"
+                    : "#dc2626"
               }
               value={`${staffStats.utilizationRate.toFixed(0)}%`}
               subtext={`${staffStats.totalHours.toFixed(1)}h worked`}
@@ -578,15 +654,15 @@ export default function StaffDetailModal({
                 staffStats.utilizationRate >= 80
                   ? "success"
                   : staffStats.utilizationRate >= 60
-                  ? "warning"
-                  : "danger"
+                    ? "warning"
+                    : "danger"
               }
               valueColor={
                 staffStats.utilizationRate >= 80
                   ? "#15803d"
                   : staffStats.utilizationRate >= 60
-                  ? "#ca8a04"
-                  : "#dc2626"
+                    ? "#ca8a04"
+                    : "#dc2626"
               }
             />
 
@@ -631,8 +707,8 @@ export default function StaffDetailModal({
                 staffStats.noShowRate <= 5
                   ? "#15803d"
                   : staffStats.noShowRate <= 10
-                  ? "#ca8a04"
-                  : "#dc2626"
+                    ? "#ca8a04"
+                    : "#dc2626"
               }
               value={`${staffStats.noShowRate.toFixed(1)}%`}
               subtext={`${staffStats.noShow} no-shows`}
@@ -640,15 +716,15 @@ export default function StaffDetailModal({
                 staffStats.noShowRate <= 5
                   ? "#15803d"
                   : staffStats.noShowRate <= 10
-                  ? "#ca8a04"
-                  : "#dc2626"
+                    ? "#ca8a04"
+                    : "#dc2626"
               }
               variant={
                 staffStats.noShowRate <= 5
                   ? "success"
                   : staffStats.noShowRate <= 10
-                  ? "warning"
-                  : "danger"
+                    ? "warning"
+                    : "danger"
               }
             />
 
@@ -717,6 +793,16 @@ export default function StaffDetailModal({
               </PayrollCard>
             </PayrollGrid>
           </PayrollSection>
+        )}
+
+        {isAdmin && !isEditing && (
+          <StaffKPIList
+            kpis={kpis}
+            onView={handleViewKPI}
+            onDelete={handleDeleteKPI}
+            onCreate={handleCreateKPI}
+            isAdmin={isAdmin}
+          />
         )}
 
         <Form>
@@ -1069,6 +1155,17 @@ export default function StaffDetailModal({
           </Actions>
         </Form>
       </Content>
+      {kpiModal.isOpen && isAdmin && member && currentUser && (
+        <StaffKPIModal
+          isOpen={kpiModal.isOpen}
+          onClose={kpiModal.close}
+          staff={member}
+          kpi={kpiModal.selectedItem}
+          onSave={handleSaveKPI}
+          currentUser={currentUser}
+          saving={createKPIMutation.isPending || updateKPIMutation.isPending}
+        />
+      )}
     </Modal>
   );
 }

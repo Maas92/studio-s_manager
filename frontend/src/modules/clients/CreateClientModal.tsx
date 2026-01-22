@@ -49,7 +49,9 @@ const TextArea = styled.textarea`
   line-height: 1.5;
   outline: none;
   resize: vertical;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition:
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
   box-sizing: border-box;
 
   &:focus {
@@ -101,7 +103,7 @@ export default function CreateClientModal({
       if (!formValues.name) return;
       onCreate(formValues);
     },
-    [formValues, onCreate]
+    [formValues, onCreate],
   );
 
   const handleClose = useCallback(() => {
@@ -143,7 +145,7 @@ export default function CreateClientModal({
             <Input
               id="new-client-email"
               type="email"
-              value={formValues.email}
+              value={formValues.email ?? ""}
               onChange={(e) =>
                 setFormValues((prev) => ({ ...prev, email: e.target.value }))
               }
@@ -157,7 +159,7 @@ export default function CreateClientModal({
             <Input
               id="new-client-phone"
               type="tel"
-              value={formValues.phone}
+              value={formValues.phone ?? ""}
               onChange={(e) =>
                 setFormValues((prev) => ({ ...prev, phone: e.target.value }))
               }
@@ -171,7 +173,7 @@ export default function CreateClientModal({
           <Label htmlFor="new-client-address">Address</Label>
           <Input
             id="new-client-address"
-            value={formValues.address}
+            value={formValues.address ?? ""}
             onChange={(e) =>
               setFormValues((prev) => ({ ...prev, address: e.target.value }))
             }
@@ -185,7 +187,7 @@ export default function CreateClientModal({
           <Input
             id="new-client-dob"
             type="date"
-            value={formValues.dateOfBirth}
+            value={formValues.dateOfBirth ?? ""}
             onChange={(e) =>
               setFormValues((prev) => ({
                 ...prev,
@@ -200,7 +202,7 @@ export default function CreateClientModal({
           <Label htmlFor="new-client-notes">Notes</Label>
           <TextArea
             id="new-client-notes"
-            value={formValues.notes}
+            value={formValues.notes ?? ""}
             onChange={(e) =>
               setFormValues((prev) => ({ ...prev, notes: e.target.value }))
             }
