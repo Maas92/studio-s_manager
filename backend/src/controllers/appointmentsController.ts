@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { UserRequest } from "../middleware/userMiddleware.js";
 import { appointmentService } from "../services/appointment.service.js";
+import { notificationClient } from "../services/temporalNotificationService.js";
 import catchAsync from "../utils/catchAsync.js";
 import AppError from "../utils/appError.js";
 import { logger } from "../utils/logger.js";
@@ -28,7 +29,7 @@ function transformAppointmentForFrontend(appointment: any) {
 
   // Add price from treatment_price or total_price
   transformed.price = parseFloat(
-    appointment.treatment_price || appointment.total_price || "0"
+    appointment.treatment_price || appointment.total_price || "0",
   );
 
   return transformed;
@@ -63,7 +64,7 @@ export const getAllAppointments = catchAsync(
         appointments: result.appointments.map(transformAppointmentForFrontend),
       },
     });
-  }
+  },
 );
 
 /**
@@ -80,7 +81,7 @@ export const getAppointment = catchAsync(
         appointment: transformAppointmentForFrontend(appointment),
       },
     });
-  }
+  },
 );
 
 /**
@@ -96,8 +97,11 @@ export const createAppointment = catchAsync(
 
     const appointment = await appointmentService.create(data);
 
+    const notification =
+      await notificationClient.startBookingWorkflow(appointment);
+
     logger.info(
-      `Appointment created by user ${req.user?.id}: ${appointment.id}`
+      `Appointment created by user ${req.user?.id}: ${appointment.id}`,
     );
 
     res.status(201).json({
@@ -106,7 +110,7 @@ export const createAppointment = catchAsync(
         appointment: transformAppointmentForFrontend(appointment),
       },
     });
-  }
+  },
 );
 
 /**
@@ -117,11 +121,11 @@ export const updateAppointment = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
     const appointment = await appointmentService.update(
       req.params.id,
-      req.body
+      req.body,
     );
 
     logger.info(
-      `Appointment updated by user ${req.user?.id}: ${req.params.id}`
+      `Appointment updated by user ${req.user?.id}: ${req.params.id}`,
     );
 
     res.status(200).json({
@@ -130,7 +134,7 @@ export const updateAppointment = catchAsync(
         appointment: transformAppointmentForFrontend(appointment),
       },
     });
-  }
+  },
 );
 
 /**
@@ -144,11 +148,11 @@ export const cancelAppointment = catchAsync(
     const appointment = await appointmentService.cancel(
       req.params.id,
       reason,
-      req.user?.id
+      req.user?.id,
     );
 
     logger.info(
-      `Appointment cancelled by user ${req.user?.id}: ${req.params.id}`
+      `Appointment cancelled by user ${req.user?.id}: ${req.params.id}`,
     );
 
     res.status(200).json({
@@ -157,7 +161,7 @@ export const cancelAppointment = catchAsync(
         appointment: transformAppointmentForFrontend(appointment),
       },
     });
-  }
+  },
 );
 
 /**
@@ -169,7 +173,7 @@ export const checkInAppointment = catchAsync(
     const appointment = await appointmentService.checkIn(req.params.id);
 
     logger.info(
-      `Appointment checked-in by user ${req.user?.id}: ${req.params.id}`
+      `Appointment checked-in by user ${req.user?.id}: ${req.params.id}`,
     );
 
     res.status(200).json({
@@ -178,7 +182,7 @@ export const checkInAppointment = catchAsync(
         appointment: transformAppointmentForFrontend(appointment),
       },
     });
-  }
+  },
 );
 
 /**
@@ -192,7 +196,7 @@ export const completeAppointment = catchAsync(
     const appointment = await appointmentService.complete(req.params.id, notes);
 
     logger.info(
-      `Appointment completed by user ${req.user?.id}: ${req.params.id}`
+      `Appointment completed by user ${req.user?.id}: ${req.params.id}`,
     );
 
     res.status(200).json({
@@ -201,7 +205,7 @@ export const completeAppointment = catchAsync(
         appointment: transformAppointmentForFrontend(appointment),
       },
     });
-  }
+  },
 );
 
 /**
@@ -219,7 +223,7 @@ export const getCalendar = catchAsync(
     const appointments = await appointmentService.getCalendar(
       start_date as string,
       end_date as string,
-      staff_id as string
+      staff_id as string,
     );
 
     res.status(200).json({
@@ -229,7 +233,7 @@ export const getCalendar = catchAsync(
         appointments: appointments.map(transformAppointmentForFrontend),
       },
     });
-  }
+  },
 );
 
 /**
@@ -243,14 +247,14 @@ export const getAvailability = catchAsync(
 
     if (!staff_id || !date || !duration_minutes) {
       throw AppError.badRequest(
-        "staff_id, date, and duration_minutes are required"
+        "staff_id, date, and duration_minutes are required",
       );
     }
 
     const availability = await appointmentService.getAvailability(
       staff_id as string,
       date as string,
-      parseInt(duration_minutes as string)
+      parseInt(duration_minutes as string),
     );
 
     res.status(200).json({
@@ -259,5 +263,5 @@ export const getAvailability = catchAsync(
         availability,
       },
     });
-  }
+  },
 );

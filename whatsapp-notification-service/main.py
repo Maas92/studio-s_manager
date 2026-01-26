@@ -6,6 +6,7 @@ Provides REST API to trigger and manage workflows
 import asyncio
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 import structlog
 from fastapi import BackgroundTasks, FastAPI, HTTPException
@@ -34,8 +35,8 @@ temporal_client: Optional[Client] = None
 
 
 class StartBookingWorkflowRequest(BaseModel):
-    booking_id: int
-    client_id: int
+    booking_id: UUID
+    client_id: UUID
     appointment_datetime: datetime
     client_phone: str
     client_name: str
@@ -44,12 +45,12 @@ class StartBookingWorkflowRequest(BaseModel):
 
 
 class CancelWorkflowRequest(BaseModel):
-    booking_id: int
+    booking_id: UUID
     cancellation_reason: Optional[str] = None
 
 
 class RescheduleWorkflowRequest(BaseModel):
-    booking_id: int
+    booking_id: UUID
     new_appointment_datetime: datetime
     client_phone: str
     client_name: str

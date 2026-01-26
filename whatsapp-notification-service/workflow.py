@@ -18,7 +18,7 @@ class BookingWorkflowInput:
 
     booking_id: int
     client_id: int
-    appointment_datetime: datetime
+    appointment_datetime: str  # Changed from datetime to str (ISO format)
     client_phone: str
     client_name: str
     treatment_name: str
@@ -32,7 +32,7 @@ class CancellationInput:
     booking_id: int
     client_phone: str
     client_name: str
-    appointment_datetime: datetime
+    appointment_datetime: str  # Changed from datetime to str
     cancellation_reason: Optional[str] = None
 
 
@@ -42,7 +42,7 @@ class RescheduleInput:
 
     booking_id: int
     old_workflow_id: str
-    new_appointment_datetime: datetime
+    new_appointment_datetime: str  # Changed from datetime to str
     client_phone: str
     client_name: str
     treatment_name: str
@@ -73,6 +73,17 @@ class AppointmentBookingWorkflow:
     async def run(self, input: BookingWorkflowInput) -> dict:
         """Main workflow execution"""
 
+        # Parse the datetime string to timezone-aware datetime object
+        from datetime import datetime, timezone
+
+        # Handle both with and without timezone
+        appointment_datetime_str = input.appointment_datetime.replace("Z", "+00:00")
+        appointment_datetime = datetime.fromisoformat(appointment_datetime_str)
+
+        # If datetime is naive, make it UTC-aware
+        if appointment_datetime.tzinfo is None:
+            appointment_datetime = appointment_datetime.replace(tzinfo=timezone.utc)
+
         # Step 1: Send immediate confirmation
         confirmation_result = await workflow.execute_activity(
             "send_confirmation_message",
@@ -91,7 +102,7 @@ class AppointmentBookingWorkflow:
         )
 
         # Step 2: Wait until 24 hours before appointment
-        time_until_24h_reminder = input.appointment_datetime - timedelta(hours=24)
+        time_until_24h_reminder = appointment_datetime - timedelta(hours=24)
 
         if await self._wait_until_with_cancellation_check(time_until_24h_reminder):
             return {"status": "cancelled", "stage": "before_24h_reminder"}
@@ -114,7 +125,7 @@ class AppointmentBookingWorkflow:
         )
 
         # Step 3: Wait until 1 hour before appointment
-        time_until_1h_reminder = input.appointment_datetime - timedelta(hours=1)
+        time_until_1h_reminder = appointment_datetime - timedelta(hours=1)
 
         if await self._wait_until_with_cancellation_check(time_until_1h_reminder):
             return {"status": "cancelled", "stage": "before_1h_reminder"}
@@ -181,12 +192,18 @@ class AppointmentBookingWorkflow:
             },
         }
 
-    async def _wait_until_with_cancellation_check(self, target_time: datetime) -> bool:
+    async def _wait_until_with_cancellation_check(self, target_time) -> bool:
         """
         Wait until target time, checking for cancellation signals periodically.
         Returns True if cancelled, False if wait completed normally.
         """
+        from datetime import timezone
+
         now = workflow.now()
+
+        # Ensure both datetimes are timezone-aware for comparison
+        if target_time.tzinfo is None:
+            target_time = target_time.replace(tzinfo=timezone.utc)
 
         if target_time <= now:
             # Target time already passed
@@ -195,7 +212,7 @@ class AppointmentBookingWorkflow:
         # Wait in chunks to check for cancellation
         remaining = target_time - now
 
-        while remaining > timedelta(0):
+        while remaining.total_seconds() > 0:
             # Wait for up to 1 hour at a time
             wait_duration = min(remaining, timedelta(hours=1))
 

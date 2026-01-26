@@ -12,6 +12,7 @@ import appointmentRoutes from "./appointmentRoutes.js";
 import staffRoutes from "./staffRoutes.js";
 import stockRoutes from "./stockRoutes.js";
 import transactionRoutes from "./transactionRoutes.js";
+import creditRoutes from "./creditRoutes.js";
 
 const r = Router();
 
@@ -26,6 +27,7 @@ r.use("/staff", staffRoutes);
 r.use("/sales", sales);
 r.use("/transactions", transactionRoutes); // For POS
 r.use("/stock", stockRoutes);
+r.use("/credits", creditRoutes);
 
 // Supporting/lookup tables
 r.use("/categories", categories);

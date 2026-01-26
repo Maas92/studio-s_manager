@@ -11,6 +11,9 @@ export const ClientSchema = z.object({
   notes: z.string().nullable().optional(),
   createdAt: z.string().nullable().optional(),
   loyaltyPoints: z.number().nullable().optional(),
+  creditBalance: z.number().nullable().optional(),
+  lifetimeCredits: z.number().nullable().optional(),
+  lifetimeCreditsRedeemed: z.number().nullable().optional(),
 });
 
 export const CreateClientSchema = z.object({

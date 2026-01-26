@@ -44,6 +44,20 @@ class Settings(BaseSettings):
     # Marketing Campaign Settings
     MARKETING_INACTIVE_DAYS: int = 60
 
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+
+    WHATSAPP_PROVIDER: str
+    WHATSAPP_API_KEY: str
+    WHATSAPP_PHONE_NUMBER: str
+    CHAKRA_BASE_URL: str
+
+    SUPPORT_EMAIL: str
+
+    MAX_RETRIES: int = 3
+    RETRY_DELAY_SECONDS: int = 60
+    RATE_LIMIT_PER_MINUTE: int = 60
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

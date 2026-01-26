@@ -5,6 +5,7 @@ Activities handle all external interactions (database, WhatsApp API)
 
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 import structlog
 from config import get_settings
@@ -39,7 +40,9 @@ class NotificationActivities:
 
         # Get full booking details from database
         async with get_db_session() as session:
-            booking_data = await self._get_booking_details(session, input["booking_id"])
+            booking_data = await self._get_booking_details(
+                session, UUID(input["booking_id"])
+            )
 
             if not booking_data:
                 raise ValueError(f"Booking {input['booking_id']} not found")
@@ -84,7 +87,7 @@ class NotificationActivities:
             )
 
             # Update booking confirmation timestamp
-            await self._update_booking_confirmation(session, input["booking_id"])
+            await self._update_booking_confirmation(session, UUID(input["booking_id"]))
 
             return result
 
@@ -95,7 +98,9 @@ class NotificationActivities:
         activity.logger.info(f"Sending 24h reminder for booking {input['booking_id']}")
 
         async with get_db_session() as session:
-            booking_data = await self._get_booking_details(session, input["booking_id"])
+            booking_data = await self._get_booking_details(
+                session, UUID(input["booking_id"])
+            )
 
             if not booking_data:
                 raise ValueError(f"Booking {input['booking_id']} not found")
@@ -141,7 +146,9 @@ class NotificationActivities:
         activity.logger.info(f"Sending 1h reminder for booking {input['booking_id']}")
 
         async with get_db_session() as session:
-            booking_data = await self._get_booking_details(session, input["booking_id"])
+            booking_data = await self._get_booking_details(
+                session, UUID(input["booking_id"])
+            )
 
             if not booking_data:
                 raise ValueError(f"Booking {input['booking_id']} not found")
@@ -182,7 +189,9 @@ class NotificationActivities:
         activity.logger.info(f"Sending aftercare for booking {input['booking_id']}")
 
         async with get_db_session() as session:
-            booking_data = await self._get_booking_details(session, input["booking_id"])
+            booking_data = await self._get_booking_details(
+                session, UUID(input["booking_id"])
+            )
 
             if not booking_data:
                 raise ValueError(f"Booking {input['booking_id']} not found")
@@ -223,7 +232,9 @@ class NotificationActivities:
         activity.logger.info(f"Sending cancellation for booking {input['booking_id']}")
 
         async with get_db_session() as session:
-            booking_data = await self._get_booking_details(session, input["booking_id"])
+            booking_data = await self._get_booking_details(
+                session, UUID(input["booking_id"])
+            )
 
             if not booking_data:
                 raise ValueError(f"Booking {input['booking_id']} not found")
@@ -262,7 +273,9 @@ class NotificationActivities:
         activity.logger.info(f"Sending reschedule for booking {input['booking_id']}")
 
         async with get_db_session() as session:
-            booking_data = await self._get_booking_details(session, input["booking_id"])
+            booking_data = await self._get_booking_details(
+                session, UUID(input["booking_id"])
+            )
 
             if not booking_data:
                 raise ValueError(f"Booking {input['booking_id']} not found")
@@ -295,7 +308,7 @@ class NotificationActivities:
             return result
 
     @activity.defn(name="get_appointment_end_time")
-    async def get_appointment_end_time(self, booking_id: int) -> datetime:
+    async def get_appointment_end_time(self, booking_id: UUID) -> datetime:
         """Get appointment end time from database"""
 
         async with get_db_session() as session:
@@ -401,7 +414,7 @@ class NotificationActivities:
     # Helper methods
 
     async def _get_booking_details(
-        self, session: AsyncSession, booking_id: int
+        self, session: AsyncSession, booking_id: UUID
     ) -> Optional[dict]:
         """Fetch booking details with client and treatment info"""
 
@@ -435,7 +448,7 @@ class NotificationActivities:
             "status": booking.status,
         }
 
-    async def _can_send_to_client(self, session: AsyncSession, client_id: int) -> bool:
+    async def _can_send_to_client(self, session: AsyncSession, client_id: UUID) -> bool:
         """Check if client can receive messages"""
 
         result = await session.execute(
@@ -462,19 +475,19 @@ class NotificationActivities:
         phone = "".join(filter(str.isdigit, phone))
 
         # Add country code if not present
-        if not phone.startswith("27"):
+        if not phone.startswith("263"):
             if phone.startswith("0"):
-                phone = "27" + phone[1:]
+                phone = "263" + phone[1:]
             else:
-                phone = "27" + phone
+                phone = "263" + phone
 
         return "+" + phone
 
     async def _log_notification(
         self,
         session: AsyncSession,
-        booking_id: Optional[int],
-        client_id: int,
+        booking_id: Optional[UUID],
+        client_id: UUID,
         phone_number: str,
         message_type: str,
         message_content: str,
@@ -501,7 +514,7 @@ class NotificationActivities:
         await session.commit()
 
     async def _update_booking_confirmation(
-        self, session: AsyncSession, booking_id: int
+        self, session: AsyncSession, booking_id: UUID
     ) -> None:
         """Update booking confirmation timestamp"""
 
@@ -513,7 +526,7 @@ class NotificationActivities:
             await session.commit()
 
     async def _update_booking_reminder(
-        self, session: AsyncSession, booking_id: int
+        self, session: AsyncSession, booking_id: UUID
     ) -> None:
         """Update booking reminder timestamp"""
 

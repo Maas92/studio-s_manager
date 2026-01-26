@@ -489,7 +489,7 @@ export default function CashUpModule({
     const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
     const totalSafeDrops = safeDrops.reduce(
       (sum, drop) => sum + drop.amount,
-      0
+      0,
     );
     const cashFromSales = cashUpData?.cashSales || 0;
     const floatAmount = parseFloat(openingFloatInput) || 0;
@@ -550,7 +550,7 @@ export default function CashUpModule({
       toast.error(
         error.response?.data?.message ||
           error.message ||
-          "Failed to add expense"
+          "Failed to add expense",
       );
     }
   };
@@ -843,7 +843,7 @@ export default function CashUpModule({
                           {
                             hour: "2-digit",
                             minute: "2-digit",
-                          }
+                          },
                         )}
                       </ExpenseMeta>
                     </ExpenseInfo>
@@ -872,6 +872,97 @@ export default function CashUpModule({
             )}
           </div>
         </Section>
+
+        {/* Credit Activity Section */}
+        <div style={{ marginTop: "1.5rem" }}>
+          <SectionTitle style={{ marginBottom: "1rem" }}>
+            <CreditCard />
+            Credit Activity
+          </SectionTitle>
+
+          <PaymentBreakdownSection>
+            <PaymentRow>
+              <PaymentLabel>
+                <TrendingUp />
+                Credits Added (kept as change)
+              </PaymentLabel>
+              <PaymentAmount style={{ color: "#16a34a" }}>
+                ${(cashUpData?.creditsAdded || 0).toFixed(2)}
+              </PaymentAmount>
+            </PaymentRow>
+
+            <PaymentRow>
+              <PaymentLabel>
+                <TrendingDown />
+                Credits Redeemed
+              </PaymentLabel>
+              <PaymentAmount style={{ color: "#dc2626" }}>
+                ${(cashUpData?.creditsRedeemed || 0).toFixed(2)}
+              </PaymentAmount>
+            </PaymentRow>
+
+            <PaymentRow
+              style={{
+                background: "#f0fdf4",
+                borderLeft: "3px solid #16a34a",
+                marginTop: "0.5rem",
+              }}
+            >
+              <PaymentLabel>
+                <strong>Net Credit Impact</strong>
+              </PaymentLabel>
+              <PaymentAmount
+                style={{
+                  color:
+                    (cashUpData?.creditsAdded || 0) -
+                      (cashUpData?.creditsRedeemed || 0) >=
+                    0
+                      ? "#16a34a"
+                      : "#dc2626",
+                }}
+              >
+                {(cashUpData?.creditsAdded || 0) -
+                  (cashUpData?.creditsRedeemed || 0) >=
+                0
+                  ? "+"
+                  : ""}
+                $
+                {(
+                  (cashUpData?.creditsAdded || 0) -
+                  (cashUpData?.creditsRedeemed || 0)
+                ).toFixed(2)}
+              </PaymentAmount>
+            </PaymentRow>
+          </PaymentBreakdownSection>
+
+          <div
+            style={{
+              padding: "1rem",
+              background: "#eff6ff",
+              borderRadius: "8px",
+              border: "1px solid #3b82f6",
+              marginTop: "1rem",
+              fontSize: "0.875rem",
+              color: "#1e40af",
+            }}
+          >
+            <strong>💡 Understanding Credit Impact:</strong>
+            <ul style={{ margin: "0.5rem 0 0 1.25rem", padding: 0 }}>
+              <li>
+                <strong>Credits Added:</strong> Change kept as credit (reduces
+                cash needed)
+              </li>
+              <li>
+                <strong>Credits Redeemed:</strong> Credit used instead of
+                payment (no cash received)
+              </li>
+              <li>
+                <strong>Expected Cash:</strong> Already adjusted for both credit
+                activities
+              </li>
+            </ul>
+          </div>
+        </div>
 
         {/* Right Column - Cash Count */}
         <Section>
@@ -950,7 +1041,7 @@ export default function CashUpModule({
 
             {/* Calculation Breakdown */}
             <CalculationBreakdown>
-              <BreakdownTitle>Calculation Breakdown:</BreakdownTitle>
+              <BreakdownTitle>Expected Cash Calculation:</BreakdownTitle>
               <BreakdownGrid>
                 <BreakdownRow>
                   <span>Opening Float:</span>
@@ -958,23 +1049,61 @@ export default function CashUpModule({
                     ${calculations.openingFloat.toFixed(2)}
                   </BreakdownValue>
                 </BreakdownRow>
+
                 <BreakdownRow $color="#059669">
                   <span>+ Cash Sales:</span>
                   <BreakdownValue>
                     ${calculations.cashFromSales.toFixed(2)}
                   </BreakdownValue>
                 </BreakdownRow>
+
+                {(cashUpData?.creditsAdded || 0) > 0 && (
+                  <BreakdownRow $color="#dc2626">
+                    <span>- Credits Added (change kept):</span>
+                    <BreakdownValue>
+                      ${(cashUpData?.creditsAdded || 0).toFixed(2)}
+                    </BreakdownValue>
+                  </BreakdownRow>
+                )}
+
                 <BreakdownRow $color="#dc2626">
                   <span>- Total Expenses:</span>
                   <BreakdownValue>
                     ${calculations.totalExpenses.toFixed(2)}
                   </BreakdownValue>
                 </BreakdownRow>
+
+                {calculations.totalSafeDrops > 0 && (
+                  <BreakdownRow $color="#dc2626">
+                    <span>- Safe Drops:</span>
+                    <BreakdownValue>
+                      ${calculations.totalSafeDrops.toFixed(2)}
+                    </BreakdownValue>
+                  </BreakdownRow>
+                )}
+
                 <TotalRow>
-                  <span>Expected Cash:</span>
+                  <span>Expected Cash in Drawer:</span>
                   <span>${calculations.expectedCash.toFixed(2)}</span>
                 </TotalRow>
               </BreakdownGrid>
+
+              {(cashUpData?.creditsRedeemed || 0) > 0 && (
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    padding: "0.75rem",
+                    background: "#fef3c7",
+                    borderRadius: "6px",
+                    fontSize: "0.875rem",
+                    color: "#78350f",
+                  }}
+                >
+                  <strong>Note:</strong> $
+                  {(cashUpData?.creditsRedeemed || 0).toFixed(2)} in credits
+                  were redeemed today (no cash received for these sales).
+                </div>
+              )}
             </CalculationBreakdown>
           </CashInputSection>
         </Section>

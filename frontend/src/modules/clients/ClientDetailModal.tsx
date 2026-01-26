@@ -8,6 +8,7 @@ import StatCard from "../../ui/components/StatCard";
 import styled from "styled-components";
 import type { Client, CreateClientInput } from "./api";
 import type { Appointment } from "../appointments/AppointmentsSchema";
+import { useClientBalance, useCreditHistory } from "../credits/useCredits";
 import {
   Edit2,
   Save,
@@ -23,6 +24,8 @@ import {
   TrendingUp,
   Clock,
   Star,
+  Wallet,
+  TrendingDown,
 } from "lucide-react";
 
 interface ClientDetailModalProps {
@@ -131,6 +134,8 @@ export default function ClientDetailModal({
   isAdmin = false,
 }: ClientDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const { data: creditBalance = 0 } = useClientBalance(client?.id);
+  const { data: creditHistory = [] } = useCreditHistory(client?.id);
   const [formValues, setFormValues] = useState<CreateClientInput>({
     name: "",
     email: "",
@@ -166,12 +171,12 @@ export default function ClientDetailModal({
 
     const now = Date.now();
     const upcoming = clientAppts.filter(
-      (a) => new Date(a.datetimeISO).getTime() >= now
+      (a) => new Date(a.datetimeISO).getTime() >= now,
     );
 
     const lastVisit = completed.length
       ? new Date(
-          Math.max(...completed.map((a) => new Date(a.datetimeISO).getTime()))
+          Math.max(...completed.map((a) => new Date(a.datetimeISO).getTime())),
         )
       : null;
 
@@ -279,6 +284,53 @@ export default function ClientDetailModal({
               subtext="points earned"
               variant="info"
             />
+          </StatsSection>
+        )}
+
+        {isAdmin && clientStats && !isEditing && (
+          <StatsSection
+            title="Credit Account"
+            icon={<DollarSign />}
+            columns={3}
+          >
+            <StatCard
+              label="Current Balance"
+              value={`$${creditBalance.toFixed(2)}`}
+              icon={<Wallet size={16} />}
+              variant={creditBalance > 0 ? "success" : "info"}
+            />
+            <StatCard
+              label="Lifetime Added"
+              value={`$${client.lifetimeCredits?.toFixed(2) || "0.00"}`}
+              icon={<TrendingUp size={16} />}
+            />
+            <StatCard
+              label="Lifetime Redeemed"
+              value={`$${client.lifetimeCreditsRedeemed?.toFixed(2) || "0.00"}`}
+              icon={<TrendingDown size={16} />}
+            />
+          </StatsSection>
+        )}
+        {creditHistory.length > 0 && (
+          <StatsSection
+            title="Recent Credit Activity"
+            icon={<Wallet />}
+            columns={3}
+          >
+            {creditHistory.slice(0, 5).map((tx) => (
+              <CreditTransaction key={tx.id}>
+                <TransactionType $type={tx.type}>
+                  {tx.type === "add" ? "+" : "-"}${tx.amount.toFixed(2)}
+                </TransactionType>
+                <TransactionDetails>
+                  <div>{tx.sourceType}</div>
+                  <div>{new Date(tx.createdAt).toLocaleDateString()}</div>
+                </TransactionDetails>
+                <TransactionBalance>
+                  Balance: ${tx.balanceAfter.toFixed(2)}
+                </TransactionBalance>
+              </CreditTransaction>
+            ))}
           </StatsSection>
         )}
 

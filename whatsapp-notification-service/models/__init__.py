@@ -1,16 +1,27 @@
 """
 Models package initialization
 """
+
+# ---- SQLAlchemy ORM Models ----
+from database import Booking, Client, NotificationLog, WorkflowTracking
+
+# ---- Pydantic Schemas ----
 from models.schemas import (
+    JobStatus,
+    NotificationStats,
     SendMessageRequest,
     SendMessageResponse,
-    NotificationStats,
-    JobStatus
 )
 
 __all__ = [
-    'SendMessageRequest',
-    'SendMessageResponse',
-    'NotificationStats',
-    'JobStatus'
+    # Schemas
+    "SendMessageRequest",
+    "SendMessageResponse",
+    "NotificationStats",
+    "JobStatus",
+    # ORM Models
+    "Client",
+    "Booking",
+    "NotificationLog",
+    "WorkflowTracking",
 ]

@@ -158,6 +158,18 @@ const LoyaltyBadge = styled.div`
   border: 1px solid ${({ theme }) => theme.color.yellow200};
 `;
 
+const CreditBadge = styled.span<{ $hasCredit: boolean }>`
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: ${({ theme }) => theme.radii.round};
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: ${({ $hasCredit, theme }) =>
+    $hasCredit ? theme.color.green100 : theme.color.grey100};
+  color: ${({ $hasCredit, theme }) =>
+    $hasCredit ? theme.color.green700 : theme.color.mutedText};
+`;
+
 const AppointmentInfo = styled.div`
   padding: 0.75rem;
   background: ${({ theme }) => theme.color.blue100};
@@ -241,33 +253,33 @@ export default function ClientsPage() {
       const next = (appointments ?? [])
         .filter(
           (a) =>
-            a.clientId === clientId && new Date(a.datetimeISO).getTime() >= now
+            a.clientId === clientId && new Date(a.datetimeISO).getTime() >= now,
         )
         .sort(
           (a, b) =>
             new Date(a.datetimeISO).getTime() -
-            new Date(b.datetimeISO).getTime()
+            new Date(b.datetimeISO).getTime(),
         )[0];
       return next ?? null;
     },
-    [appointments]
+    [appointments],
   );
 
   const getClientStats = useCallback(
     (clientId: string) => {
       const clientAppointments = appointments.filter(
-        (a) => a.clientId === clientId
+        (a) => a.clientId === clientId,
       );
       return {
         total: clientAppointments.length,
         completed: clientAppointments.filter((a) => a.status === "completed")
           .length,
         upcoming: clientAppointments.filter(
-          (a) => new Date(a.datetimeISO).getTime() >= Date.now()
+          (a) => new Date(a.datetimeISO).getTime() >= Date.now(),
         ).length,
       };
     },
-    [appointments]
+    [appointments],
   );
 
   const handleCreate = useCallback(
@@ -282,7 +294,7 @@ export default function ClientsPage() {
         },
       });
     },
-    [createMutation, createModal]
+    [createMutation, createModal],
   );
 
   const handleUpdate = useCallback(
@@ -297,10 +309,10 @@ export default function ClientsPage() {
           onError: (error: any) => {
             toast.error(error?.message ?? "Failed to update client");
           },
-        }
+        },
       );
     },
-    [updateMutation, detailModal]
+    [updateMutation, detailModal],
   );
 
   const handleDelete = useCallback(
@@ -315,7 +327,7 @@ export default function ClientsPage() {
         },
       });
     },
-    [deleteMutation, detailModal]
+    [deleteMutation, detailModal],
   );
 
   const handleCreateAppointment = useCallback(
@@ -330,7 +342,7 @@ export default function ClientsPage() {
         },
       });
     },
-    [navigate, detailModal]
+    [navigate, detailModal],
   );
 
   if (isLoading) {
@@ -430,6 +442,9 @@ export default function ClientsPage() {
                       {client.loyaltyPoints} pts
                     </LoyaltyBadge>
                   )}
+                  <CreditBadge $hasCredit={(client.creditBalance ?? 0) > 0}>
+                    ${client.creditBalance?.toFixed(2) || "0.00"}
+                  </CreditBadge>
                 </ClientHeader>
 
                 {nextAppointment ? (
@@ -439,7 +454,7 @@ export default function ClientsPage() {
                       <AppointmentDetail>
                         <CalendarIcon size={14} />
                         {new Date(
-                          nextAppointment.datetimeISO
+                          nextAppointment.datetimeISO,
                         ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -448,7 +463,7 @@ export default function ClientsPage() {
                       <AppointmentDetail>
                         <ClockIcon size={14} />
                         {new Date(
-                          nextAppointment.datetimeISO
+                          nextAppointment.datetimeISO,
                         ).toLocaleTimeString([], {
                           hour: "numeric",
                           minute: "2-digit",

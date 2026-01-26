@@ -7,14 +7,24 @@ from datetime import datetime, time
 from typing import Optional
 
 from config import get_settings
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    UUID,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    MetaData,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 # Base class for models
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData()
 
 
 # Database engine (singleton)
@@ -52,8 +62,9 @@ async def get_db_session():
 
 class Client(Base):
     __tablename__ = "clients"
+    __table_args__ = {"schema": "public", "extend_existing": True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[UUID] = mapped_column(UUID, primary_key=True)
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100))
     email: Mapped[Optional[str]] = mapped_column(String(255))
@@ -94,11 +105,12 @@ class Client(Base):
 
 class Booking(Base):
     __tablename__ = "bookings"
+    __table_args__ = {"schema": "public", "extend_existing": True}
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    client_id: Mapped[int] = mapped_column(Integer, ForeignKey("clients.id"))
-    treatment_id: Mapped[int] = mapped_column(Integer)
-    staff_id: Mapped[int] = mapped_column(Integer)
+    id: Mapped[UUID] = mapped_column(UUID, primary_key=True)
+    client_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("public.clients.id"))
+    treatment_id: Mapped[UUID] = mapped_column(UUID)
+    staff_id: Mapped[UUID] = mapped_column(UUID)
     booking_date: Mapped[datetime]
     start_time: Mapped[time]
     end_time: Mapped[time]
@@ -133,12 +145,13 @@ class Booking(Base):
 
 class NotificationLog(Base):
     __tablename__ = "notification_logs"
+    __table_args__ = {"schema": "public", "extend_existing": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    booking_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("bookings.id")
+    booking_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID, ForeignKey("public.bookings.id")
     )
-    client_id: Mapped[int] = mapped_column(Integer, ForeignKey("clients.id"))
+    client_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("public.clients.id"))
     phone_number: Mapped[str] = mapped_column(String(20))
     message_type: Mapped[str] = mapped_column(String(50))
     message_content: Mapped[str] = mapped_column(Text)
@@ -156,14 +169,23 @@ class NotificationLog(Base):
 # Workflow tracking table (new - optional but recommended)
 class WorkflowTracking(Base):
     __tablename__ = "workflow_tracking"
+    __table_args__ = {"schema": "public", "extend_existing": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    booking_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("bookings.id"), unique=True
+    booking_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("public.bookings.id"), unique=True
     )
     workflow_id: Mapped[str] = mapped_column(String(200), unique=True)
     workflow_type: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(20))
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[Optional[datetime]]
+    cancelled_at: Mapped[Optional[datetime]]
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     completed_at: Mapped[Optional[datetime]]
     cancelled_at: Mapped[Optional[datetime]]

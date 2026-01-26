@@ -5,6 +5,7 @@ Executes workflows and activities
 
 import asyncio
 
+import models
 import structlog
 from activities import NotificationActivities  # Changed
 from config import get_settings
@@ -94,4 +95,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    asyncio.run(main())
     asyncio.run(main())

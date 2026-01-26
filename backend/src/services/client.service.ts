@@ -28,7 +28,7 @@ export class ClientService {
             "x-gateway-key": process.env.GATEWAY_SECRET || "",
             "x-user-id": userId,
           },
-        }
+        },
       );
 
       logger.info({ clientId, userId }, "📇 Client synced to Google Contacts");
@@ -39,7 +39,7 @@ export class ClientService {
           userId,
           error: error.message,
         },
-        "❌ Failed to sync client to Google Contacts"
+        "❌ Failed to sync client to Google Contacts",
       );
     }
   }
@@ -56,12 +56,12 @@ export class ClientService {
             "x-gateway-key": process.env.GATEWAY_SECRET || "",
             "x-user-id": userId,
           },
-        }
+        },
       );
 
       logger.info(
         { clientId, userId },
-        "🗑️ Client removed from Google Contacts"
+        "🗑️ Client removed from Google Contacts",
       );
     } catch (error: any) {
       logger.error(
@@ -70,7 +70,7 @@ export class ClientService {
           userId,
           error: error.message,
         },
-        "❌ Failed to delete client from Google Contacts"
+        "❌ Failed to delete client from Google Contacts",
       );
     }
   }
@@ -85,7 +85,7 @@ export class ClientService {
 
     const existingClient = await pool.query(
       "SELECT id FROM clients WHERE phone = $1 AND is_active = true",
-      [data.phone]
+      [data.phone],
     );
 
     if (existingClient.rows.length > 0) {
@@ -118,7 +118,7 @@ export class ClientService {
         data.notes || null,
         data.date_of_birth || null,
         data.address || null,
-      ]
+      ],
     );
 
     const client = result.rows[0];
@@ -126,7 +126,7 @@ export class ClientService {
     logger.info({ clientId: client.id, userId }, "✅ Client created");
 
     this.syncClientToGoogle(userId, client.id).catch((err) =>
-      logger.error({ err }, "⚠️ Background Google sync failed")
+      logger.error({ err }, "⚠️ Background Google sync failed"),
     );
 
     return this.formatClient(client);
@@ -137,7 +137,7 @@ export class ClientService {
    */
   async findAll(
     userId: string,
-    filters: { search?: string; page?: number; limit?: number }
+    filters: { search?: string; page?: number; limit?: number },
   ) {
     const { search, page = 1, limit = 50 } = filters;
     const offset = (page - 1) * limit;
@@ -152,7 +152,8 @@ export class ClientService {
         c.first_name ILIKE $${paramIndex} OR
         c.last_name ILIKE $${paramIndex} OR
         c.phone ILIKE $${paramIndex} OR
-        c.email ILIKE $${paramIndex}
+        c.email ILIKE $${paramIndex} OR
+        c.credits_balance > $${paramIndex}
       )`;
       params.push(`%${search}%`);
       paramIndex++;
@@ -193,7 +194,7 @@ export class ClientService {
 
     logger.debug(
       { total: countResult.rows[0].count, page, limit },
-      "📊 Clients list fetched"
+      "📊 Clients list fetched",
     );
 
     return {
@@ -214,7 +215,7 @@ export class ClientService {
        SET is_active = false, updated_at = NOW()
        WHERE id = $1
        RETURNING id`,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
@@ -224,7 +225,7 @@ export class ClientService {
     logger.info({ clientId: id, userId }, "🛑 Client deactivated");
 
     this.deleteSyncedClient(userId, id).catch((err) =>
-      logger.error({ err }, "⚠️ Background Google delete failed")
+      logger.error({ err }, "⚠️ Background Google delete failed"),
     );
   }
 
@@ -250,12 +251,12 @@ export class ClientService {
       )
     ORDER BY c.first_name ASC
     LIMIT 10`,
-      [`%${query}%`]
+      [`%${query}%`],
     );
 
     logger.debug(
       { count: result.rows.length, query },
-      "🔍 Client search executed"
+      "🔍 Client search executed",
     );
 
     return result.rows.map(this.formatClient.bind(this));
@@ -281,7 +282,7 @@ export class ClientService {
     LEFT JOIN sales s ON c.id = s.client_id
     WHERE c.id = $1 AND c.is_active = true
     GROUP BY c.id`,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
@@ -357,7 +358,7 @@ export class ClientService {
      SET ${updateFields.join(", ")}
      WHERE id = ${paramIndex++} AND is_active = true
      RETURNING *`,
-      params
+      params,
     );
 
     if (result.rows.length === 0) {
@@ -368,7 +369,7 @@ export class ClientService {
 
     // Sync to Google Contacts in background
     this.syncClientToGoogle(userId, id).catch((err) =>
-      logger.error({ err }, "⚠️ Background Google sync failed")
+      logger.error({ err }, "⚠️ Background Google sync failed"),
     );
 
     return this.formatClient(result.rows[0]);
@@ -381,7 +382,7 @@ export class ClientService {
     // Verify client exists
     const clientCheck = await pool.query(
       `SELECT id FROM clients WHERE id = $1 AND is_active = true`,
-      [clientId]
+      [clientId],
     );
 
     if (clientCheck.rows.length === 0) {
@@ -406,7 +407,7 @@ export class ClientService {
     WHERE b.client_id = $1
     ORDER BY b.booking_date DESC, b.start_time DESC
     LIMIT 50`,
-      [clientId]
+      [clientId],
     );
 
     // Get purchases/sales
@@ -437,7 +438,7 @@ export class ClientService {
     GROUP BY s.id
     ORDER BY s.sale_date DESC
     LIMIT 50`,
-      [clientId]
+      [clientId],
     );
 
     logger.debug({ clientId }, "📜 Client history fetched");
@@ -470,7 +471,7 @@ export class ClientService {
     LEFT JOIN sales s ON c.id = s.client_id
     WHERE c.id = $1 AND c.is_active = true
     GROUP BY c.id`,
-      [clientId]
+      [clientId],
     );
 
     if (result.rows.length === 0) {
@@ -493,6 +494,41 @@ export class ClientService {
       lastPurchaseDate: stats.last_purchase_date,
       firstAppointmentDate: stats.first_appointment_date,
       firstPurchaseDate: stats.first_purchase_date,
+    };
+  }
+
+  /**
+   * Get client with credit balance
+   */
+  async findByIdWithCredit(userId: string, id: string) {
+    const result = await pool.query(
+      `SELECT 
+      c.*,
+      COUNT(DISTINCT b.id) as total_appointments,
+      COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as completed_appointments,
+      COUNT(DISTINCT s.id) as total_purchases,
+      SUM(s.final_amount) as lifetime_value,
+      MAX(b.booking_date) as last_appointment_date
+    FROM clients c
+    LEFT JOIN bookings b ON c.id = b.client_id
+    LEFT JOIN sales s ON c.id = s.client_id
+    WHERE c.id = $1
+    GROUP BY c.id`,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      throw AppError.notFound("Client not found");
+    }
+
+    const client = result.rows[0];
+
+    return {
+      ...this.formatClient(client),
+      creditBalance: parseFloat(client.credit_balance) || 0,
+      lifetimeCredits: parseFloat(client.lifetime_credits) || 0,
+      lifetimeCreditsRedeemed:
+        parseFloat(client.lifetime_credits_redeemed) || 0,
     };
   }
 

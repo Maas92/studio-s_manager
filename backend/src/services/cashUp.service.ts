@@ -1,6 +1,7 @@
 import { pool, supabase } from "../config/database.js";
 import AppError from "../utils/appError.js";
 import { logger } from "../utils/logger.js";
+import { creditService } from "./credit.service.js";
 
 interface CreateCashUpData {
   openingFloat: number;
@@ -34,27 +35,33 @@ export class CashUpService {
   async create(userId: string, data: CreateCashUpData) {
     const existing = await pool.query(
       `SELECT id FROM cash_ups WHERE session_date = $1`,
-      [data.sessionDate]
+      [data.sessionDate],
     );
 
     if (existing.rows.length > 0) {
       throw AppError.conflict("Cash-up session already exists for this date");
     }
 
-    const transactions = await this.getTransactionsForDate(data.sessionDate);
+    // Get today's transactions AND credit activity
+    const [transactions, creditSummary] = await Promise.all([
+      this.getTransactionsForDate(data.sessionDate),
+      creditService.getCreditSummaryForSession(userId, data.sessionDate),
+    ]);
 
     const result = await pool.query(
       `INSERT INTO cash_ups (
-        user_id,
-        session_date,
-        opening_float,
-        total_sales,
-        cash_sales,
-        card_sales,
-        other_payments,
-        expected_cash
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      RETURNING *`,
+      user_id,
+      session_date,
+      opening_float,
+      total_sales,
+      cash_sales,
+      card_sales,
+      other_payments,
+      credits_added,
+      credits_redeemed,
+      expected_cash
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING *`,
       [
         userId,
         data.sessionDate,
@@ -63,13 +70,19 @@ export class CashUpService {
         transactions.cashSales,
         transactions.cardSales,
         transactions.otherPayments,
-        data.openingFloat + transactions.cashSales,
-      ]
+        creditSummary.totalCreditsAdded,
+        creditSummary.totalCreditsRedeemed,
+        // expected_cash calculation:
+        // opening + cash sales - credits_added (kept as credit, not given as change)
+        data.openingFloat +
+          transactions.cashSales -
+          creditSummary.totalCreditsAdded,
+      ],
     );
 
     logger.info(
       { cashUpId: result.rows[0].id, sessionDate: data.sessionDate },
-      "Cash-up session created"
+      "Cash-up session created",
     );
 
     return this.formatCashUp(result.rows[0]);
@@ -111,7 +124,7 @@ export class CashUpService {
         FROM transactions
         WHERE DATE(created_at) = $1
           AND status = 'completed'`,
-        [date]
+        [date],
       );
 
       return {
@@ -124,7 +137,7 @@ export class CashUpService {
     } catch (error: any) {
       logger.warn(
         { date, error: error.message },
-        "Failed to query transactions, defaulting to zero"
+        "Failed to query transactions, defaulting to zero",
       );
 
       return {
@@ -213,7 +226,7 @@ export class CashUpService {
       LEFT JOIN safe_drops sd ON c.id = sd.cash_up_id
       WHERE c.id = $1
       GROUP BY c.id`,
-      [id]
+      [id],
     );
 
     if (!result.rows.length) {
@@ -258,7 +271,7 @@ export class CashUpService {
        SET ${fields.join(", ")}, updated_at = NOW()
        WHERE id = $${i}
        RETURNING *`,
-      [...values, id]
+      [...values, id],
     );
 
     logger.info({ cashUpId: id }, "Cash-up updated");
@@ -269,7 +282,7 @@ export class CashUpService {
     userId: string,
     id: string,
     actualCash: number,
-    notes?: string
+    notes?: string,
   ) {
     const result = await pool.query(
       `UPDATE cash_ups
@@ -282,7 +295,7 @@ export class CashUpService {
            updated_at = NOW()
        WHERE id = $4 AND status = 'in_progress'
        RETURNING *`,
-      [actualCash, notes, userId, id]
+      [actualCash, notes, userId, id],
     );
 
     logger.info({ cashUpId: id }, "Cash-up completed");
@@ -299,7 +312,7 @@ export class CashUpService {
            updated_at = NOW()
        WHERE id = $3 AND status = 'completed'
        RETURNING *`,
-      [notes, userId, id]
+      [notes, userId, id],
     );
 
     logger.info({ cashUpId: id }, "Cash-up reconciled");
@@ -323,7 +336,7 @@ export class CashUpService {
         data.amount,
         data.category,
         !!data.requiresApproval,
-      ]
+      ],
     );
 
     await this.updateCashUpTotals(cashUpId);
@@ -335,7 +348,7 @@ export class CashUpService {
   public async deleteExpense(expenseId: string) {
     const result = await pool.query(
       `DELETE FROM cash_up_expenses WHERE id = $1 RETURNING cash_up_id`,
-      [expenseId]
+      [expenseId],
     );
 
     if (!result.rows.length) {
@@ -383,7 +396,7 @@ export class CashUpService {
      SET ${fields.join(", ")}, updated_at = NOW()
      WHERE id = $${i}
      RETURNING *`,
-      [...values, expenseId]
+      [...values, expenseId],
     );
 
     if (!result.rows.length) {
@@ -403,11 +416,11 @@ export class CashUpService {
   public async uploadReceipt(
     userId: string,
     expenseId: string,
-    file: Express.Multer.File
+    file: Express.Multer.File,
   ) {
     const expenseResult = await pool.query(
       `SELECT id FROM cash_up_expenses WHERE id = $1`,
-      [expenseId]
+      [expenseId],
     );
 
     if (!expenseResult.rows.length) {
@@ -441,7 +454,7 @@ export class CashUpService {
          updated_at = NOW()
      WHERE id = $3
      RETURNING *`,
-      [urlData.publicUrl, file.originalname, expenseId]
+      [urlData.publicUrl, file.originalname, expenseId],
     );
 
     logger.info({ expenseId }, "Expense receipt uploaded");
@@ -456,14 +469,14 @@ export class CashUpService {
   public async addSafeDrop(
     userId: string,
     cashUpId: string,
-    data: SafeDropData
+    data: SafeDropData,
   ) {
     const result = await pool.query(
       `INSERT INTO safe_drops (
         cash_up_id, user_id, amount, reason, notes
       ) VALUES ($1,$2,$3,$4,$5)
       RETURNING *`,
-      [cashUpId, userId, data.amount, data.reason, data.notes]
+      [cashUpId, userId, data.amount, data.reason, data.notes],
     );
 
     await this.updateCashUpTotals(cashUpId);
@@ -474,7 +487,7 @@ export class CashUpService {
   public async deleteSafeDrop(dropId: string) {
     const result = await pool.query(
       `DELETE FROM safe_drops WHERE id = $1 RETURNING cash_up_id`,
-      [dropId]
+      [dropId],
     );
 
     if (!result.rows.length) {
@@ -517,7 +530,7 @@ export class CashUpService {
      SET ${fields.join(", ")}, updated_at = NOW()
      WHERE id = $${i}
      RETURNING *`,
-      [...values, dropId]
+      [...values, dropId],
     );
 
     if (!result.rows.length) {
@@ -543,7 +556,7 @@ export class CashUpService {
      WHERE session_date = $1
      ORDER BY created_at DESC
      LIMIT 1`,
-      [today]
+      [today],
     );
 
     if (!result.rows.length) {
@@ -610,7 +623,7 @@ export class CashUpService {
          - COALESCE((SELECT SUM(amount) FROM safe_drops WHERE cash_up_id = $1),0),
        updated_at = NOW()
        WHERE id = $1`,
-      [cashUpId]
+      [cashUpId],
     );
   }
 

@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useCallback } from "react";
 import styled from "styled-components";
+import { useClientBalance, useCredit } from "../credits/useCredits";
+import CreditChangeModal from "./CreditChangeModal";
+import PrepaymentModal from "./PrepaymentModal";
 import {
   CreditCard,
   DollarSign,
@@ -10,6 +13,8 @@ import {
   ArrowLeft,
   Edit2,
   Tag as TagIcon,
+  CreditCard as CreditIcon,
+  Wallet,
 } from "lucide-react";
 
 import Button from "../../ui/components/Button";
@@ -138,7 +143,7 @@ const DiscountRow = styled.div`
 
 const PaymentMethodGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.75rem;
   margin-bottom: 1rem;
 `;
@@ -270,6 +275,19 @@ const SuccessBox = styled.div`
   margin-top: 0.75rem;
 `;
 
+const InfoBox = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: ${({ theme }) => theme.color.blue100 || "#dbeafe"};
+  border: 1px solid ${({ theme }) => theme.color.blue500 || "#3b82f6"};
+  border-radius: ${({ theme }) => theme.radii.md};
+  color: ${({ theme }) => theme.color.blue500 || "#1d4ed8"};
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+`;
+
 const Actions = styled.div`
   display: grid;
   gap: 0.75rem;
@@ -295,6 +313,36 @@ const Label = styled.label`
 const HintText = styled.span`
   font-size: 0.8rem;
   color: ${({ theme }) => theme.color.mutedText};
+`;
+
+const CreditBalanceCard = styled.div`
+  padding: 1rem;
+  background: ${({ theme }) => theme.color.green100 || "#f0fdf4"};
+  border: 1px solid ${({ theme }) => theme.color.green500 || "#22c55e"};
+  border-radius: ${({ theme }) => theme.radii.md};
+  margin-bottom: 1rem;
+`;
+
+const CreditBalanceHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+`;
+
+const CreditBalanceLabel = styled.div`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.green700 || "#15803d"};
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const CreditBalanceAmount = styled.div`
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: ${({ theme }) => theme.color.green500 || "#16a34a"};
 `;
 
 // ============================================================================
@@ -334,16 +382,25 @@ export default function PaymentReview({
   onEditCart,
   processing = false,
 }: PaymentReviewProps) {
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "split">(
-    "card"
-  );
+  const [paymentMethod, setPaymentMethod] = useState<
+    "card" | "cash" | "credit" | "split"
+  >("card");
   const [cashReceived, setCashReceived] = useState("");
+  const [creditToUse, setCreditToUse] = useState(0);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  const { data: clientBalance = 0 } = useClientBalance(client?.id);
+  const { addCreditMutation, redeemCreditMutation } = useCredit();
+
+  const [showChangeModal, setShowChangeModal] = useState(false);
+  const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [pendingChange, setPendingChange] = useState(0);
 
   // Calculate totals - TAX INCLUSIVE
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cart]
+    [cart],
   );
 
   const discountAmount = useMemo(() => {
@@ -355,30 +412,43 @@ export default function PaymentReview({
 
   const loyaltyValue = useMemo(
     () => (loyaltyPointsToRedeem || 0) * 0.01,
-    [loyaltyPointsToRedeem]
+    [loyaltyPointsToRedeem],
   );
 
   // Total after discounts (this is the tax-inclusive amount)
   const totalAfterDiscounts = useMemo(
     () => Math.max(0, subtotal - discountAmount - loyaltyValue),
-    [subtotal, discountAmount, loyaltyValue]
+    [subtotal, discountAmount, loyaltyValue],
   );
 
   // Extract tax from the tax-inclusive total
   const tax = useMemo(
     () => totalAfterDiscounts * TAX_DIVISOR,
-    [totalAfterDiscounts]
+    [totalAfterDiscounts],
   );
 
   const tipsTotal = useMemo(
     () => Object.values(tips || {}).reduce((sum, tip) => sum + tip, 0),
-    [tips]
+    [tips],
   );
 
   // Final total = tax-inclusive amount + tips
-  const total = useMemo(
+  const totalBeforeCredit = useMemo(
     () => totalAfterDiscounts + tipsTotal,
-    [totalAfterDiscounts, tipsTotal]
+    [totalAfterDiscounts, tipsTotal],
+  );
+
+  // Apply credit redemption
+  const creditRedemption = useMemo(() => {
+    if (paymentMethod === "credit") {
+      return Math.min(creditToUse, clientBalance, totalBeforeCredit);
+    }
+    return 0;
+  }, [paymentMethod, creditToUse, clientBalance, totalBeforeCredit]);
+
+  const total = useMemo(
+    () => Math.max(0, totalBeforeCredit - creditRedemption),
+    [totalBeforeCredit, creditRedemption],
   );
 
   const cashChange = useMemo(() => {
@@ -400,7 +470,21 @@ export default function PaymentReview({
         errors.push("Please enter cash received amount");
       } else if (received < total) {
         errors.push(
-          `Insufficient cash. Need $${(total - received).toFixed(2)} more`
+          `Insufficient cash. Need $${(total - received).toFixed(2)} more`,
+        );
+      }
+    }
+
+    if (paymentMethod === "credit") {
+      if (creditToUse === 0) {
+        errors.push("Please enter credit amount to use");
+      }
+      if (creditToUse > clientBalance) {
+        errors.push("Insufficient credit balance");
+      }
+      if (creditRedemption < totalBeforeCredit) {
+        errors.push(
+          "Credit doesn't cover full amount. Please select additional payment method or add more credit.",
         );
       }
     }
@@ -428,20 +512,117 @@ export default function PaymentReview({
     discount,
     discountAmount,
     subtotal,
+    creditToUse,
+    clientBalance,
+    creditRedemption,
+    totalBeforeCredit,
   ]);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     if (!canProceed || processing) return;
 
-    const payments = [
-      {
-        method: paymentMethod,
-        amount: total,
-      },
-    ];
+    const payments: any[] = [];
 
+    // Handle credit payment
+    if (paymentMethod === "credit" && creditRedemption > 0) {
+      payments.push({
+        method: "credit",
+        amount: creditRedemption,
+      });
+
+      try {
+        // Redeem credit immediately
+        await redeemCreditMutation.mutateAsync({
+          clientId: client.id,
+          amount: creditRedemption,
+          notes: `Payment for transaction`,
+        });
+      } catch (error) {
+        console.error("Failed to redeem credit:", error);
+        // Continue anyway - payment will be recorded
+      }
+    }
+
+    // Handle cash payment
+    if (paymentMethod === "cash") {
+      payments.push({
+        method: "cash",
+        amount: total,
+      });
+
+      // Check if there's change
+      if (cashChange > 0) {
+        setPendingChange(cashChange);
+        setPendingPayments(payments);
+        setShowChangeModal(true);
+        return; // Wait for user decision on change
+      }
+    }
+
+    // Handle card payment
+    if (paymentMethod === "card") {
+      payments.push({
+        method: "card",
+        amount: total,
+      });
+    }
+
+    // Complete transaction
     onComplete(payments);
-  }, [canProceed, processing, paymentMethod, total, onComplete]);
+  }, [
+    canProceed,
+    processing,
+    paymentMethod,
+    creditRedemption,
+    total,
+    cashChange,
+    onComplete,
+    redeemCreditMutation,
+    client,
+  ]);
+
+  const handleChangeDecision = useCallback(
+    async (action: "cash" | "credit") => {
+      if (action === "credit" && client?.id) {
+        try {
+          // Add change to client credit
+          await addCreditMutation.mutateAsync({
+            clientId: client.id,
+            amount: pendingChange,
+            sourceType: "change",
+            notes: `Change from transaction`,
+          });
+        } catch (error) {
+          console.error("Failed to add credit:", error);
+          // Continue anyway
+        }
+      }
+
+      // Close modal and complete transaction
+      setShowChangeModal(false);
+      onComplete(pendingPayments);
+    },
+    [client, pendingChange, pendingPayments, addCreditMutation, onComplete],
+  );
+
+  const handlePrepayment = useCallback(
+    async (amount: number, method: "cash" | "card") => {
+      if (!client?.id) return;
+
+      try {
+        await addCreditMutation.mutateAsync({
+          clientId: client.id,
+          amount,
+          sourceType: "prepayment",
+          notes: `Prepayment via ${method}`,
+        });
+        setShowPrepaymentModal(false);
+      } catch (error) {
+        console.error("Failed to add prepayment:", error);
+      }
+    },
+    [client, addCreditMutation],
+  );
 
   return (
     <Container>
@@ -550,7 +731,7 @@ export default function PaymentReview({
         </SectionCard>
 
         {/* Loyalty Points */}
-        {client?.loyaltyPoints > 0 && (
+        {client && client.loyaltyPoints > 0 && (
           <SectionCard>
             <SectionTitle>
               <Gift size={18} />
@@ -579,6 +760,21 @@ export default function PaymentReview({
 
       {/* Side Panel - Payment */}
       <SidePanel>
+        {/* Credit Balance Display */}
+        {client && clientBalance > 0 && (
+          <CreditBalanceCard>
+            <CreditBalanceHeader>
+              <CreditBalanceLabel>
+                <Wallet size={16} />
+                Available Credit
+              </CreditBalanceLabel>
+              <CreditBalanceAmount>
+                ${clientBalance.toFixed(2)}
+              </CreditBalanceAmount>
+            </CreditBalanceHeader>
+          </CreditBalanceCard>
+        )}
+
         <TotalDisplay>
           <TotalLabel>Total Amount</TotalLabel>
           <TotalAmount>${total.toFixed(2)}</TotalAmount>
@@ -615,8 +811,16 @@ export default function PaymentReview({
               <span>${tipsTotal.toFixed(2)}</span>
             </SummaryRow>
           )}
+          {creditRedemption > 0 && (
+            <SummaryRow>
+              <span>Credit Applied:</span>
+              <span style={{ color: "var(--color-green500)" }}>
+                -${creditRedemption.toFixed(2)}
+              </span>
+            </SummaryRow>
+          )}
           <SummaryRow $isTotal>
-            <span>Total:</span>
+            <span>Amount Due:</span>
             <span>${total.toFixed(2)}</span>
           </SummaryRow>
         </SummaryList>
@@ -642,6 +846,15 @@ export default function PaymentReview({
           >
             <DollarSign size={20} />
             Cash
+          </MethodButton>
+          <MethodButton
+            $active={paymentMethod === "credit"}
+            onClick={() => setPaymentMethod("credit")}
+            type="button"
+            disabled={!client || clientBalance === 0}
+          >
+            <Wallet size={20} />
+            Credit
           </MethodButton>
           <MethodButton
             $active={paymentMethod === "split"}
@@ -675,6 +888,53 @@ export default function PaymentReview({
           </FormField>
         )}
 
+        {paymentMethod === "credit" && (
+          <FormField style={{ marginBottom: "1rem" }}>
+            <Label htmlFor="credit-amount">Credit Amount to Use</Label>
+            <Input
+              id="credit-amount"
+              type="number"
+              step="0.01"
+              min="0"
+              max={clientBalance}
+              value={creditToUse || ""}
+              onChange={(e) => setCreditToUse(parseFloat(e.target.value) || 0)}
+              placeholder={`Up to $${clientBalance.toFixed(2)}`}
+            />
+            <div
+              style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}
+            >
+              <Button
+                variation="secondary"
+                size="small"
+                onClick={() =>
+                  setCreditToUse(Math.min(clientBalance, totalBeforeCredit))
+                }
+                type="button"
+              >
+                Use All Credit
+              </Button>
+              <Button
+                variation="secondary"
+                size="small"
+                onClick={() => setCreditToUse(totalBeforeCredit)}
+                type="button"
+                disabled={totalBeforeCredit > clientBalance}
+              >
+                Use Exact Amount
+              </Button>
+            </div>
+            {creditRedemption > 0 && creditRedemption < totalBeforeCredit && (
+              <InfoBox style={{ marginTop: "0.75rem" }}>
+                <AlertCircle size={16} />
+                Remaining balance: $
+                {(totalBeforeCredit - creditRedemption).toFixed(2)} - Please
+                select additional payment method
+              </InfoBox>
+            )}
+          </FormField>
+        )}
+
         {validationErrors.length > 0 && (
           <ErrorBox>
             <AlertCircle size={18} />
@@ -701,6 +961,17 @@ export default function PaymentReview({
             {processing ? "Processing..." : "Complete Payment"}
           </Button>
 
+          {client && (
+            <Button
+              variation="secondary"
+              onClick={() => setShowPrepaymentModal(true)}
+              style={{ justifyContent: "center" }}
+            >
+              <CreditIcon size={16} />
+              Add Prepayment/Credit
+            </Button>
+          )}
+
           <BackActions>
             <Button
               variation="secondary"
@@ -723,6 +994,30 @@ export default function PaymentReview({
           </BackActions>
         </Actions>
       </SidePanel>
+
+      {/* Modals */}
+      {showChangeModal && (
+        <CreditChangeModal
+          isOpen={showChangeModal}
+          onClose={() => setShowChangeModal(false)}
+          clientId={client?.id}
+          clientName={client?.name}
+          changeAmount={pendingChange}
+          currentBalance={clientBalance}
+          onConfirm={handleChangeDecision}
+        />
+      )}
+
+      {showPrepaymentModal && (
+        <PrepaymentModal
+          isOpen={showPrepaymentModal}
+          onClose={() => setShowPrepaymentModal(false)}
+          clientId={client?.id}
+          clientName={client?.name}
+          currentBalance={clientBalance}
+          onConfirm={handlePrepayment}
+        />
+      )}
     </Container>
   );
 }
