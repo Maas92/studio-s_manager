@@ -5,6 +5,7 @@ Temporal Workflows for Beauty Salon WhatsApp Notifications
 from datetime import datetime, timedelta
 from typing import Optional
 
+from uuid import UUID
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
@@ -16,8 +17,8 @@ with workflow.unsafe.imports_passed_through():
 class BookingWorkflowInput:
     """Input for appointment booking workflow"""
 
-    booking_id: int
-    client_id: int
+    booking_id: UUID
+    client_id: UUID
     appointment_datetime: str  # Changed from datetime to str (ISO format)
     client_phone: str
     client_name: str
@@ -29,7 +30,7 @@ class BookingWorkflowInput:
 class CancellationInput:
     """Input for cancellation workflow"""
 
-    booking_id: int
+    booking_id: UUID
     client_phone: str
     client_name: str
     appointment_datetime: str  # Changed from datetime to str
@@ -40,7 +41,7 @@ class CancellationInput:
 class RescheduleInput:
     """Input for rescheduling workflow"""
 
-    booking_id: int
+    booking_id: UUID
     old_workflow_id: str
     new_appointment_datetime: str  # Changed from datetime to str
     client_phone: str

@@ -126,7 +126,7 @@ async def start_booking_workflow(
         workflow_input = BookingWorkflowInput(
             booking_id=request.booking_id,
             client_id=request.client_id,
-            appointment_datetime=request.appointment_datetime,
+            appointment_datetime=request.appointment_datetime.isoformat(),
             client_phone=request.client_phone,
             client_name=request.client_name,
             treatment_name=request.treatment_name,
