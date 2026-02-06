@@ -1,0 +1,20 @@
+config:
+  studio-s-infrastructure:vpsIp: "YOUR_PRODUCTION_VPS_IP"
+  studio-s-infrastructure:vpsUser: "root"
+  studio-s-infrastructure:domain: "studiosbeautybar.com"
+  studio-s-infrastructure:enableArgoCD: "true"
+  studio-s-infrastructure:enableMonitoring: "true"
+  studio-s-infrastructure:sshPrivateKey:
+    secure: "YOUR_ENCRYPTED_SSH_KEY_HERE"
+  studio-s-infrastructure:databaseUrl:
+    secure: "YOUR_ENCRYPTED_DATABASE_URL_HERE"
+  studio-s-infrastructure:mongodbUri:
+    secure: "YOUR_ENCRYPTED_MONGODB_URI_HERE"
+  studio-s-infrastructure:jwtSecret:
+    secure: "YOUR_ENCRYPTED_JWT_SECRET_HERE"
+  studio-s-infrastructure:gatewaySecret:
+    secure: "YOUR_ENCRYPTED_GATEWAY_SECRET_HERE"
+  studio-s-infrastructure:argocdAdminPassword:
+    secure: "YOUR_ENCRYPTED_ARGOCD_PASSWORD_HERE"
+  cloudflare:apiToken:
+    secure: "YOUR_ENCRYPTED_CLOUDFLARE_TOKEN_HERE"

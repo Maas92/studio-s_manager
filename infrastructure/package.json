@@ -1,0 +1,23 @@
+{
+  "name": "infrastructure",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "Mansoor",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "pulumi up --stack dev",
+    "staging": "pulumi up --stack staging",
+    "production": "pulumi up --stack production",
+    "preview": "pulumi preview",
+    "destroy": "pulumi destroy"
+  },
+  "dependencies": {
+    "@pulumi/cloudflare": "^6.13.0",
+    "@pulumi/command": "^1.1.3",
+    "@pulumi/pulumi": "^3.219.0",
+    "fs": "^0.0.1-security"
+  }
+}

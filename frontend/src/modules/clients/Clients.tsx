@@ -373,12 +373,12 @@ export default function ClientsPage() {
     <PageWrapper>
       <ControlsWrapper>
         <PageHeader title="Clients">
+          <SyncButton />
           {canManageClients && (
             <Button variation="primary" onClick={() => createModal.open()}>
               <Plus size={16} /> New Client
             </Button>
           )}
-          <SyncButton />
         </PageHeader>
 
         <SearchBar

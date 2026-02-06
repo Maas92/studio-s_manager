@@ -1,10 +1,5 @@
-// Install: npm install @pulumi/pulumi @pulumi/aws @pulumi/digitalocean @pulumi/cloudflare
-
 import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import * as awsx from "@pulumi/awsx";
-import * as eks from "@pulumi/eks";
-import * as k8s from "@pulumi/kubernetes";
+import * as command from "@pulumi/command";
 import * as cloudflare from "@pulumi/cloudflare";
 
 // =============================================================================
@@ -12,465 +7,755 @@ import * as cloudflare from "@pulumi/cloudflare";
 // =============================================================================
 
 const config = new pulumi.Config();
-const awsConfig = new pulumi.Config("aws");
-
 const projectName = "studio-s";
 const environment = pulumi.getStack();
-const region = awsConfig.require("region");
+
+// VPS Configuration (manually provision VPS first)
+const vpsIp = config.require("vpsIp"); // Your VPS IP address
+const vpsUser = config.get("vpsUser") || "root"; // SSH user
+const sshPrivateKey = config.requireSecret("sshPrivateKey"); // Your SSH private key
+
+// Application Configuration
 const domain = config.require("domain");
 const enableArgoCD = config.getBoolean("enableArgoCD") ?? true;
+const enableMonitoring = config.getBoolean("enableMonitoring") ?? true;
 
-// Tags for all resources
+// Database Configuration (external)
+const databaseUrl = config.requireSecret("databaseUrl");
+const mongodbUri = config.requireSecret("mongodbUri");
+
+// Secrets
+const jwtSecret = config.requireSecret("jwtSecret");
+const gatewaySecret = config.requireSecret("gatewaySecret");
+const argocdAdminPassword = config.requireSecret("argocdAdminPassword");
+
 const tags = {
   Project: projectName,
   Environment: environment,
   ManagedBy: "Pulumi",
-  Stack: pulumi.getStack(),
+  Provider: "Generic-VPS",
 };
 
 // =============================================================================
-// VPC and Networking
+// VPS Setup Script
+// Complete server configuration with k3s
 // =============================================================================
 
-const vpc = new awsx.ec2.Vpc(`${projectName}-vpc`, {
-  cidrBlock: "10.0.0.0/16",
-  numberOfAvailabilityZones: 2,
-  enableDnsHostnames: true,
-  enableDnsSupport: true,
-  subnetStrategy: "Auto",
-  subnetSpecs: [
-    {
-      type: awsx.ec2.SubnetType.Public,
-      cidrMask: 24,
-    },
-    {
-      type: awsx.ec2.SubnetType.Private,
-      cidrMask: 24,
-    },
-  ],
-  natGateways: {
-    strategy:
-      environment === "production"
-        ? awsx.ec2.NatGatewayStrategy.OnePerAz
-        : awsx.ec2.NatGatewayStrategy.Single,
+const setupScript = `#!/bin/bash
+set -e
+
+echo "════════════════════════════════════════════════════════════"
+echo "🚀 Studio-S VPS Setup - Starting..."
+echo "════════════════════════════════════════════════════════════"
+
+# =============================================================================
+# System Update & Security Hardening
+# =============================================================================
+
+echo "📦 Updating system packages..."
+export DEBIAN_FRONTEND=noninteractive
+apt update
+apt upgrade -y
+apt dist-upgrade -y
+
+echo "🔒 Installing security tools..."
+apt-get install -y \\
+    ufw \\
+    fail2ban \\
+    unattended-upgrades \\
+    apt-listchanges
+
+# Configure automatic security updates
+cat > /etc/apt/apt.conf.d/50unattended-upgrades <<EOF
+Unattended-Upgrade::Allowed-Origins {
+    "\${distro_id}:\${distro_codename}-security";
+    "\${distro_id}ESMApps:\${distro_codename}-apps-security";
+    "\${distro_id}ESM:\${distro_codename}-infra-security";
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
+dpkg-reconfigure -f noninteractive unattended-upgrades
+
+# =============================================================================
+# Firewall Configuration (UFW)
+# =============================================================================
+
+echo "🔥 Configuring firewall..."
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+
+# Allow SSH (preserve current connection)
+ufw allow 22/tcp comment 'SSH'
+
+# Allow HTTP/HTTPS
+ufw allow 80/tcp comment 'HTTP'
+ufw allow 443/tcp comment 'HTTPS'
+
+# Allow k3s API server
+ufw allow 6443/tcp comment 'Kubernetes API'
+
+# Allow Prometheus metrics
+ufw allow 9100/tcp comment 'Node Exporter'
+ufw allow 10254/tcp comment 'Nginx Ingress Metrics'
+
+# Enable firewall
+ufw --force enable
+
+echo "✅ Firewall configured"
+
+# =============================================================================
+# Fail2ban Configuration
+# =============================================================================
+
+echo "🛡️  Configuring fail2ban..."
+cat > /etc/fail2ban/jail.local <<EOF
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 5
+destemail = admin@${domain}
+sendername = Fail2Ban
+
+[sshd]
+enabled = true
+port = ssh
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+maxretry = 3
+bantime = 86400
+EOF
+
+systemctl enable fail2ban
+systemctl restart fail2ban
+
+echo "✅ Fail2ban configured"
+
+# =============================================================================
+# Install Essential Tools
+# =============================================================================
+
+echo "🛠️  Installing essential tools..."
+apt-get install -y \\
+    curl \\
+    wget \\
+    git \\
+    htop \\
+    iotop \\
+    nethogs \\
+    vim \\
+    jq \\
+    net-tools \\
+    ca-certificates \\
+    gnupg \\
+    lsb-release \\
+    software-properties-common
+
+# =============================================================================
+# Install k3s (Lightweight Kubernetes)
+# =============================================================================
+
+echo "☸️  Installing k3s..."
+
+# Get public IP
+PUBLIC_IP=$(curl -s http://ifconfig.me)
+
+# Install k3s
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.28.5+k3s1" sh -s - server \\
+    --write-kubeconfig-mode=644 \\
+    --disable traefik \\
+    --disable servicelb \\
+    --tls-san=\${PUBLIC_IP} \\
+    --tls-san=${domain} \\
+    --node-name=master \\
+    --cluster-init
+
+# Wait for k3s to be ready
+echo "⏳ Waiting for k3s to be ready..."
+sleep 30
+
+until kubectl get nodes 2>/dev/null | grep -q "Ready"; do
+    echo "Waiting for k3s..."
+    sleep 5
+done
+
+echo "✅ k3s installed and running"
+
+# =============================================================================
+# Install Helm
+# =============================================================================
+
+echo "📦 Installing Helm..."
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# =============================================================================
+# Configure kubectl
+# =============================================================================
+
+echo "⚙️  Configuring kubectl..."
+mkdir -p /root/.kube
+cp /etc/rancher/k3s/k3s.yaml /root/.kube/config
+chmod 600 /root/.kube/config
+
+# Export kubeconfig for remote access
+mkdir -p /opt/k3s
+cp /etc/rancher/k3s/k3s.yaml /opt/k3s/kubeconfig.yaml
+sed -i "s/127.0.0.1/\${PUBLIC_IP}/g" /opt/k3s/kubeconfig.yaml
+chmod 644 /opt/k3s/kubeconfig.yaml
+
+# =============================================================================
+# Install cert-manager (Let's Encrypt SSL)
+# =============================================================================
+
+echo "🔐 Installing cert-manager..."
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+
+# Wait for cert-manager
+kubectl wait --for=condition=Available --timeout=300s deployment --all -n cert-manager
+
+# Create ClusterIssuer for Let's Encrypt
+cat <<EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@${domain}
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@${domain}
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+EOF
+
+echo "✅ cert-manager installed"
+
+# =============================================================================
+# Install nginx-ingress
+# =============================================================================
+
+echo "🌐 Installing nginx-ingress..."
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \\
+    --namespace ingress-nginx --create-namespace \\
+    --set controller.service.type=NodePort \\
+    --set controller.service.nodePorts.http=80 \\
+    --set controller.service.nodePorts.https=443 \\
+    --set controller.hostPort.enabled=true \\
+    --set controller.hostPort.ports.http=80 \\
+    --set controller.hostPort.ports.https=443 \\
+    --set controller.metrics.enabled=true \\
+    --set controller.metrics.serviceMonitor.enabled=false
+
+# Wait for ingress
+kubectl wait --for=condition=Available --timeout=300s deployment -n ingress-nginx ingress-nginx-controller
+
+echo "✅ nginx-ingress installed"
+
+# =============================================================================
+# Install metrics-server
+# =============================================================================
+
+echo "📊 Installing metrics-server..."
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Patch for insecure TLS (required for k3s)
+kubectl patch deployment metrics-server -n kube-system --type='json' \\
+    -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+echo "✅ metrics-server installed"
+
+# =============================================================================
+# Install ArgoCD
+# =============================================================================
+
+if [ "${enableArgoCD}" = "true" ]; then
+    echo "🔄 Installing ArgoCD..."
+    
+    kubectl create namespace argocd || true
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    
+    # Wait for ArgoCD
+    kubectl wait --for=condition=Available --timeout=600s deployment --all -n argocd
+    
+    # Update ArgoCD admin password
+    ARGOCD_BCRYPT_HASH=$(htpasswd -nbBC 10 admin "${argocdAdminPassword}" | awk -F: '{print $2}')
+    kubectl -n argocd patch secret argocd-secret \\
+        -p "{\\"stringData\\": {\\"admin.password\\": \\"\${ARGOCD_BCRYPT_HASH}\\", \\"admin.passwordMtime\\": \\"\$(date +%FT%T%Z)\\"}}"
+    
+    # Create ArgoCD ingress
+    cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - argocd.${domain}
+    secretName: argocd-tls
+  rules:
+  - host: argocd.${domain}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              number: 443
+EOF
+    
+    echo "✅ ArgoCD installed"
+fi
+
+# =============================================================================
+# Install Monitoring Stack (Optional)
+# =============================================================================
+
+if [ "${enableMonitoring}" = "true" ]; then
+    echo "📈 Installing monitoring stack..."
+    
+    # Install Prometheus Node Exporter
+    wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
+    tar xvfz node_exporter-1.7.0.linux-amd64.tar.gz
+    mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
+    rm -rf node_exporter-1.7.0.linux-amd64*
+    
+    # Create systemd service
+    cat > /etc/systemd/system/node_exporter.service <<EOF
+[Unit]
+Description=Node Exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    systemctl daemon-reload
+    systemctl enable node_exporter
+    systemctl start node_exporter
+    
+    # Install kube-prometheus-stack
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+    
+    helm install prometheus prometheus-community/kube-prometheus-stack \\
+        --namespace monitoring --create-namespace \\
+        --set grafana.ingress.enabled=true \\
+        --set grafana.ingress.ingressClassName=nginx \\
+        --set grafana.ingress.hosts[0]=grafana.${domain} \\
+        --set grafana.ingress.tls[0].secretName=grafana-tls \\
+        --set grafana.ingress.tls[0].hosts[0]=grafana.${domain} \\
+        --set grafana.ingress.annotations."cert-manager\\.io/cluster-issuer"=letsencrypt-prod \\
+        --set grafana.adminPassword="${argocdAdminPassword}"
+    
+    echo "✅ Monitoring stack installed"
+fi
+
+# =============================================================================
+# Create Application Directories
+# =============================================================================
+
+echo "📁 Creating application directories..."
+mkdir -p /opt/studio-s/{config,secrets,data,logs,backups}
+chmod 700 /opt/studio-s/secrets
+
+# =============================================================================
+# Create Kubernetes Namespace and Secrets
+# =============================================================================
+
+echo "🔑 Creating Kubernetes resources..."
+kubectl create namespace studio-s || true
+
+# Create database secrets
+kubectl create secret generic database-credentials \\
+    --from-literal=connectionString="${databaseUrl}" \\
+    --namespace studio-s \\
+    --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret generic mongodb-credentials \\
+    --from-literal=connectionString="${mongodbUri}" \\
+    --namespace studio-s \\
+    --dry-run=client -o yaml | kubectl apply -f -
+
+# Create JWT secrets
+kubectl create secret generic jwt-secrets \\
+    --from-literal=secret="${jwtSecret}" \\
+    --from-literal=gatewaySecret="${gatewaySecret}" \\
+    --namespace studio-s \\
+    --dry-run=client -o yaml | kubectl apply -f -
+
+# =============================================================================
+# Create Backup Script
+# =============================================================================
+
+echo "💾 Creating backup scripts..."
+cat > /opt/studio-s/backup.sh <<'BACKUP_SCRIPT'
+#!/bin/bash
+set -e
+
+BACKUP_DIR="/opt/studio-s/backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p \$BACKUP_DIR
+
+echo "🔄 Starting backup at \$DATE"
+
+# Backup Kubernetes resources
+kubectl get all --all-namespaces -o yaml > \$BACKUP_DIR/k8s-resources-\$DATE.yaml
+kubectl get secrets --all-namespaces -o yaml > \$BACKUP_DIR/k8s-secrets-\$DATE.yaml
+kubectl get configmaps --all-namespaces -o yaml > \$BACKUP_DIR/k8s-configmaps-\$DATE.yaml
+
+# Backup k3s
+tar czf \$BACKUP_DIR/k3s-\$DATE.tar.gz /var/lib/rancher/k3s /etc/rancher/k3s
+
+# Keep only last 7 days
+find \$BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+find \$BACKUP_DIR -name "*.yaml" -mtime +7 -delete
+
+echo "✅ Backup complete: \$DATE"
+BACKUP_SCRIPT
+
+chmod +x /opt/studio-s/backup.sh
+
+# Schedule daily backups
+echo "0 2 * * * /opt/studio-s/backup.sh >> /opt/studio-s/logs/backup.log 2>&1" | crontab -
+
+# =============================================================================
+# Create Deployment Helper Scripts
+# =============================================================================
+
+echo "📝 Creating helper scripts..."
+
+# kubectl wrapper script
+cat > /usr/local/bin/k <<'KUBECTL_SCRIPT'
+#!/bin/bash
+kubectl "\$@"
+KUBECTL_SCRIPT
+chmod +x /usr/local/bin/k
+
+# Quick status script
+cat > /usr/local/bin/studio-status <<'STATUS_SCRIPT'
+#!/bin/bash
+echo "════════════════════════════════════════════════════════════"
+echo "Studio-S Cluster Status"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "📊 Nodes:"
+kubectl get nodes
+echo ""
+echo "🚀 Pods (studio-s namespace):"
+kubectl get pods -n studio-s
+echo ""
+echo "🌐 Ingresses:"
+kubectl get ingress -n studio-s
+echo ""
+echo "💾 Resource Usage:"
+kubectl top nodes
+echo ""
+kubectl top pods -n studio-s
+STATUS_SCRIPT
+chmod +x /usr/local/bin/studio-status
+
+# =============================================================================
+# System Optimization
+# =============================================================================
+
+echo "⚡ Optimizing system..."
+
+# Increase file limits
+cat >> /etc/security/limits.conf <<EOF
+* soft nofile 65536
+* hard nofile 65536
+* soft nproc 32768
+* hard nproc 32768
+EOF
+
+# Kernel optimizations
+cat >> /etc/sysctl.conf <<EOF
+# Network optimizations
+net.core.somaxconn = 32768
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 15
+
+# File system
+fs.file-max = 2097152
+fs.inotify.max_user_watches = 524288
+
+# Kubernetes specific
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+
+sysctl -p
+
+# =============================================================================
+# Create MOTD (Message of the Day)
+# =============================================================================
+
+cat > /etc/motd <<'MOTD'
+════════════════════════════════════════════════════════════
+   Studio-S Kubernetes Cluster
+   Powered by k3s
+════════════════════════════════════════════════════════════
+
+Quick Commands:
+  studio-status          - View cluster status
+  k get pods -n studio-s - List application pods
+  k logs -f POD_NAME     - View pod logs
+  k describe pod POD     - Detailed pod info
+
+Monitoring:
+  - Grafana: https://grafana.${domain}
+  - ArgoCD: https://argocd.${domain}
+  
+Useful Locations:
+  - Kubeconfig: /opt/k3s/kubeconfig.yaml
+  - Backups: /opt/studio-s/backups/
+  - Logs: /opt/studio-s/logs/
+
+Documentation: https://docs.k3s.io
+
+════════════════════════════════════════════════════════════
+MOTD
+
+# =============================================================================
+# Final Steps
+# =============================================================================
+
+echo "🧹 Cleaning up..."
+apt-get autoremove -y
+apt-get clean
+
+# Save installation info
+cat > /opt/studio-s/install-info.txt <<EOF
+Installation Date: $(date)
+k3s Version: $(k3s --version)
+Kubernetes Version: $(kubectl version --short)
+Public IP: $(curl -s http://ifconfig.me)
+Domain: ${domain}
+Environment: ${environment}
+EOF
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "✅ VPS Setup Complete!"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "Cluster Information:"
+echo "  Public IP: $(curl -s http://ifconfig.me)"
+echo "  Domain: ${domain}"
+echo "  k3s Version: $(k3s --version | head -n1)"
+echo ""
+echo "Access Points:"
+echo "  ArgoCD: https://argocd.${domain}"
+echo "  Grafana: https://grafana.${domain}"
+echo "  Application: https://${domain}"
+echo ""
+echo "Next Steps:"
+echo "  1. Download kubeconfig: scp root@$(curl -s http://ifconfig.me):/opt/k3s/kubeconfig.yaml ."
+echo "  2. Set KUBECONFIG: export KUBECONFIG=./kubeconfig.yaml"
+echo "  3. Verify: kubectl get nodes"
+echo "  4. Deploy: kubectl apply -k k8s/overlays/production"
+echo ""
+echo "════════════════════════════════════════════════════════════"
+`;
+
+// =============================================================================
+// Execute Setup on VPS
+// =============================================================================
+
+const setupVPS = new command.remote.Command("setup-vps", {
+  connection: {
+    host: vpsIp,
+    user: vpsUser,
+    privateKey: sshPrivateKey,
   },
-  tags,
+  create: setupScript
+    .replace(/\${domain}/g, domain)
+    .replace(/\${environment}/g, environment)
+    .replace(/\${enableArgoCD}/g, String(enableArgoCD))
+    .replace(/\${enableMonitoring}/g, String(enableMonitoring))
+    .replace(
+      /\${databaseUrl}/g,
+      databaseUrl.apply((v) => v),
+    )
+    .replace(
+      /\${mongodbUri}/g,
+      mongodbUri.apply((v) => v),
+    )
+    .replace(/\${redisUrl}/g, redisUrl)
+    .replace(
+      /\${jwtSecret}/g,
+      jwtSecret.apply((v) => v),
+    )
+    .replace(
+      /\${gatewaySecret}/g,
+      gatewaySecret.apply((v) => v),
+    )
+    .replace(
+      /\${argocdAdminPassword}/g,
+      argocdAdminPassword.apply((v) => v),
+    ),
 });
 
 // =============================================================================
-// EKS Cluster
+// Fetch kubeconfig
 // =============================================================================
 
-const cluster = new eks.Cluster(`${projectName}-eks`, {
-  vpcId: vpc.vpcId,
-  publicSubnetIds: vpc.publicSubnetIds,
-  privateSubnetIds: vpc.privateSubnetIds,
-  instanceType: environment === "production" ? "t3.medium" : "t3.small",
-  desiredCapacity: environment === "production" ? 3 : 2,
-  minSize: environment === "production" ? 2 : 1,
-  maxSize: environment === "production" ? 10 : 5,
-  enabledClusterLogTypes: [
-    "api",
-    "audit",
-    "authenticator",
-    "controllerManager",
-    "scheduler",
-  ],
-  tags,
-  createOidcProvider: true,
+const kubeconfig = new command.remote.Command(
+  "get-kubeconfig",
+  {
+    connection: {
+      host: vpsIp,
+      user: vpsUser,
+      privateKey: sshPrivateKey,
+    },
+    create: "cat /opt/k3s/kubeconfig.yaml",
+  },
+  { dependsOn: [setupVPS] },
+);
+
+// =============================================================================
+// Cloudflare DNS Configuration
+// =============================================================================
+
+const zone = cloudflare.getZoneOutput({ name: domain });
+
+// Root domain
+new cloudflare.Record(`${projectName}-dns-root`, {
+  zoneId: zone.id,
+  name: "@",
+  type: "A",
+  value: vpsIp,
+  proxied: false, // Must be false for Let's Encrypt
+  ttl: 1,
 });
 
-// Export kubeconfig
-export const kubeconfig = cluster.kubeconfig;
-
-// Create Kubernetes provider
-const k8sProvider = new k8s.Provider(
-  `${projectName}-k8s-provider`,
-  {
-    kubeconfig: cluster.kubeconfig.apply(JSON.stringify),
-  },
-  { dependsOn: [cluster] }
-);
-
-// =============================================================================
-// RDS PostgreSQL
-// =============================================================================
-
-const dbSubnetGroup = new aws.rds.SubnetGroup(`${projectName}-db-subnet`, {
-  subnetIds: vpc.privateSubnetIds,
-  tags,
+// www subdomain
+new cloudflare.Record(`${projectName}-dns-www`, {
+  zoneId: zone.id,
+  name: "www",
+  type: "A",
+  value: vpsIp,
+  proxied: false,
+  ttl: 1,
 });
 
-const dbSecurityGroup = new aws.ec2.SecurityGroup(`${projectName}-db-sg`, {
-  vpcId: vpc.vpcId,
-  description: "Security group for RDS PostgreSQL",
-  ingress: [
-    {
-      protocol: "tcp",
-      fromPort: 5432,
-      toPort: 5432,
-      cidrBlocks: ["10.0.0.0/16"],
-      description: "PostgreSQL from VPC",
-    },
-  ],
-  egress: [
-    {
-      protocol: "-1",
-      fromPort: 0,
-      toPort: 0,
-      cidrBlocks: ["0.0.0.0/0"],
-    },
-  ],
-  tags,
+// ArgoCD subdomain
+new cloudflare.Record(`${projectName}-dns-argocd`, {
+  zoneId: zone.id,
+  name: "argocd",
+  type: "A",
+  value: vpsIp,
+  proxied: false,
+  ttl: 1,
 });
 
-const db = new aws.rds.Instance(`${projectName}-postgres`, {
-  identifier: `${projectName}-${environment}`,
-  allocatedStorage: 20,
-  engine: "postgres",
-  engineVersion: "15.3",
-  instanceClass: environment === "production" ? "db.t3.small" : "db.t3.micro",
-  dbName: projectName.replace(/-/g, "_"),
-  username: "dbadmin",
-  password: config.requireSecret("dbPassword"),
-  dbSubnetGroupName: dbSubnetGroup.name,
-  vpcSecurityGroupIds: [dbSecurityGroup.id],
-  skipFinalSnapshot: environment !== "production",
-  backupRetentionPeriod: environment === "production" ? 7 : 1,
-  multiAz: environment === "production",
-  storageEncrypted: true,
-  tags,
+// Grafana subdomain
+new cloudflare.Record(`${projectName}-dns-grafana`, {
+  zoneId: zone.id,
+  name: "grafana",
+  type: "A",
+  value: vpsIp,
+  proxied: false,
+  ttl: 1,
 });
 
-// =============================================================================
-// ElastiCache Redis
-// =============================================================================
-
-const redisSubnetGroup = new aws.elasticache.SubnetGroup(
-  `${projectName}-redis-subnet`,
-  {
-    subnetIds: vpc.privateSubnetIds,
-    tags,
-  }
-);
-
-const redisSecurityGroup = new aws.ec2.SecurityGroup(
-  `${projectName}-redis-sg`,
-  {
-    vpcId: vpc.vpcId,
-    description: "Security group for ElastiCache Redis",
-    ingress: [
-      {
-        protocol: "tcp",
-        fromPort: 6379,
-        toPort: 6379,
-        cidrBlocks: ["10.0.0.0/16"],
-        description: "Redis from VPC",
-      },
-    ],
-    egress: [
-      {
-        protocol: "-1",
-        fromPort: 0,
-        toPort: 0,
-        cidrBlocks: ["0.0.0.0/0"],
-      },
-    ],
-    tags,
-  }
-);
-
-const redis = new aws.elasticache.Cluster(`${projectName}-redis`, {
-  clusterId: `${projectName}-${environment}`,
-  engine: "redis",
-  engineVersion: "7.0",
-  nodeType: environment === "production" ? "cache.t3.small" : "cache.t3.micro",
-  numCacheNodes: 1,
-  parameterGroupName: "default.redis7",
-  subnetGroupName: redisSubnetGroup.name,
-  securityGroupIds: [redisSecurityGroup.id],
-  tags,
+// Wildcard for preview environments
+new cloudflare.Record(`${projectName}-dns-wildcard`, {
+  zoneId: zone.id,
+  name: "*",
+  type: "A",
+  value: vpsIp,
+  proxied: false,
+  ttl: 1,
 });
-
-// =============================================================================
-// S3 Buckets
-// =============================================================================
-
-const backupBucket = new aws.s3.Bucket(
-  `${projectName}-backups-${environment}`,
-  {
-    versioning: {
-      enabled: true,
-    },
-    lifecycleRules: [
-      {
-        enabled: true,
-        expiration: {
-          days: 90,
-        },
-      },
-    ],
-    serverSideEncryptionConfiguration: {
-      rule: {
-        applyServerSideEncryptionByDefault: {
-          sseAlgorithm: "AES256",
-        },
-      },
-    },
-    tags,
-  }
-);
-
-// =============================================================================
-// Kubernetes Namespaces
-// =============================================================================
-
-const appNamespace = new k8s.core.v1.Namespace(
-  `${projectName}-app`,
-  {
-    metadata: {
-      name: projectName,
-      labels: tags,
-    },
-  },
-  { provider: k8sProvider }
-);
-
-const argocdNamespace = new k8s.core.v1.Namespace(
-  "argocd",
-  {
-    metadata: {
-      name: "argocd",
-      labels: tags,
-    },
-  },
-  { provider: k8sProvider }
-);
-
-// =============================================================================
-// Kubernetes Secrets (Database credentials)
-// =============================================================================
-
-const dbSecret = new k8s.core.v1.Secret(
-  `${projectName}-db-secret`,
-  {
-    metadata: {
-      namespace: appNamespace.metadata.name,
-      name: "database-credentials",
-    },
-    type: "Opaque",
-    stringData: {
-      host: db.endpoint.apply((e) => e.split(":")[0]),
-      port: "5432",
-      database: db.dbName,
-      username: db.username,
-      password: config.requireSecret("dbPassword"),
-      connectionString: pulumi.interpolate`postgresql://${
-        db.username
-      }:${config.requireSecret("dbPassword")}@${db.endpoint}/${db.dbName}`,
-    },
-  },
-  { provider: k8sProvider }
-);
-
-const redisSecret = new k8s.core.v1.Secret(
-  `${projectName}-redis-secret`,
-  {
-    metadata: {
-      namespace: appNamespace.metadata.name,
-      name: "redis-credentials",
-    },
-    type: "Opaque",
-    stringData: {
-      host: redis.cacheNodes[0].address,
-      port: "6379",
-      connectionString: pulumi.interpolate`redis://${redis.cacheNodes[0].address}:6379`,
-    },
-  },
-  { provider: k8sProvider }
-);
-
-// =============================================================================
-// AWS Load Balancer Controller (for ingress)
-// =============================================================================
-
-const albControllerServiceAccount = new eks.ServiceAccount(
-  "aws-load-balancer-controller",
-  {
-    namespace: "kube-system",
-    cluster: cluster.core,
-  },
-  { provider: k8sProvider }
-);
-
-const albController = new k8s.helm.v3.Chart(
-  "aws-load-balancer-controller",
-  {
-    chart: "aws-load-balancer-controller",
-    namespace: "kube-system",
-    fetchOpts: {
-      repo: "https://aws.github.io/eks-charts",
-    },
-    values: {
-      clusterName: cluster.eksCluster.name,
-      serviceAccount: {
-        create: false,
-        name: albControllerServiceAccount.serviceAccount.metadata.name,
-      },
-    },
-  },
-  { provider: k8sProvider, dependsOn: [albControllerServiceAccount] }
-);
-
-// =============================================================================
-// ArgoCD Installation
-// =============================================================================
-
-let argocd: k8s.helm.v3.Chart | undefined;
-
-if (enableArgoCD) {
-  argocd = new k8s.helm.v3.Chart(
-    "argocd",
-    {
-      chart: "argo-cd",
-      namespace: argocdNamespace.metadata.name,
-      fetchOpts: {
-        repo: "https://argoproj.github.io/argo-helm",
-      },
-      values: {
-        global: {
-          domain: `argocd.${domain}`,
-        },
-        server: {
-          service: {
-            type: "LoadBalancer",
-            annotations: {
-              "service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
-              "service.beta.kubernetes.io/aws-load-balancer-scheme":
-                "internet-facing",
-            },
-          },
-          ingress: {
-            enabled: true,
-            ingressClassName: "alb",
-            annotations: {
-              "alb.ingress.kubernetes.io/scheme": "internet-facing",
-              "alb.ingress.kubernetes.io/target-type": "ip",
-              "alb.ingress.kubernetes.io/certificate-arn":
-                config.get("certificateArn"),
-            },
-            hosts: [`argocd.${domain}`],
-          },
-          extraArgs: [
-            "--insecure", // Use ALB for SSL termination
-          ],
-        },
-        configs: {
-          secret: {
-            argocdServerAdminPassword: config.requireSecret(
-              "argocdAdminPassword"
-            ),
-          },
-        },
-      },
-    },
-    { provider: k8sProvider, dependsOn: [argocdNamespace, albController] }
-  );
-}
-
-// =============================================================================
-// ArgoCD Application CRD (GitOps)
-// =============================================================================
-
-if (argocd) {
-  const argocdApp = new k8s.apiextensions.CustomResource(
-    "studio-s-app",
-    {
-      apiVersion: "argoproj.io/v1alpha1",
-      kind: "Application",
-      metadata: {
-        name: `${projectName}-${environment}`,
-        namespace: "argocd",
-      },
-      spec: {
-        project: "default",
-        source: {
-          repoURL: config.require("gitRepoUrl"),
-          targetRevision: environment === "production" ? "main" : environment,
-          path: `k8s/overlays/${environment}`,
-        },
-        destination: {
-          server: "https://kubernetes.default.svc",
-          namespace: projectName,
-        },
-        syncPolicy: {
-          automated: {
-            prune: true,
-            selfHeal: true,
-            allowEmpty: false,
-          },
-          syncOptions: ["CreateNamespace=true"],
-        },
-      },
-    },
-    { provider: k8sProvider, dependsOn: [argocd] }
-  );
-}
-
-// =============================================================================
-// Cloudflare DNS
-// =============================================================================
-
-const zone = cloudflare.getZoneOutput({
-  name: domain,
-});
-
-// Get ALB hostname
-const albHostname = argocd
-  ?.getResourceProperty("v1/Service", "argocd/argocd-server", "status")
-  .apply((status: any) => status.loadBalancer.ingress[0].hostname);
-
-if (albHostname) {
-  new cloudflare.Record(`${projectName}-argocd-dns`, {
-    zoneId: zone.id,
-    name: "argocd",
-    type: "CNAME",
-    value: albHostname,
-    proxied: true,
-  });
-
-  new cloudflare.Record(`${projectName}-app-dns`, {
-    zoneId: zone.id,
-    name: "@",
-    type: "CNAME",
-    value: albHostname,
-    proxied: true,
-  });
-
-  new cloudflare.Record(`${projectName}-www-dns`, {
-    zoneId: zone.id,
-    name: "www",
-    type: "CNAME",
-    value: albHostname,
-    proxied: true,
-  });
-}
 
 // =============================================================================
 // Outputs
 // =============================================================================
 
-export const vpcId = vpc.vpcId;
-export const clusterName = cluster.eksCluster.name;
-export const clusterEndpoint = cluster.eksCluster.endpoint;
-export const databaseEndpoint = db.endpoint;
-export const redisEndpoint = redis.cacheNodes[0].address;
-export const backupBucketName = backupBucket.id;
-export const argocdUrl = pulumi.interpolate`https://argocd.${domain}`;
-export const appUrl = pulumi.interpolate`https://${domain}`;
+export const vpsPublicIp = vpsIp;
+export const sshCommand = `ssh ${vpsUser}@${vpsIp}`;
+export const kubeconfigContent = kubeconfig.stdout;
+export const kubeconfigCommand = pulumi.interpolate`scp ${vpsUser}@${vpsIp}:/opt/k3s/kubeconfig.yaml ./kubeconfig.yaml && export KUBECONFIG=$(pwd)/kubeconfig.yaml`;
 
-// Connection strings (use in GitHub Secrets)
-export const postgresConnectionString = pulumi.interpolate`postgresql://${
-  db.username
-}:${config.requireSecret("dbPassword")}@${db.endpoint}/${db.dbName}`;
-export const redisConnectionString = pulumi.interpolate`redis://${redis.cacheNodes[0].address}:6379`;
+export const argocdUrl = `https://argocd.${domain}`;
+export const grafanaUrl = `https://grafana.${domain}`;
+export const appUrl = `https://${domain}`;
+
+export const nextSteps = `
+╔══════════════════════════════════════════════════════════════╗
+║  🎉 VPS Setup Complete!                                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. Download kubeconfig:
+   scp ${vpsUser}@${vpsIp}:/opt/k3s/kubeconfig.yaml ./kubeconfig.yaml
+   export KUBECONFIG=$(pwd)/kubeconfig.yaml
+
+2. Verify cluster:
+   kubectl get nodes
+   kubectl get pods -A
+
+3. Access services:
+   - ArgoCD: https://argocd.${domain}
+   - Grafana: https://grafana.${domain}
+   - Application: https://${domain}
+   
+   Username: admin
+   Password: (set in Pulumi config)
+
+4. Deploy application:
+   kubectl apply -k k8s/overlays/production
+   
+5. Check status:
+   ssh ${vpsUser}@${vpsIp}
+   studio-status
+
+📚 Save kubeconfig to GitHub Secrets:
+   cat kubeconfig.yaml | base64 -w 0
+   # Add as KUBECONFIG secret in GitHub
+`;
