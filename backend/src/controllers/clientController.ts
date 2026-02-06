@@ -18,7 +18,7 @@ export const createClient = catchAsync(
     const validation = createClientSchema.safeParse(req);
     if (!validation.success) {
       return next(
-        new AppError((validation.error as any).errors[0].message, 400)
+        new AppError((validation.error as any).errors[0].message, 400),
       );
     }
 
@@ -39,7 +39,7 @@ export const createClient = catchAsync(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -51,7 +51,7 @@ export const getAllClients = catchAsync(
     const filters = {
       search: req.query.q as string,
       page: req.query.page ? parseInt(req.query.page as string) : 1,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 5000,
     };
 
     const userId = req.user?.id ?? "";
@@ -67,7 +67,7 @@ export const getAllClients = catchAsync(
         clients: result.clients,
       },
     });
-  }
+  },
 );
 
 /**
@@ -102,7 +102,7 @@ export const searchClients = catchAsync(
         clients,
       },
     });
-  }
+  },
 );
 
 /**
@@ -120,7 +120,7 @@ export const getClient = catchAsync(
         client,
       },
     });
-  }
+  },
 );
 
 /**
@@ -132,7 +132,7 @@ export const updateClient = catchAsync(
     const validation = updateClientSchema.safeParse(req);
     if (!validation.success) {
       return next(
-        new AppError((validation.error as any).errors[0].message, 400)
+        new AppError((validation.error as any).errors[0].message, 400),
       );
     }
 
@@ -141,7 +141,7 @@ export const updateClient = catchAsync(
     const client = await clientService.update(
       userId,
       req.params.id,
-      validation.data.body
+      validation.data.body,
     );
 
     res.status(200).json({
@@ -150,7 +150,7 @@ export const updateClient = catchAsync(
         client,
       },
     });
-  }
+  },
 );
 
 /**
@@ -168,7 +168,7 @@ export const getClientHistory = catchAsync(
         history,
       },
     });
-  }
+  },
 );
 
 /**
@@ -187,7 +187,7 @@ export const getClientStats = catchAsync(
         stats,
       },
     });
-  }
+  },
 );
 
 /**
@@ -203,5 +203,5 @@ export const deleteClient = catchAsync(
       status: "success",
       data: null,
     });
-  }
+  },
 );

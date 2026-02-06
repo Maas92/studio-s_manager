@@ -61,7 +61,7 @@ export const listTransactions = catchAsync(
       dateFrom,
       dateTo,
       page = "1",
-      limit = "50",
+      limit = "5000",
     } = req.query;
 
     const result = await transactionService.findAll({
@@ -78,7 +78,7 @@ export const listTransactions = catchAsync(
       status: "success",
       data: result,
     });
-  }
+  },
 );
 
 /**
@@ -97,7 +97,7 @@ export const getTransaction = catchAsync(
         transaction,
       },
     });
-  }
+  },
 );
 
 /**
@@ -112,8 +112,8 @@ export const createTransaction = catchAsync(
       return next(
         new AppError(
           validation.error.issues[0]?.message || "Invalid input",
-          400
-        )
+          400,
+        ),
       );
     }
 
@@ -128,7 +128,7 @@ export const createTransaction = catchAsync(
     // Validate walk-in has name
     if (!data.clientId && !data.clientName) {
       return next(
-        new AppError("Either clientId or clientName is required", 400)
+        new AppError("Either clientId or clientName is required", 400),
       );
     }
 
@@ -147,7 +147,7 @@ export const createTransaction = catchAsync(
         transaction,
       },
     });
-  }
+  },
 );
 
 /**
@@ -166,7 +166,7 @@ export const updateTransactionStatus = catchAsync(
     const validStatuses = ["pending", "completed", "cancelled", "refunded"];
     if (!validStatuses.includes(status)) {
       return next(
-        new AppError(`Status must be one of: ${validStatuses.join(", ")}`, 400)
+        new AppError(`Status must be one of: ${validStatuses.join(", ")}`, 400),
       );
     }
 
@@ -178,7 +178,7 @@ export const updateTransactionStatus = catchAsync(
         transaction,
       },
     });
-  }
+  },
 );
 
 /**
@@ -200,7 +200,7 @@ export const getTransactionStats = catchAsync(
         stats,
       },
     });
-  }
+  },
 );
 
 /**
@@ -232,7 +232,7 @@ export const sendReceipt = catchAsync(
       status: "success",
       message: `Receipt sent via ${method} to ${recipient}`,
     });
-  }
+  },
 );
 
 /**
@@ -257,5 +257,5 @@ export const printReceipt = catchAsync(
       message: "Receipt generation not yet implemented",
       data: { transaction },
     });
-  }
+  },
 );

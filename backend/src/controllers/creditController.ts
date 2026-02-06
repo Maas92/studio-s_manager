@@ -29,7 +29,7 @@ export const getClientHistory = catchAsync(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id ?? "";
     const { clientId } = req.params;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
 
     const history = await creditService.getHistory(userId, clientId, limit);
 

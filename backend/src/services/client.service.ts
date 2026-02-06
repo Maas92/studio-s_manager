@@ -139,7 +139,7 @@ export class ClientService {
     userId: string,
     filters: { search?: string; page?: number; limit?: number },
   ) {
-    const { search, page = 1, limit = 50 } = filters;
+    const { search, page = 1, limit = 5000 } = filters;
     const offset = (page - 1) * limit;
 
     const params: any[] = [];
@@ -250,7 +250,7 @@ export class ClientService {
         c.email ILIKE $1
       )
     ORDER BY c.first_name ASC
-    LIMIT 10`,
+    LIMIT 100`,
       [`%${query}%`],
     );
 
@@ -406,7 +406,7 @@ export class ClientService {
     LEFT JOIN services srv ON b.service_id = srv.id
     WHERE b.client_id = $1
     ORDER BY b.booking_date DESC, b.start_time DESC
-    LIMIT 50`,
+    LIMIT 100`,
       [clientId],
     );
 
@@ -437,7 +437,7 @@ export class ClientService {
     WHERE s.client_id = $1
     GROUP BY s.id
     ORDER BY s.sale_date DESC
-    LIMIT 50`,
+    LIMIT 100`,
       [clientId],
     );
 

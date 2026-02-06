@@ -11,7 +11,7 @@ export const getAllStockItems = catchAsync(
       low_stock: req.query.low_stock === "true",
       search: req.query.search as string,
       page: parseInt(req.query.page as string) || 1,
-      limit: parseInt(req.query.limit as string) || 50,
+      limit: parseInt(req.query.limit as string) || 100,
     };
 
     const result = await stockService.findAll(filters);

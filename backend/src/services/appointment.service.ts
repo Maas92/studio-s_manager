@@ -30,7 +30,7 @@ export class AppointmentService {
     FROM treatments
     WHERE id = $1
     `,
-      [treatment_id]
+      [treatment_id],
     );
 
     if (result.rows.length === 0) {
@@ -53,7 +53,7 @@ export class AppointmentService {
       date_from,
       date_to,
       page = 1,
-      limit = 50,
+      limit = 500,
     } = filters;
 
     const params: any[] = [];
@@ -225,7 +225,7 @@ export class AppointmentService {
       LEFT JOIN treatments t ON b.treatment_id = t.id
       WHERE b.id = $1
     `,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
@@ -271,12 +271,12 @@ export class AppointmentService {
           OR (start_time >= $3 AND end_time <= $4)
         )
       `,
-        [data.staff_id, booking_date, start_time, end_time]
+        [data.staff_id, booking_date, start_time, end_time],
       );
 
       if (conflictCheck.rows.length > 0) {
         throw AppError.conflict(
-          "This time slot is already booked for the selected staff member"
+          "This time slot is already booked for the selected staff member",
         );
       }
     }
@@ -309,7 +309,7 @@ export class AppointmentService {
         0, // total_price (can also be fetched from services)
         "confirmed", // default status
         data.notes || null,
-      ]
+      ],
     );
 
     logger.info(`Appointment created: ${result.rows[0].id}`);
@@ -356,7 +356,7 @@ export class AppointmentService {
       WHERE id = $${paramIndex}
       RETURNING *
     `,
-      values
+      values,
     );
 
     if (result.rows.length === 0) {
@@ -382,7 +382,7 @@ export class AppointmentService {
       WHERE id = $2
       RETURNING *
     `,
-      [reason || null, id]
+      [reason || null, id],
     );
 
     if (result.rows.length === 0) {
@@ -407,12 +407,12 @@ export class AppointmentService {
       WHERE id = $1 AND status = 'confirmed'
       RETURNING *
     `,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
       throw AppError.badRequest(
-        "Appointment not found or cannot be checked in"
+        "Appointment not found or cannot be checked in",
       );
     }
 
@@ -435,7 +435,7 @@ export class AppointmentService {
       WHERE id = $2 AND status IN ('confirmed', 'in_progress')
       RETURNING *
     `,
-      [notes || null, id]
+      [notes || null, id],
     );
 
     if (result.rows.length === 0) {
@@ -453,7 +453,7 @@ export class AppointmentService {
   async getAvailability(
     staff_id: string,
     date: string,
-    duration_minutes: number
+    duration_minutes: number,
   ) {
     // Get staff working hours (simplified - you may want to store this in DB)
     const workingHours = {
@@ -472,7 +472,7 @@ export class AppointmentService {
         AND no_show = false
       ORDER BY start_time
     `,
-      [staff_id, date]
+      [staff_id, date],
     );
 
     // Generate available slots
@@ -547,7 +547,7 @@ export class AppointmentService {
         ${staffCondition}
       ORDER BY b.booking_date, b.start_time
     `,
-      params
+      params,
     );
 
     return result.rows;

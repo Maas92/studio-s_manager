@@ -41,7 +41,7 @@ export const createClientSchema = z.object({
           const parsed = new Date(date);
           return !isNaN(parsed.getTime());
         },
-        { message: "Invalid date format" }
+        { message: "Invalid date format" },
       )
       .optional(),
     address: z
@@ -94,7 +94,7 @@ export const updateClientSchema = z.object({
           const parsed = new Date(date);
           return !isNaN(parsed.getTime());
         },
-        { message: "Invalid date format" }
+        { message: "Invalid date format" },
       )
       .optional(),
     address: z
@@ -146,7 +146,7 @@ export const getAllClientsSchema = z.object({
       .number()
       .int("Limit must be an integer")
       .positive("Limit must be positive")
-      .max(100, "Limit cannot exceed 100")
+      .max(10000, "Limit cannot exceed 100")
       .optional(),
   }),
 });

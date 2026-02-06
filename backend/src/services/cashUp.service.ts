@@ -161,7 +161,7 @@ export class CashUpService {
     page?: number;
     limit?: number;
   }) {
-    const { status, startDate, endDate, page = 1, limit = 30 } = filters;
+    const { status, startDate, endDate, page = 1, limit = 100 } = filters;
     const offset = (page - 1) * limit;
 
     let query = `

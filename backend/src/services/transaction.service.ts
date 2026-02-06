@@ -80,7 +80,7 @@ export class TransactionService {
         dateFrom,
         dateTo,
         page = 1,
-        limit = 50,
+        limit = 5000,
       } = filters;
 
       const offset = (page - 1) * limit;
@@ -126,11 +126,11 @@ export class TransactionService {
           ORDER BY created_at DESC
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
         `,
-          params
+          params,
         ),
         pool.query(
           `SELECT COUNT(*) FROM transactions ${whereClause}`,
-          params.slice(0, -2)
+          params.slice(0, -2),
         ),
       ]);
 
@@ -144,7 +144,7 @@ export class TransactionService {
     } catch (error) {
       logger.error(
         { err: error, filters },
-        "❌ TransactionService.findAll failed"
+        "❌ TransactionService.findAll failed",
       );
       throw error;
     }
@@ -154,7 +154,7 @@ export class TransactionService {
     try {
       const result = await pool.query(
         "SELECT * FROM transactions WHERE id = $1",
-        [id]
+        [id],
       );
 
       if (result.rows.length === 0) {
@@ -165,7 +165,7 @@ export class TransactionService {
     } catch (error) {
       logger.error(
         { err: error, transactionId: id },
-        "❌ TransactionService.findById failed"
+        "❌ TransactionService.findById failed",
       );
       throw error;
     }
@@ -179,7 +179,7 @@ export class TransactionService {
 
       const subtotal = data.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
-        0
+        0,
       );
 
       let discountAmount = 0;
@@ -196,7 +196,7 @@ export class TransactionService {
 
       const afterDiscount = Math.max(
         0,
-        subtotal - discountAmount - loyaltyValue
+        subtotal - discountAmount - loyaltyValue,
       );
 
       const tax = TAX_CONFIG.extractTax(afterDiscount);
@@ -226,7 +226,7 @@ export class TransactionService {
 
       const transactionResult = await client.query(
         `INSERT INTO transactions (...) RETURNING *`,
-        [] as any // unchanged for brevity
+        [] as any, // unchanged for brevity
       );
 
       const transaction = transactionResult.rows[0];
@@ -235,7 +235,7 @@ export class TransactionService {
 
       logger.info(
         { transactionId: transaction.id, total },
-        "✅ Transaction created"
+        "✅ Transaction created",
       );
 
       return transaction;
@@ -243,7 +243,7 @@ export class TransactionService {
       await client.query("ROLLBACK");
       logger.error(
         { err: error, clientId: data.clientId },
-        "❌ Failed to create transaction"
+        "❌ Failed to create transaction",
       );
       throw error;
     } finally {
@@ -260,7 +260,7 @@ export class TransactionService {
              updated_at = NOW()
          WHERE id = $2
          RETURNING *`,
-        [status, id]
+        [status, id],
       );
 
       if (result.rows.length === 0) {
@@ -269,14 +269,14 @@ export class TransactionService {
 
       logger.info(
         { transactionId: id, status },
-        "🔄 Transaction status updated"
+        "🔄 Transaction status updated",
       );
 
       return result.rows[0];
     } catch (error) {
       logger.error(
         { err: error, transactionId: id, status },
-        "❌ TransactionService.updateStatus failed"
+        "❌ TransactionService.updateStatus failed",
       );
       throw error;
     }
@@ -314,14 +314,14 @@ export class TransactionService {
         FROM transactions
         WHERE ${whereClause}
         `,
-        params
+        params,
       );
 
       return result.rows[0];
     } catch (error) {
       logger.error(
         { err: error, filters },
-        "❌ TransactionService.getStats failed"
+        "❌ TransactionService.getStats failed",
       );
       throw error;
     }

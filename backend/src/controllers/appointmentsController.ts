@@ -49,7 +49,7 @@ export const getAllAppointments = catchAsync(
       date_from: req.query.date_from as string,
       date_to: req.query.date_to as string,
       page: req.query.page ? parseInt(req.query.page as string) : 1,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
     };
 
     const result = await appointmentService.findAll(filters);

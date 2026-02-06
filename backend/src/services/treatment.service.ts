@@ -31,7 +31,7 @@ export class TreatmentService {
     page?: number;
     limit?: number;
   }) {
-    const { category, is_active, search, page = 1, limit = 50 } = filters;
+    const { category, is_active, search, page = 1, limit = 500 } = filters;
     const offset = (page - 1) * limit;
 
     const params: any[] = [];
@@ -50,7 +50,7 @@ export class TreatmentService {
 
     if (search) {
       conditions.push(
-        `(name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`
+        `(name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`,
       );
       params.push(`%${search}%`);
       paramIndex++;
@@ -126,7 +126,7 @@ export class TreatmentService {
         data.image_url || null,
         data.is_active !== false,
         data.tags || [],
-      ]
+      ],
     );
 
     logger.info(`Treatment created: ${result.rows[0].id}`);
@@ -177,7 +177,7 @@ export class TreatmentService {
        SET ${fields.join(", ")}, updated_at = NOW()
        WHERE id = $${paramIndex}
        RETURNING *`,
-      values
+      values,
     );
 
     if (result.rows.length === 0) {
@@ -194,7 +194,7 @@ export class TreatmentService {
   async delete(id: string) {
     const result = await pool.query(
       "UPDATE treatments SET is_active = false WHERE id = $1 RETURNING id",
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {

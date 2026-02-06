@@ -9,7 +9,7 @@ export const getAllStaff = catchAsync(async (req: Request, res: Response) => {
     status: req.query.status as string,
     search: req.query.search as string,
     page: parseInt(req.query.page as string) || 1,
-    limit: parseInt(req.query.limit as string) || 50,
+    limit: parseInt(req.query.limit as string) || 100,
   };
 
   const result = await staffService.findAll(filters);
@@ -62,12 +62,12 @@ export const getStaffPerformance = catchAsync(
       (req.query.period as string) || new Date().toISOString().slice(0, 7);
     const performance = await staffService.getPerformance(
       req.params.id,
-      period
+      period,
     );
 
     res.status(200).json({
       status: "success",
       data: { performance },
     });
-  }
+  },
 );

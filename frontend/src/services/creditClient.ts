@@ -3,7 +3,7 @@ import api from "./api";
 export const creditClient = {
   getBalance: (clientId: string) => api.get(`/credits/balance/${clientId}`),
 
-  getHistory: (clientId: string, limit = 50) =>
+  getHistory: (clientId: string, limit = 100) =>
     api.get(`/credits/history/${clientId}`, { params: { limit } }),
 
   getSummary: (clientId: string) => api.get(`/credits/summary/${clientId}`),

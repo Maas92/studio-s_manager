@@ -45,7 +45,7 @@ export class StockService {
       low_stock,
       search,
       page = 1,
-      limit = 50,
+      limit = 5000,
     } = filters;
     const offset = (page - 1) * limit;
 
@@ -69,7 +69,7 @@ export class StockService {
 
     if (search) {
       conditions.push(
-        `(name ILIKE $${paramIndex} OR sku ILIKE $${paramIndex})`
+        `(name ILIKE $${paramIndex} OR sku ILIKE $${paramIndex})`,
       );
       params.push(`%${search}%`);
       paramIndex++;
@@ -140,7 +140,7 @@ export class StockService {
         data.retail_price || null,
         data.supplier || null,
         data.notes || null,
-      ]
+      ],
     );
 
     logger.info(`Stock item created: ${result.rows[0].id}`);
@@ -187,7 +187,7 @@ export class StockService {
        SET ${fields.join(", ")}, updated_at = NOW()
        WHERE id = $${paramIndex}
        RETURNING *`,
-      values
+      values,
     );
 
     if (result.rows.length === 0) {
@@ -212,12 +212,12 @@ export class StockService {
         `SELECT * FROM stock_items
          WHERE sku = $1 AND location = $2
          FOR UPDATE`,
-        [data.sku, data.from_location]
+        [data.sku, data.from_location],
       );
 
       if (sourceCheck.rows.length === 0) {
         throw AppError.notFound(
-          `Item with SKU "${data.sku}" not found at ${data.from_location} location`
+          `Item with SKU "${data.sku}" not found at ${data.from_location} location`,
         );
       }
 
@@ -225,7 +225,7 @@ export class StockService {
 
       if (sourceItem.quantity < data.quantity) {
         throw AppError.badRequest(
-          `Insufficient quantity at ${data.from_location}. Available: ${sourceItem.quantity}, Requested: ${data.quantity}`
+          `Insufficient quantity at ${data.from_location}. Available: ${sourceItem.quantity}, Requested: ${data.quantity}`,
         );
       }
 
@@ -235,7 +235,7 @@ export class StockService {
          SET quantity = quantity - $1,
              updated_at = NOW()
          WHERE sku = $2 AND location = $3`,
-        [data.quantity, data.sku, data.from_location]
+        [data.quantity, data.sku, data.from_location],
       );
 
       // 3. Check if item exists at destination
@@ -243,7 +243,7 @@ export class StockService {
         `SELECT * FROM stock_items
          WHERE sku = $1 AND location = $2
          FOR UPDATE`,
-        [data.sku, data.to_location]
+        [data.sku, data.to_location],
       );
 
       if (destCheck.rows.length > 0) {
@@ -253,7 +253,7 @@ export class StockService {
            SET quantity = quantity + $1,
                updated_at = NOW()
            WHERE sku = $2 AND location = $3`,
-          [data.quantity, data.sku, data.to_location]
+          [data.quantity, data.sku, data.to_location],
         );
       } else {
         // Create new destination item (with new UUID)
@@ -276,7 +276,7 @@ export class StockService {
             sourceItem.retail_price,
             sourceItem.supplier,
             sourceItem.notes,
-          ]
+          ],
         );
       }
 
@@ -297,13 +297,13 @@ export class StockService {
           data.to_location,
           data.quantity,
           data.notes || null,
-        ]
+        ],
       );
 
       await client.query("COMMIT");
 
       logger.info(
-        `Stock transferred: SKU ${data.sku} - ${data.quantity} units from ${data.from_location} to ${data.to_location}`
+        `Stock transferred: SKU ${data.sku} - ${data.quantity} units from ${data.from_location} to ${data.to_location}`,
       );
 
       return { success: true };
@@ -321,7 +321,7 @@ export class StockService {
   async delete(id: string) {
     const result = await pool.query(
       "DELETE FROM stock_items WHERE id = $1 RETURNING id",
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {

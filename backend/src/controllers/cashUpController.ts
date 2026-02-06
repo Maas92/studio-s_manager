@@ -26,7 +26,7 @@ export const createCashUp = catchAsync(
       status: "success",
       data: { cashUp },
     });
-  }
+  },
 );
 
 /**
@@ -41,7 +41,7 @@ export const getAllCashUps = catchAsync(
       startDate: req.query.startDate as string,
       endDate: req.query.endDate as string,
       page: req.query.page ? parseInt(req.query.page as string) : 1,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 30,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
     };
 
     const result = await cashUpService.findAll(filters);
@@ -54,7 +54,7 @@ export const getAllCashUps = catchAsync(
       totalPages: result.totalPages,
       data: { cashUps: result.cashUps },
     });
-  }
+  },
 );
 
 /**
@@ -84,7 +84,7 @@ export const updateCashUp = catchAsync(
       status: "success",
       data: { cashUp },
     });
-  }
+  },
 );
 
 /**
@@ -100,14 +100,14 @@ export const completeCashUp = catchAsync(
       userId,
       req.params.id,
       parseFloat(actualCash),
-      notes
+      notes,
     );
 
     res.status(200).json({
       status: "success",
       data: { cashUp },
     });
-  }
+  },
 );
 
 /**
@@ -125,7 +125,7 @@ export const reconcileCashUp = catchAsync(
       status: "success",
       data: { cashUp },
     });
-  }
+  },
 );
 
 /**
@@ -138,14 +138,14 @@ export const addExpense = catchAsync(
     const expense = await cashUpService.addExpense(
       userId,
       req.params.id,
-      req.body
+      req.body,
     );
 
     res.status(201).json({
       status: "success",
       data: { expense },
     });
-  }
+  },
 );
 
 /**
@@ -157,14 +157,14 @@ export const updateExpense = catchAsync(
     const userId = req.user?.id ?? "";
     const expense = await cashUpService.updateExpense(
       req.params.expenseId,
-      req.body
+      req.body,
     );
 
     res.status(200).json({
       status: "success",
       data: { expense },
     });
-  }
+  },
 );
 
 /**
@@ -180,7 +180,7 @@ export const deleteExpense = catchAsync(
       status: "success",
       data: null,
     });
-  }
+  },
 );
 
 /**
@@ -198,14 +198,14 @@ export const uploadExpenseReceipt = catchAsync(
     const expense = await cashUpService.uploadReceipt(
       userId,
       req.params.expenseId,
-      req.file
+      req.file,
     );
 
     res.status(200).json({
       status: "success",
       data: { expense },
     });
-  }
+  },
 );
 
 /**
@@ -218,14 +218,14 @@ export const addSafeDrop = catchAsync(
     const safeDrop = await cashUpService.addSafeDrop(
       userId,
       req.params.id,
-      req.body
+      req.body,
     );
 
     res.status(201).json({
       status: "success",
       data: { safeDrop },
     });
-  }
+  },
 );
 
 /**
@@ -237,14 +237,14 @@ export const updateSafeDrop = catchAsync(
     const userId = req.user?.id ?? "";
     const safeDrop = await cashUpService.updateSafeDrop(
       req.params.dropId,
-      req.body
+      req.body,
     );
 
     res.status(200).json({
       status: "success",
       data: { safeDrop },
     });
-  }
+  },
 );
 
 /**
@@ -260,7 +260,7 @@ export const deleteSafeDrop = catchAsync(
       status: "success",
       data: null,
     });
-  }
+  },
 );
 
 /**
@@ -274,14 +274,14 @@ export const getCashUpSummary = catchAsync(
 
     const summary = await cashUpService.getSummary(
       startDate as string,
-      endDate as string
+      endDate as string,
     );
 
     res.status(200).json({
       status: "success",
       data: { summary },
     });
-  }
+  },
 );
 
 /**
@@ -297,5 +297,5 @@ export const getDailySnapshot = catchAsync(
       status: "success",
       data: { snapshot },
     });
-  }
+  },
 );

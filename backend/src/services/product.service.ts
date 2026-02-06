@@ -25,7 +25,7 @@ export class ProductService {
         retail,
         search,
         page = 1,
-        limit = 50,
+        limit = 500,
         sort = "created_at",
       } = filters;
 
@@ -55,7 +55,7 @@ export class ProductService {
 
       if (search) {
         conditions.push(
-          `(p.name ILIKE $${paramIndex} OR p.sku ILIKE $${paramIndex})`
+          `(p.name ILIKE $${paramIndex} OR p.sku ILIKE $${paramIndex})`,
         );
         params.push(`%${search}%`);
         paramIndex++;
@@ -97,7 +97,7 @@ export class ProductService {
         pool.query(query, params),
         pool.query(
           `SELECT COUNT(*) FROM products p ${whereClause}`,
-          params.slice(0, -2)
+          params.slice(0, -2),
         ),
       ]);
 
@@ -142,7 +142,7 @@ export class ProductService {
         LEFT JOIN stock_locations sl ON il.location_id = sl.id
         WHERE p.id = $1
         GROUP BY p.id, c.name, s.name`,
-        [id]
+        [id],
       );
 
       if (result.rows.length === 0) {
@@ -153,7 +153,7 @@ export class ProductService {
     } catch (error) {
       logger.error(
         { err: error, productId: id },
-        "❌ ProductService.findById failed"
+        "❌ ProductService.findById failed",
       );
       throw error;
     }
@@ -187,7 +187,7 @@ export class ProductService {
           data.price_cents,
           data.retail ?? false,
           data.active ?? true,
-        ]
+        ],
       );
 
       logger.info({ productId: result.rows[0].id }, "✅ Product created");
@@ -200,7 +200,7 @@ export class ProductService {
 
       logger.error(
         { err: error, sku: data.sku },
-        "❌ ProductService.create failed"
+        "❌ ProductService.create failed",
       );
       throw error;
     }
@@ -244,7 +244,7 @@ export class ProductService {
         SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
         WHERE id = $${paramIndex}
         RETURNING *`,
-        values
+        values,
       );
 
       if (result.rows.length === 0) {
@@ -257,7 +257,7 @@ export class ProductService {
     } catch (error) {
       logger.error(
         { err: error, productId: id },
-        "❌ ProductService.update failed"
+        "❌ ProductService.update failed",
       );
       throw error;
     }
@@ -270,7 +270,7 @@ export class ProductService {
     try {
       const result = await pool.query(
         "DELETE FROM products WHERE id = $1 RETURNING id",
-        [id]
+        [id],
       );
 
       if (result.rows.length === 0) {
@@ -284,13 +284,13 @@ export class ProductService {
       if (error.code === "23503") {
         throw new AppError(
           "Cannot delete product as it has associated inventory records",
-          400
+          400,
         );
       }
 
       logger.error(
         { err: error, productId: id },
-        "❌ ProductService.delete failed"
+        "❌ ProductService.delete failed",
       );
       throw error;
     }
