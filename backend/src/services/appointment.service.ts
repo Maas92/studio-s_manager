@@ -162,8 +162,6 @@ export class AppointmentService {
       pool.query(countQuery, params.slice(0, -2)),
     ]);
 
-    console.log(dataResult.rows);
-
     return {
       appointments: dataResult.rows,
       total: parseInt(countResult.rows[0].count),

@@ -7,34 +7,25 @@ interface FilterConfig<T> {
 }
 
 export function useListFilter<T>(items: T[], config: FilterConfig<T> = {}) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterValue, setFilterValue] = useState<string>("all");
+  const { searchFields = [], filterField, searchQuery = "" } = config;
 
-  const { searchFields = [], filterField } = config;
+  const [filterValue, setFilterValue] = useState<string>("all");
 
   const filteredItems = useMemo(() => {
     let filtered = items;
 
-    // Apply category/type filter
     if (filterField && filterValue !== "all") {
       filtered = filtered.filter((item) => item[filterField] === filterValue);
     }
 
-    // Apply search filter
     if (searchQuery.trim() && searchFields.length > 0) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((item) =>
         searchFields.some((field) => {
           const value = item[field];
-          if (typeof value === "string") {
-            return value.toLowerCase().includes(query);
-          }
-          if (Array.isArray(value)) {
-            return value.some((v) =>
-              typeof v === "string" ? v.toLowerCase().includes(query) : false,
-            );
-          }
-          return false;
+          return (
+            typeof value === "string" && value.toLowerCase().includes(query)
+          );
         }),
       );
     }
@@ -43,14 +34,11 @@ export function useListFilter<T>(items: T[], config: FilterConfig<T> = {}) {
   }, [items, searchQuery, filterValue, searchFields, filterField]);
 
   const resetFilters = useCallback(() => {
-    setSearchQuery("");
     setFilterValue("all");
   }, []);
 
   return {
     filteredItems,
-    searchQuery,
-    setSearchQuery,
     filterValue,
     setFilterValue,
     resetFilters,

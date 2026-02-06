@@ -85,7 +85,7 @@ export class StaffService {
 
     if (search) {
       conditions.push(
-        `(first_name ILIKE $${i} OR last_name ILIKE $${i} OR email ILIKE $${i})`
+        `(first_name ILIKE $${i} OR last_name ILIKE $${i} OR email ILIKE $${i})`,
       );
       params.push(`%${search}%`);
       i++;
@@ -169,7 +169,7 @@ export class StaffService {
         data.certifications ?? [],
         data.schedule ? JSON.stringify(data.schedule) : null,
         data.avatar ?? null,
-      ]
+      ],
     );
 
     logger.info(`Staff member created: ${result.rows[0].id}`);
@@ -250,8 +250,6 @@ export class StaffService {
 
     values.push(id);
 
-    console.log(data);
-
     const result = await pool.query(
       `
       UPDATE staff
@@ -259,7 +257,7 @@ export class StaffService {
       WHERE id = $${i}
       RETURNING *
       `,
-      values
+      values,
     );
 
     if (!result.rows.length) {
@@ -276,7 +274,7 @@ export class StaffService {
   async delete(id: string) {
     const result = await pool.query(
       `UPDATE staff SET status = 'inactive' WHERE id = $1 RETURNING id`,
-      [id]
+      [id],
     );
 
     if (!result.rows.length) {
@@ -305,7 +303,7 @@ export class StaffService {
       WHERE s.id = $1
       GROUP BY s.id
       `,
-      [id, period]
+      [id, period],
     );
 
     if (!result.rows.length) {
