@@ -206,11 +206,12 @@ export default function TreatmentsPage() {
 
   const { filteredItems } = useListFilter<Treatment>(treatments, {
     searchFields: ["name", "description", "category", "tags"],
+    searchQuery,
   });
 
   const categories = useMemo(() => {
     const categorySet = new Set(
-      treatments.map((t) => t.category).filter(Boolean)
+      treatments.map((t) => t.category).filter(Boolean),
     );
     return ["all", ...Array.from(categorySet)];
   }, [treatments]);
@@ -221,7 +222,7 @@ export default function TreatmentsPage() {
       items = items.filter((t) => t.category === categoryFilter);
     }
     return items.sort(
-      (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)
+      (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0),
     );
   }, [filteredItems, categoryFilter]);
 
@@ -236,7 +237,7 @@ export default function TreatmentsPage() {
         },
       });
     },
-    [createMutation, createModal]
+    [createMutation, createModal],
   );
 
   const handleUpdate = useCallback(
@@ -247,10 +248,10 @@ export default function TreatmentsPage() {
           onSuccess: () => {
             detailModal.close();
           },
-        }
+        },
       );
     },
-    [updateMutation, detailModal]
+    [updateMutation, detailModal],
   );
 
   const handleDelete = useCallback(
@@ -261,7 +262,7 @@ export default function TreatmentsPage() {
         },
       });
     },
-    [deleteMutation, detailModal]
+    [deleteMutation, detailModal],
   );
 
   const handleBook = useCallback(
@@ -275,7 +276,7 @@ export default function TreatmentsPage() {
         },
       });
     },
-    [navigate]
+    [navigate],
   );
 
   if (isLoading) {

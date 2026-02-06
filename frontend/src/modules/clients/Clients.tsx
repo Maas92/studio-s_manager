@@ -241,7 +241,7 @@ export default function ClientsPage() {
 
   const { filteredItems } = useListFilter<Client>(clients, {
     searchFields: ["name", "email", "phone"],
-    // searchQuery,
+    searchQuery,
   });
 
   const detailModal = useModalState<Client>();

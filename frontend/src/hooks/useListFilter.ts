@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from "react";
 interface FilterConfig<T> {
   searchFields?: (keyof T)[];
   filterField?: keyof T;
+  searchQuery?: string;
 }
 
 export function useListFilter<T>(items: T[], config: FilterConfig<T> = {}) {
@@ -30,11 +31,11 @@ export function useListFilter<T>(items: T[], config: FilterConfig<T> = {}) {
           }
           if (Array.isArray(value)) {
             return value.some((v) =>
-              typeof v === "string" ? v.toLowerCase().includes(query) : false
+              typeof v === "string" ? v.toLowerCase().includes(query) : false,
             );
           }
           return false;
-        })
+        }),
       );
     }
 

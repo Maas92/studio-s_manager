@@ -239,6 +239,7 @@ export default function StaffPage() {
 
   const { filteredItems } = useListFilter<StaffMember>(staff, {
     searchFields: ["firstName", "lastName", "email", "phone", "role"],
+    searchQuery,
   });
 
   const detailModal = useModalState<StaffMember>();

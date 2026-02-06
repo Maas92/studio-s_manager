@@ -123,7 +123,7 @@ const TableWrapper = styled.div`
 
 function getStockLevel(
   quantity: number,
-  minQuantity?: number
+  minQuantity?: number,
 ): "low" | "medium" | "high" {
   if (!minQuantity) return "high";
   if (quantity <= minQuantity) return "low";
@@ -151,7 +151,7 @@ export default function StockPage() {
 
   const { filteredItems } = useListFilter<StockItem>(stock, {
     searchFields: ["sku", "name", "category"],
-    // searchQuery, Claud keeps on putting this back in. Removing it to use the state variable directly.
+    searchQuery, // Claud keeps on putting this back in. Removing it to use the state variable directly.
   });
 
   const filtered = useMemo(() => {
@@ -161,7 +161,7 @@ export default function StockPage() {
 
   const lowStockItems = useMemo(() => {
     return filtered.filter(
-      (item) => item.minQuantity && item.quantity <= item.minQuantity
+      (item) => item.minQuantity && item.quantity <= item.minQuantity,
     ).length;
   }, [filtered]);
 
@@ -181,7 +181,7 @@ export default function StockPage() {
         },
       });
     },
-    [createMutation, createModal]
+    [createMutation, createModal],
   );
 
   const handleUpdate = useCallback(
@@ -196,10 +196,10 @@ export default function StockPage() {
           onError: (error: any) => {
             toast.error(error?.message ?? "Failed to update stock item");
           },
-        }
+        },
       );
     },
-    [updateMutation, detailModal]
+    [updateMutation, detailModal],
   );
 
   const handleDelete = useCallback(
@@ -214,7 +214,7 @@ export default function StockPage() {
         },
       });
     },
-    [deleteMutation, detailModal]
+    [deleteMutation, detailModal],
   );
 
   const handleTransfer = useCallback(
@@ -229,7 +229,7 @@ export default function StockPage() {
         },
       });
     },
-    [transferMutation, transferModal]
+    [transferMutation, transferModal],
   );
 
   if (isLoading) {
@@ -338,7 +338,7 @@ export default function StockPage() {
               {filtered.map((item) => {
                 const stockLevel = getStockLevel(
                   item.quantity,
-                  item.minQuantity
+                  item.minQuantity,
                 );
                 return (
                   <tr key={item.id}>
