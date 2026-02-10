@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, memo, useCallback } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
@@ -11,7 +11,7 @@ import { Plus, X, Clock } from "lucide-react";
 
 export interface AppointmentFormValues {
   client: string;
-  treatments: string[]; // Changed from single treatment to array
+  treatments: string[];
   staff?: string;
   datetimeLocal: string;
 }
@@ -76,7 +76,9 @@ const Select = styled.select`
   line-height: 1.5;
   outline: none;
   cursor: pointer;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition:
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
   box-sizing: border-box;
 
   &:focus {
@@ -263,7 +265,7 @@ function joinDateTimeLocal(date: string, time: string): string {
 }
 
 function mapToSimpleOptions<T extends { id: string; name: string }>(
-  items: T[]
+  items: T[],
 ): SimpleOption[] {
   return items.map((item) => ({
     id: item.id,
@@ -272,7 +274,7 @@ function mapToSimpleOptions<T extends { id: string; name: string }>(
 }
 
 function mapStaffToSimpleOptions(
-  items: Array<{ id: string; firstName: string; lastName: string }>
+  items: Array<{ id: string; firstName: string; lastName: string }>,
 ): SimpleOption[] {
   return items.map((item) => ({
     id: item.id,
@@ -289,6 +291,54 @@ function formatTime(date: Date): string {
 }
 
 // Component
+
+// CRITICAL FIX: Memoized Treatment Row Component
+// This prevents the SearchableSelect from re-rendering when other treatments change
+interface TreatmentRowComponentProps {
+  index: number;
+  treatmentId: string;
+  treatmentOptions: SimpleOption[];
+  canRemove: boolean;
+  onTreatmentChange: (index: number, treatmentId: string) => void;
+  onRemoveTreatment: (index: number) => void;
+}
+const TreatmentRowComponent = memo(
+  ({
+    index,
+    treatmentId,
+    treatmentOptions,
+    canRemove,
+    onTreatmentChange,
+    onRemoveTreatment,
+  }: TreatmentRowComponentProps) => {
+    return (
+      <TreatmentRow>
+        <TreatmentSelectWrapper>
+          <SearchableSelect
+            id={`appointment-treatment-${index}`}
+            options={treatmentOptions}
+            value={treatmentId}
+            onChange={(val) => onTreatmentChange(index, val)}
+            placeholder="Search for a treatment..."
+            allowFreeInput={false}
+            ariaLabel={`Select treatment ${index + 1}`}
+            required
+          />
+        </TreatmentSelectWrapper>
+        <RemoveButton
+          type="button"
+          onClick={() => onRemoveTreatment(index)}
+          disabled={!canRemove}
+          aria-label="Remove treatment"
+        >
+          <X size={18} />
+        </RemoveButton>
+      </TreatmentRow>
+    );
+  },
+);
+TreatmentRowComponent.displayName = "TreatmentRowComponent";
+
 export default function AppointmentModal({
   isOpen,
   onClose,
@@ -300,13 +350,13 @@ export default function AppointmentModal({
   treatments = [],
   staff = [],
 }: AppointmentModalProps) {
-  const timeOptions = useMemo(() => generateTimeOptions(), []);
   const clientOptions = useMemo(() => mapToSimpleOptions(clients), [clients]);
   const treatmentOptions = useMemo(
     () => mapToSimpleOptions(treatments),
-    [treatments]
+    [treatments],
   );
   const staffOptions = useMemo(() => mapStaffToSimpleOptions(staff), [staff]);
+  const timeOptions = useMemo(() => generateTimeOptions(), []);
 
   const handleDateChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -315,7 +365,7 @@ export default function AppointmentModal({
       const newDateTime = joinDateTimeLocal(newDate, currentTime);
       onChange({ datetimeLocal: newDateTime });
     },
-    [onChange, values.datetimeLocal]
+    [onChange, values.datetimeLocal],
   );
 
   const handleTimeChange = useCallback(
@@ -325,7 +375,7 @@ export default function AppointmentModal({
       const newDateTime = joinDateTimeLocal(currentDate, newTime);
       onChange({ datetimeLocal: newDateTime });
     },
-    [onChange, values.datetimeLocal]
+    [onChange, values.datetimeLocal],
   );
 
   const handleFormSubmit = useCallback(
@@ -333,7 +383,7 @@ export default function AppointmentModal({
       e.preventDefault();
       onSubmit();
     },
-    [onSubmit]
+    [onSubmit],
   );
 
   const handleAddTreatment = useCallback(() => {
@@ -345,7 +395,7 @@ export default function AppointmentModal({
       const newTreatments = values.treatments.filter((_, i) => i !== index);
       onChange({ treatments: newTreatments });
     },
-    [onChange, values.treatments]
+    [onChange, values.treatments],
   );
 
   const handleTreatmentChange = useCallback(
@@ -354,7 +404,7 @@ export default function AppointmentModal({
       newTreatments[index] = treatmentId;
       onChange({ treatments: newTreatments });
     },
-    [onChange, values.treatments]
+    [onChange, values.treatments],
   );
 
   // Calculate treatment schedule and totals
@@ -452,28 +502,15 @@ export default function AppointmentModal({
           </Label>
           <TreatmentsList>
             {values.treatments.map((treatmentId, index) => (
-              <TreatmentRow key={index}>
-                <TreatmentSelectWrapper>
-                  <SearchableSelect
-                    id={`appointment-treatment-${index}`}
-                    options={treatmentOptions}
-                    value={treatmentId}
-                    onChange={(val) => handleTreatmentChange(index, val)}
-                    placeholder="Search for a treatment..."
-                    allowFreeInput={false}
-                    ariaLabel={`Select treatment ${index + 1}`}
-                    required
-                  />
-                </TreatmentSelectWrapper>
-                <RemoveButton
-                  type="button"
-                  onClick={() => handleRemoveTreatment(index)}
-                  disabled={values.treatments.length === 1}
-                  aria-label="Remove treatment"
-                >
-                  <X size={18} />
-                </RemoveButton>
-              </TreatmentRow>
+              <TreatmentRowComponent
+                key={index}
+                index={index}
+                treatmentId={treatmentId}
+                treatmentOptions={treatmentOptions}
+                canRemove={values.treatments.length > 1}
+                onTreatmentChange={handleTreatmentChange}
+                onRemoveTreatment={handleRemoveTreatment}
+              />
             ))}
             <AddTreatmentButton type="button" onClick={handleAddTreatment}>
               <Plus size={18} />

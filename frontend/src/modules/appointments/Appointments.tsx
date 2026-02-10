@@ -185,9 +185,22 @@ export default function Appointments() {
     });
   }, [appointments, treatments]);
 
+  // CRITICAL FIX: Stable onChange callback
+  const handleFormChange = useCallback(
+    (patch: Partial<AppointmentFormValues>) => {
+      setFormValues((prev) => ({ ...prev, ...patch }));
+    },
+    [],
+  );
+
   const handleOpenCreate = useCallback(() => {
     setFormValues(INITIAL_FORM_STATE);
     setShowCreateModal(true);
+  }, []);
+
+  const handleCloseCreate = useCallback(() => {
+    setShowCreateModal(false);
+    setFormValues(INITIAL_FORM_STATE);
   }, []);
 
   const handleSubmitCreate = useCallback(async () => {
@@ -227,7 +240,7 @@ export default function Appointments() {
       toast.success(
         treatmentCount > 1
           ? `${treatmentCount} appointments created successfully!`
-          : "Appointment created successfully!"
+          : "Appointment created successfully!",
       );
 
       setShowCreateModal(false);
@@ -243,15 +256,20 @@ export default function Appointments() {
     setShowDetailModal(true);
   }, []);
 
+  const handleCloseDetail = useCallback(() => {
+    setShowDetailModal(false);
+    setSelectedAppointment(null);
+  }, []);
+
   const handleUpdate = useCallback(
     (
       id: string,
-      updates: Partial<AppointmentFormValues | AppointmentDetailFormValues>
+      updates: Partial<AppointmentFormValues | AppointmentDetailFormValues>,
     ) => {
       const payload: any = {};
       if ((updates as any).datetimeLocal)
         payload.datetimeISO = new Date(
-          (updates as any).datetimeLocal
+          (updates as any).datetimeLocal,
         ).toISOString();
       if ((updates as any).client) payload.clientId = (updates as any).client;
       if ((updates as any).treatment)
@@ -272,10 +290,10 @@ export default function Appointments() {
           onError: (err: any) => {
             toast.error(err?.message ?? "Failed to update appointment");
           },
-        }
+        },
       );
     },
-    [updateMutation]
+    [updateMutation],
   );
 
   const handleDelete = useCallback(
@@ -291,7 +309,7 @@ export default function Appointments() {
         },
       });
     },
-    [deleteMutation]
+    [deleteMutation],
   );
 
   if (isLoading) {
@@ -381,12 +399,9 @@ export default function Appointments() {
       {canManageAppointments && (
         <AppointmentModal
           isOpen={showCreateModal}
-          onClose={() => {
-            setShowCreateModal(false);
-            setFormValues(INITIAL_FORM_STATE);
-          }}
+          onClose={handleCloseCreate}
           values={formValues}
-          onChange={(patch) => setFormValues((prev) => ({ ...prev, ...patch }))}
+          onChange={handleFormChange}
           onSubmit={handleSubmitCreate}
           submitting={createMutation.isPending}
           clients={clients}
@@ -397,10 +412,7 @@ export default function Appointments() {
 
       <AppointmentDetailModal
         isOpen={showDetailModal}
-        onClose={() => {
-          setShowDetailModal(false);
-          setSelectedAppointment(null);
-        }}
+        onClose={handleCloseDetail}
         appointment={selectedAppointment}
         onUpdate={(id, values) => handleUpdate(id, values)}
         onDelete={(id) => handleDelete(id)}
