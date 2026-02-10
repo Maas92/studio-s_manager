@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from "react";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
-import Input from "../../ui/components/Input";
+import SearchableSelect from "../../ui/components/SearchableSelect";
 import styled from "styled-components";
-import { User, Search, Check, AlertCircle } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 import { type CartItem } from "./POSSchema";
 
 interface Staff {
@@ -81,83 +81,43 @@ const StaffStatus = styled.div<{ $assigned: boolean }>`
   font-weight: 700;
 `;
 
-const SearchBar = styled.div`
-  position: relative;
+const SelectWrapper = styled.div`
   margin-top: 0.75rem;
 `;
 
-const SearchIcon = styled.div`
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: ${({ theme }) => theme.color.mutedText};
-  pointer-events: none;
+const StaffLabel = styled.div`
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: ${({ theme }) => theme.color.text};
 `;
 
-const StaffList = styled.div`
-  max-height: 300px;
-  overflow-y: auto;
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-`;
-
-const StaffCard = styled.button<{ $selected: boolean; $disabled: boolean }>`
-  padding: 0.875rem;
-  background: ${({ $selected, theme }) =>
-    $selected ? theme.color.brand500 : theme.color.panel};
-  color: ${({ $selected, theme }) =>
-    $selected ? "#ffffff" : theme.color.text};
-  border: 1px solid
-    ${({ $selected, theme }) =>
-      $selected ? theme.color.brand600 : theme.color.border};
+const SelectedStaffInfo = styled.div`
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: ${({ theme }) => theme.color.brand50};
+  border: 1px solid ${({ theme }) => theme.color.brand200};
   border-radius: ${({ theme }) => theme.radii.sm};
-  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
-  opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
-  transition: all 0.2s;
-  text-align: left;
+  font-size: 0.8125rem;
+`;
+
+const StaffDetail = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 
-  &:hover:not(:disabled) {
-    border-color: ${({ theme }) => theme.color.brand500};
-    background: ${({ $selected, theme }) =>
-      $selected ? theme.color.brand600 : theme.color.brand50};
+  &:not(:last-child) {
+    margin-bottom: 0.25rem;
   }
 `;
 
-const StaffInfo = styled.div``;
-
-const StaffName = styled.div`
-  font-weight: 700;
-  font-size: 0.875rem;
-  margin-bottom: 0.125rem;
-`;
-
-const StaffRole = styled.div`
-  font-size: 0.75rem;
-  opacity: 0.8;
-`;
-
-const AvailabilityBadge = styled.div<{ $available: boolean }>`
-  padding: 0.25rem 0.625rem;
-  background: ${({ $available, theme }) =>
-    $available ? theme.color.green500 + "30" : theme.color.grey300};
-  color: ${({ $available, theme }) =>
-    $available ? theme.color.green500 : theme.color.mutedText};
-  border-radius: ${({ theme }) => theme.radii.round};
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 2rem 1rem;
+const StaffDetailLabel = styled.span`
   color: ${({ theme }) => theme.color.mutedText};
+  font-weight: 600;
+`;
+
+const StaffDetailValue = styled.span`
+  color: ${({ theme }) => theme.color.text};
 `;
 
 const Warning = styled.div`
@@ -185,8 +145,6 @@ export default function StaffAssignmentModal({
   staff,
   onAssignStaff,
 }: StaffAssignmentModalProps) {
-  const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [tempAssignments, setTempAssignments] = useState<
     Record<string, { staffId: string; staffName: string }>
   >({});
@@ -208,31 +166,29 @@ export default function StaffAssignmentModal({
     });
   }, [treatments, tempAssignments]);
 
-  // Filter staff
-  const filteredStaff = useMemo(() => {
-    if (!searchQuery.trim()) return staff;
-    const query = searchQuery.toLowerCase();
-    return staff.filter(
-      (s) =>
-        s.name.toLowerCase().includes(query) ||
-        s.role.toLowerCase().includes(query) ||
-        s.specialties?.some((spec) => spec.toLowerCase().includes(query)),
-    );
-  }, [staff, searchQuery]);
+  // Convert staff to SearchableSelect options
+  const staffOptions = useMemo(() => {
+    return staff.map((s) => ({
+      id: s.id,
+      label: `${s.name} - ${s.role}${s.available ? "" : " (Unavailable)"}`,
+      // Store full staff object for later use
+      _staff: s,
+    }));
+  }, [staff]);
 
   const handleSelectStaff = (
     itemId: string,
     itemType: string,
     staffId: string,
-    staffName: string,
   ) => {
+    const selectedStaff = staff.find((s) => s.id === staffId);
+    if (!selectedStaff) return;
+
     const key = `${itemId}-${itemType}`;
     setTempAssignments((prev) => ({
       ...prev,
-      [key]: { staffId, staffName },
+      [key]: { staffId: selectedStaff.id, staffName: selectedStaff.name },
     }));
-    setExpandedItem(null);
-    setSearchQuery("");
   };
 
   const handleSaveAndContinue = () => {
@@ -242,6 +198,17 @@ export default function StaffAssignmentModal({
       onAssignStaff(itemId, itemType, assignment.staffId, assignment.staffName);
     });
     onClose();
+  };
+
+  // Get currently assigned staff for an item
+  const getAssignedStaffId = (item: CartItem) => {
+    const key = `${item.id}-${item.type}`;
+    return item.staffId || tempAssignments[key]?.staffId || "";
+  };
+
+  const getAssignedStaff = (item: CartItem) => {
+    const staffId = getAssignedStaffId(item);
+    return staff.find((s) => s.id === staffId);
   };
 
   return (
@@ -270,9 +237,9 @@ export default function StaffAssignmentModal({
         <TreatmentsList>
           {treatments.map((item) => {
             const key = `${item.id}-${item.type}`;
-            const assignedStaff = item.staffId || tempAssignments[key]?.staffId;
+            const assignedStaffId = getAssignedStaffId(item);
+            const assignedStaff = getAssignedStaff(item);
             const staffName = item.staffName || tempAssignments[key]?.staffName;
-            const isExpanded = expandedItem === key;
 
             return (
               <TreatmentCard key={key}>
@@ -282,20 +249,9 @@ export default function StaffAssignmentModal({
                     {item.clientName && (
                       <TreatmentClient>{item.clientName}</TreatmentClient>
                     )}
-                    {staffName && (
-                      <div
-                        style={{
-                          marginTop: "0.5rem",
-                          fontSize: "0.8125rem",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Therapist: {staffName}
-                      </div>
-                    )}
                   </TreatmentInfo>
-                  <StaffStatus $assigned={!!assignedStaff}>
-                    {assignedStaff ? (
+                  <StaffStatus $assigned={!!assignedStaffId}>
+                    {assignedStaffId ? (
                       <>
                         <Check size={14} />
                         Assigned
@@ -309,94 +265,67 @@ export default function StaffAssignmentModal({
                   </StaffStatus>
                 </TreatmentHeader>
 
-                {/* Staff Selection */}
-                {!isExpanded && (
-                  <Button
-                    variation="secondary"
-                    onClick={() => setExpandedItem(key)}
-                    size="small"
-                    style={{ width: "100%", justifyContent: "center" }}
-                  >
-                    {assignedStaff ? "Change Therapist" : "Assign Therapist"}
-                  </Button>
-                )}
+                {/* Staff Selection using SearchableSelect */}
+                <SelectWrapper>
+                  <StaffLabel>
+                    {assignedStaffId
+                      ? "Assigned Therapist"
+                      : "Select Therapist"}
+                  </StaffLabel>
+                  <SearchableSelect
+                    options={staffOptions}
+                    value={assignedStaffId}
+                    onChange={(staffId) =>
+                      handleSelectStaff(item.id, item.type, staffId)
+                    }
+                    placeholder="Search staff by name or role..."
+                    id={`staff-select-${key}`}
+                    ariaLabel={`Select staff for ${item.name}`}
+                    labelRenderer={(option) => {
+                      const staffMember = staff.find((s) => s.id === option.id);
+                      if (!staffMember) return option.label;
 
-                {isExpanded && (
-                  <>
-                    <SearchBar>
-                      <SearchIcon>
-                        <Search size={18} />
-                      </SearchIcon>
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search staff..."
-                        style={{ paddingLeft: "2.5rem", fontSize: "0.875rem" }}
-                        autoFocus
-                      />
-                    </SearchBar>
+                      return (
+                        <div>
+                          <div style={{ fontWeight: 700 }}>
+                            {staffMember.name}
+                          </div>
+                          <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+                            {staffMember.role}
+                            {staffMember.available ? "" : " • Unavailable"}
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
 
-                    <StaffList>
-                      {filteredStaff.length === 0 ? (
-                        <EmptyState>
-                          <User
-                            size={40}
-                            style={{ margin: "0 auto 0.5rem", opacity: 0.3 }}
-                          />
-                          <p style={{ margin: 0, fontSize: "0.8125rem" }}>
-                            No staff members found
-                          </p>
-                        </EmptyState>
-                      ) : (
-                        filteredStaff.map((staffMember) => (
-                          <StaffCard
-                            key={staffMember.id}
-                            type="button"
-                            $selected={assignedStaff === staffMember.id}
-                            $disabled={!staffMember.available}
-                            disabled={!staffMember.available}
-                            onClick={() =>
-                              handleSelectStaff(
-                                item.id,
-                                item.type,
-                                staffMember.id,
-                                staffMember.name,
-                              )
-                            }
-                          >
-                            <StaffInfo>
-                              <StaffName>{staffMember.name}</StaffName>
-                              <StaffRole>{staffMember.role}</StaffRole>
-                            </StaffInfo>
-                            <AvailabilityBadge
-                              $available={staffMember.available}
-                            >
-                              {staffMember.available
-                                ? "Available"
-                                : "Unavailable"}
-                            </AvailabilityBadge>
-                          </StaffCard>
-                        ))
-                      )}
-                    </StaffList>
-
-                    <Button
-                      variation="secondary"
-                      onClick={() => {
-                        setExpandedItem(null);
-                        setSearchQuery("");
-                      }}
-                      size="small"
-                      style={{
-                        width: "100%",
-                        justifyContent: "center",
-                        marginTop: "0.5rem",
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </>
-                )}
+                  {/* Show selected staff details */}
+                  {assignedStaff && (
+                    <SelectedStaffInfo>
+                      <StaffDetail>
+                        <StaffDetailLabel>Therapist:</StaffDetailLabel>
+                        <StaffDetailValue>
+                          {assignedStaff.name}
+                        </StaffDetailValue>
+                      </StaffDetail>
+                      <StaffDetail>
+                        <StaffDetailLabel>Role:</StaffDetailLabel>
+                        <StaffDetailValue>
+                          {assignedStaff.role}
+                        </StaffDetailValue>
+                      </StaffDetail>
+                      {assignedStaff.specialties &&
+                        assignedStaff.specialties.length > 0 && (
+                          <StaffDetail>
+                            <StaffDetailLabel>Specialties:</StaffDetailLabel>
+                            <StaffDetailValue>
+                              {assignedStaff.specialties.join(", ")}
+                            </StaffDetailValue>
+                          </StaffDetail>
+                        )}
+                    </SelectedStaffInfo>
+                  )}
+                </SelectWrapper>
               </TreatmentCard>
             );
           })}
