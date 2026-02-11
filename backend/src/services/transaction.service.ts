@@ -225,20 +225,90 @@ export class TransactionService {
       }
 
       const transactionResult = await client.query(
-        `INSERT INTO transactions (...) RETURNING *`,
-        [] as any, // unchanged for brevity
+        `INSERT INTO transactions (
+          client_id,
+          client_name,
+          items,
+          subtotal,
+          discount,
+          discount_amount,
+          loyalty_value,
+          loyalty_points_earned,
+          loyalty_points_redeemed,
+          tax,
+          tax_rate,
+          tax_inclusive,
+          tips,
+          tips_total,
+          total,
+          payments,
+          payment_method,
+          payment_status,
+          status,
+          notes,
+          created_by,
+          created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+          $21, NOW()
+        ) RETURNING *`,
+        [
+          data.clientId || null,
+          data.clientName || null,
+          JSON.stringify(data.items),
+          subtotal,
+          JSON.stringify(data.discount),
+          discountAmount,
+          loyaltyValue,
+          loyaltyPointsEarned,
+          data.loyaltyPointsRedeemed || 0,
+          tax,
+          TAX_CONFIG.rate,
+          TAX_CONFIG.inclusive,
+          JSON.stringify(data.tips || {}),
+          tipsTotal,
+          total,
+          JSON.stringify(data.payments),
+          paymentMethod,
+          paymentStatus,
+          "completed",
+          notes,
+          null, // created_by - set to null since auth uses MongoDB
+        ],
       );
 
       const transaction = transactionResult.rows[0];
 
+      // Parse JSONB fields back to objects/arrays for frontend
+      const parsedTransaction = {
+        ...transaction,
+        items:
+          typeof transaction.items === "string"
+            ? JSON.parse(transaction.items)
+            : transaction.items,
+        discount:
+          typeof transaction.discount === "string"
+            ? JSON.parse(transaction.discount)
+            : transaction.discount,
+        tips:
+          typeof transaction.tips === "string"
+            ? JSON.parse(transaction.tips)
+            : transaction.tips,
+        payments:
+          typeof transaction.payments === "string"
+            ? JSON.parse(transaction.payments)
+            : transaction.payments,
+      };
+
       await client.query("COMMIT");
 
       logger.info(
-        { transactionId: transaction.id, total },
+        { transactionId: parsedTransaction.id, total },
         "✅ Transaction created",
       );
 
-      return transaction;
+      return parsedTransaction;
     } catch (error) {
       await client.query("ROLLBACK");
       logger.error(

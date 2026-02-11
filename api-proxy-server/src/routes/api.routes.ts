@@ -11,7 +11,7 @@ router.use(
     target: env.AUTH_SERVICE_URL,
     pathRewrite: { "^/api/v1/users": "/api/v1/users" },
     isBackendService: false, // Auth service doesn't need GATEWAY_SECRET
-  })
+  }),
 );
 
 // Google Contacts routes
@@ -21,7 +21,7 @@ router.use(
   createProxy({
     target: env.GOOGLE_CONTACTS_SERVICE_URL,
     isBackendService: true, // Adds x-gateway-key
-  })
+  }),
 );
 
 // Inventory service routes - ALL need GATEWAY_SECRET
@@ -39,6 +39,7 @@ const inventoryRoutes = [
   "bookings",
   "stock",
   "cash-ups",
+  "transactions",
 ];
 
 inventoryRoutes.forEach((route) => {
@@ -47,7 +48,7 @@ inventoryRoutes.forEach((route) => {
     createProxy({
       target: env.INVENTORY_SERVICE_URL,
       isBackendService: true,
-    })
+    }),
   );
 });
 

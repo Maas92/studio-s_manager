@@ -1,5 +1,3 @@
-// Enhanced POS API with outbox pattern support
-
 import { useOutbox } from "../../hooks/useOutbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -22,7 +20,7 @@ export function useCreateTransactionWithOutbox() {
       if (result.queued) {
         toast.success(
           "Transaction queued - will sync when connection is restored",
-          { duration: 4000, icon: "📡" }
+          { duration: 4000, icon: "📡" },
         );
       }
 
@@ -93,7 +91,7 @@ export function useCompleteAppointmentWithOutbox() {
           status: "completed",
           completedAt: new Date().toISOString(),
         },
-        { method: "PATCH" }
+        { method: "PATCH" },
       );
 
       if (result.queued) {
@@ -136,7 +134,7 @@ export function useUpdateStockWithOutbox() {
       const result = await submitForm(
         `/products/${productId}/stock`,
         { quantity, location, reason },
-        { method: "PATCH" }
+        { method: "PATCH" },
       );
 
       if (result.queued) {

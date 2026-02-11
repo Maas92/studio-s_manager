@@ -1,3 +1,5 @@
+// React hook for easy integration with your components
+
 import { useState, useEffect, useCallback } from "react";
 import { outboxManager } from "../utils/outboxManager";
 import type {
@@ -94,7 +96,9 @@ export const useOutbox = (): UseOutboxReturn => {
 
           if (response.ok) {
             const result = await response.json();
-            return { success: true, data: result, queued: false };
+            // Extract data from backend response wrapper (e.g., { status, data: { ... } })
+            const actualData = result?.data || result;
+            return { success: true, data: actualData, queued: false };
           } else {
             // Failed, queue it
             return await outboxManager.queueTransaction(
