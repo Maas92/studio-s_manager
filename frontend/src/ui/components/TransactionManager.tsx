@@ -1,5 +1,3 @@
-// Admin UI for managing pending and failed transactions
-
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { RefreshCw, Trash2, AlertCircle } from "lucide-react";

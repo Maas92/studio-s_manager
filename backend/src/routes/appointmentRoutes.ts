@@ -21,14 +21,14 @@ const router = express.Router();
 router.get(
   "/availability",
   validate(availabilityQuerySchema),
-  appointmentController.getAvailability
+  appointmentController.getAvailability,
 );
 
 // Get calendar view
 router.get(
   "/calendar",
   validate(calendarQuerySchema),
-  appointmentController.getCalendar
+  appointmentController.getCalendar,
 );
 
 // ============================================
@@ -41,8 +41,10 @@ router
   .post(
     restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
     validate(createAppointmentSchema),
-    appointmentController.createAppointment
+    appointmentController.createAppointment,
   );
+
+router.get("/today", appointmentController.getTodayForPOS);
 
 router
   .route("/:id")
@@ -51,7 +53,7 @@ router
     validateUUID("id"),
     restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
     validate(updateAppointmentSchema),
-    appointmentController.updateAppointment
+    appointmentController.updateAppointment,
   );
 
 // ============================================
@@ -64,7 +66,7 @@ router.post(
   validateUUID("id"),
   restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
   validate(cancelAppointmentSchema),
-  appointmentController.cancelAppointment
+  appointmentController.cancelAppointment,
 );
 
 // Check-in appointment
@@ -72,7 +74,7 @@ router.post(
   "/:id/check-in",
   validateUUID("id"),
   restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
-  appointmentController.checkInAppointment
+  appointmentController.checkInAppointment,
 );
 
 // Complete appointment
@@ -81,7 +83,7 @@ router.post(
   validateUUID("id"),
   restrictTo("admin", "manager", "owner", "receptionist", "therapist"),
   validate(completeAppointmentSchema),
-  appointmentController.completeAppointment
+  appointmentController.completeAppointment,
 );
 
 export default router;

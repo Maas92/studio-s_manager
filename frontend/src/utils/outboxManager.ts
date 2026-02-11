@@ -1,5 +1,3 @@
-// Manages transaction queue, retry logic, and synchronization
-
 import { outboxDB } from "./outboxDB";
 import type {
   OutboxTransaction,
@@ -67,7 +65,7 @@ class OutboxManager {
     endpoint: string,
     method: HttpMethod,
     data: unknown,
-    options: SubmitOptions = {}
+    options: SubmitOptions = {},
   ): Promise<SubmitResult> {
     const transaction: Partial<OutboxTransaction> = {
       endpoint,
@@ -129,7 +127,7 @@ class OutboxManager {
   }
 
   private async processTransaction(
-    transaction: OutboxTransaction
+    transaction: OutboxTransaction,
   ): Promise<void> {
     if (!this.isOnline) {
       return;
@@ -150,11 +148,12 @@ class OutboxManager {
             "Content-Type": "application/json",
             ...transaction.headers,
           },
+          credentials: "include", // 👈 Include cookies for authentication
           body:
             transaction.method !== "GET"
               ? JSON.stringify(transaction.data)
               : undefined,
-        }
+        },
       );
 
       if (response.ok) {
@@ -177,7 +176,7 @@ class OutboxManager {
         const errorText = await response.text();
         await this.handleFailedTransaction(
           transaction,
-          `HTTP ${response.status}: ${response.statusText} - ${errorText}`
+          `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
         );
       }
     } catch (error) {
@@ -189,7 +188,7 @@ class OutboxManager {
 
   private async handleFailedTransaction(
     transaction: OutboxTransaction,
-    errorMessage: string
+    errorMessage: string,
   ): Promise<void> {
     const newRetryCount = transaction.retryCount + 1;
 
@@ -209,7 +208,7 @@ class OutboxManager {
 
       console.error(
         `Transaction failed after ${this.config.maxRetries} retries:`,
-        transaction.id
+        transaction.id,
       );
     } else {
       // Schedule retry
@@ -230,7 +229,7 @@ class OutboxManager {
       });
 
       console.log(
-        `Retrying transaction ${transaction.id} in ${delay}ms (attempt ${newRetryCount})`
+        `Retrying transaction ${transaction.id} in ${delay}ms (attempt ${newRetryCount})`,
       );
 
       setTimeout(() => {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   AppointmentSchema,
   CreateAppointmentSchema,
+  TodaysAppointmentsQuerySchema,
   ProductSchema,
   TreatmentSchema,
   StaffSchema,
@@ -17,6 +18,7 @@ import {
   type Client,
   type Appointment,
   type CreateAppointmentInput,
+  type TodaysAppointmentsQuery,
   type CreateClientInput,
   type CreateTransactionInput,
   type CartItem,
@@ -97,21 +99,25 @@ export const transactionsApi = createResourceClient<
   createSchema: CreateTransactionSchema,
 });
 
-// ============================================================================
-// APPOINTMENT FUNCTIONS
-// ============================================================================
-
 /**
  * Get today's appointments for POS check-in
  */
-export async function getTodaysAppointments(): Promise<Appointment[]> {
+export async function getTodaysAppointments(): Promise<
+  TodaysAppointmentsQuery[]
+> {
   try {
-    const today = new Date().toISOString().split("T")[0];
-    const { data } = await api.get(
-      `/appointments?date=${today}&status=confirmed`
-    );
-    const appointments = Array.isArray(data) ? data : [data];
-    return appointments.map((apt) => AppointmentSchema.parse(apt));
+    const response = await api.get(`/appointments/today`);
+
+    // Handle nested structure: response.data.data.appointments
+    const appointmentsArray =
+      response.data?.data?.appointments ||
+      response.data?.appointments ||
+      response.data;
+    const appointments = Array.isArray(appointmentsArray)
+      ? appointmentsArray
+      : [appointmentsArray];
+
+    return appointments.map((apt) => TodaysAppointmentsQuerySchema.parse(apt));
   } catch (error) {
     console.error("Failed to fetch today's appointments:", error);
     throw new Error("Unable to load appointments. Please try again.");
@@ -122,7 +128,7 @@ export async function getTodaysAppointments(): Promise<Appointment[]> {
  * Mark appointment as completed
  */
 export async function completeAppointment(
-  appointmentId: string
+  appointmentId: string,
 ): Promise<void> {
   try {
     await appointmentsApi.update(appointmentId, {
@@ -229,11 +235,11 @@ export async function getAvailableStaff(date?: string): Promise<Staff[]> {
 export async function checkStaffConflicts(
   staffId: string,
   startTime: string,
-  duration: number
+  duration: number,
 ): Promise<boolean> {
   try {
     const { data } = await api.get(
-      `/staff/${staffId}/availability?start=${startTime}&duration=${duration}`
+      `/staff/${staffId}/availability?start=${startTime}&duration=${duration}`,
     );
     return data.available || false;
   } catch (error) {
@@ -254,7 +260,7 @@ export function detectStaffConflicts(cart: CartItem[]): StaffConflict[] {
     .filter(
       (item) =>
         (item.type === "treatment" || item.type === "appointment") &&
-        item.staffId
+        item.staffId,
     )
     .forEach((item) => {
       if (!staffMap.has(item.staffId!)) {
@@ -288,7 +294,7 @@ export function detectStaffConflicts(cart: CartItem[]): StaffConflict[] {
  */
 export async function verifyClient(
   identifier: string,
-  type: "phone" | "email"
+  type: "phone" | "email",
 ): Promise<Client> {
   try {
     const { data } = await api.get(`/clients/verify?${type}=${identifier}`);
@@ -347,7 +353,7 @@ export function calculateTax(amount: number): number {
 export function validateDiscount(
   discount: Discount,
   subtotal: number,
-  maxDiscountPercent: number = 100
+  maxDiscountPercent: number = 100,
 ): DiscountValidation {
   if (discount.type === "percentage") {
     if (discount.value < 0 || discount.value > maxDiscountPercent) {
@@ -392,7 +398,7 @@ export function validateDiscount(
 export function validatePayment(
   payments: PaymentBreakdown[],
   total: number,
-  cashReceived?: number
+  cashReceived?: number,
 ): PaymentValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -401,7 +407,7 @@ export function validatePayment(
 
   if (totalPaid < total - 0.01) {
     errors.push(
-      `Insufficient payment: $${(total - totalPaid).toFixed(2)} remaining`
+      `Insufficient payment: $${(total - totalPaid).toFixed(2)} remaining`,
     );
   }
 
@@ -412,7 +418,7 @@ export function validatePayment(
 
   if (totalPaid > total + 0.01) {
     warnings.push(
-      `Overpayment of $${(totalPaid - total).toFixed(2)} will be refunded`
+      `Overpayment of $${(totalPaid - total).toFixed(2)} will be refunded`,
     );
   }
 
@@ -429,12 +435,12 @@ export function validatePayment(
 export function validateAddToCart(
   item: Omit<CartItem, "quantity">,
   currentCart: CartItem[],
-  productStock: Record<string, number>
+  productStock: Record<string, number>,
 ): CartValidation {
   // Only appointments cannot be duplicated
   if (item.type === "appointment") {
     const exists = currentCart.find(
-      (i) => i.id === item.id && i.type === item.type
+      (i) => i.id === item.id && i.type === item.type,
     );
     if (exists) {
       return {
@@ -485,7 +491,7 @@ export function validateAddToCart(
  * Create a transaction (complete a sale)
  */
 export async function createTransaction(
-  input: CreateTransactionInput
+  input: CreateTransactionInput,
 ): Promise<Transaction> {
   try {
     const validatedInput = CreateTransactionSchema.parse(input);
@@ -493,7 +499,7 @@ export async function createTransaction(
     // Calculate subtotal (already tax-inclusive from cart prices)
     const subtotal = validatedInput.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
-      0
+      0,
     );
 
     // Calculate discount amount
@@ -516,7 +522,7 @@ export async function createTransaction(
     // Calculate tips total
     const tipsTotal = Object.values(validatedInput.tips || {}).reduce(
       (sum, tip) => sum + tip,
-      0
+      0,
     );
 
     // Final total = tax-inclusive amount + tips
@@ -569,7 +575,7 @@ export async function createTransaction(
 export async function sendReceipt(
   transactionId: string,
   method: "email" | "sms",
-  recipient: string
+  recipient: string,
 ): Promise<void> {
   try {
     await api.post(`/transactions/${transactionId}/receipt`, {

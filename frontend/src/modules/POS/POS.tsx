@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
 import { ArrowLeft, Save, AlertTriangle, Check } from "lucide-react";
 
@@ -27,6 +27,7 @@ import {
 } from "./apiWithOutbox";
 
 import type { CartItem } from "./POSSchema";
+import { getTodaysAppointments } from "./api";
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -136,7 +137,7 @@ export default function PointOfSale() {
   const [tips, setTips] = useState<Record<string, number>>({});
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
   const [completedTransaction, setCompletedTransaction] = useState<any | null>(
-    null
+    null,
   );
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
@@ -156,6 +157,10 @@ export default function PointOfSale() {
 
   const clients = clientsQuery.data ?? [];
   const appointments = appointmentsQuery.data ?? [];
+  const todaysAppointmentsQuery = useQuery({
+    queryKey: ["todaysAppointments"], // <- array identifying this query
+    queryFn: getTodaysAppointments, // <- function that fetches the data
+  });
   const treatments = treatmentsQuery.data ?? [];
   const staff = staffQuery.data ?? [];
   const stockItems = stockQuery.data ?? [];
@@ -257,7 +262,7 @@ export default function PointOfSale() {
         // Products: merge quantities
         if (item.type === "product") {
           const existingIdx = prev.findIndex(
-            (p) => p.type === "product" && p.productId === item.productId
+            (p) => p.type === "product" && p.productId === item.productId,
           );
 
           if (existingIdx >= 0) {
@@ -286,7 +291,7 @@ export default function PointOfSale() {
         return [...prev, { ...item, quantity: item.quantity ?? 1 }];
       });
     },
-    [productStock]
+    [productStock],
   );
 
   const updateQuantity = useCallback(
@@ -307,15 +312,15 @@ export default function PointOfSale() {
           }
 
           return { ...item, quantity: newQuantity };
-        })
+        }),
       );
     },
-    [productStock]
+    [productStock],
   );
 
   const removeFromCart = useCallback((id: string, type: string) => {
     setCart((prev) =>
-      prev.filter((item) => !(item.id === id && item.type === type))
+      prev.filter((item) => !(item.id === id && item.type === type)),
     );
   }, []);
 
@@ -325,11 +330,11 @@ export default function PointOfSale() {
         prev.map((item) =>
           item.id === itemId && item.type === itemType
             ? { ...item, staffId, staffName }
-            : item
-        )
+            : item,
+        ),
       );
     },
-    []
+    [],
   );
 
   const updatePrice = useCallback(
@@ -345,11 +350,11 @@ export default function PointOfSale() {
             };
           }
           return item;
-        })
+        }),
       );
       toast.success("Price updated");
     },
-    []
+    [],
   );
 
   // ============================================================================
@@ -366,7 +371,7 @@ export default function PointOfSale() {
         toast.error(err?.message ?? "Failed to create client");
       }
     },
-    [createClientMutation]
+    [createClientMutation],
   );
 
   const handleSelectClient = useCallback(
@@ -398,7 +403,7 @@ export default function PointOfSale() {
 
       setCurrentStep(2);
     },
-    [clients, appointments, addToCart]
+    [clients, appointments, addToCart],
   );
 
   // ============================================================================
@@ -418,12 +423,12 @@ export default function PointOfSale() {
         }
         if (currentStep === 3) {
           const treatmentItems = cart.filter(
-            (item) => item.type === "treatment" || item.type === "appointment"
+            (item) => item.type === "treatment" || item.type === "appointment",
           );
           const unassigned = treatmentItems.filter((item) => !item.staffId);
           if (unassigned.length > 0) {
             toast.error(
-              `Please assign staff to all treatments (${unassigned.length} remaining)`
+              `Please assign staff to all treatments (${unassigned.length} remaining)`,
             );
             return;
           }
@@ -431,7 +436,7 @@ export default function PointOfSale() {
       }
       setCurrentStep(step);
     },
-    [currentStep, selectedClient, cart]
+    [currentStep, selectedClient, cart],
   );
 
   // ============================================================================
@@ -473,7 +478,8 @@ export default function PointOfSale() {
           await Promise.allSettled(
             productItems.map((p) => {
               const stockItem = stockItems.find(
-                (s) => s.id === (p.productId || p.id) && s.location === "retail"
+                (s) =>
+                  s.id === (p.productId || p.id) && s.location === "retail",
               );
               if (!stockItem) return Promise.resolve();
 
@@ -483,13 +489,13 @@ export default function PointOfSale() {
                   quantity: Math.max(0, stockItem.quantity - p.quantity),
                 },
               });
-            })
+            }),
           );
         } else {
           // If offline, show message that stock will be updated on sync
           toast.error(
             "Stock updates will be applied when connection is restored",
-            { duration: 4000 }
+            { duration: 4000 },
           );
         }
 
@@ -520,7 +526,7 @@ export default function PointOfSale() {
       qc,
       clearDraft,
       isOnline,
-    ]
+    ],
   );
 
   // ============================================================================
@@ -647,7 +653,7 @@ export default function PointOfSale() {
           {currentStep === 1 && (
             <ClientSelection
               clients={clients}
-              appointments={appointments}
+              appointments={todaysAppointmentsQuery.data ?? []}
               onSelectClient={handleSelectClient}
               onCreateNew={() => setShowCreateClient(true)}
             />

@@ -552,6 +552,38 @@ export class AppointmentService {
   }
 
   /**
+   * Get today's appointments eligible for POS check-in
+   */
+  async getTodayForPOS() {
+    const result = await pool.query(`
+    SELECT 
+      b.id,
+      b.client_id,
+      b.treatment_id,
+      b.staff_id,
+      TO_CHAR(b.booking_date, 'YYYY-MM-DD') as booking_date,
+      b.start_time,
+      b.end_time,
+      b.status,
+      b.duration_minutes,
+      b.total_price,
+      c.first_name || ' ' || c.last_name as client_name,
+      c.phone as client_phone,
+      t.name as treatment_name,
+      t.price as treatment_price
+    FROM bookings b
+    LEFT JOIN clients c ON b.client_id = c.id
+    LEFT JOIN treatments t ON b.treatment_id = t.id
+    WHERE 
+      b.booking_date = CURRENT_DATE
+      AND b.status = 'confirmed'
+    ORDER BY b.start_time ASC
+  `);
+
+    return result.rows;
+  }
+
+  /**
    * Helper to convert time string to minutes
    */
   private timeToMinutes(time: string): number {

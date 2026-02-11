@@ -1,5 +1,3 @@
-// React hook for easy integration with your components
-
 import { useState, useEffect, useCallback } from "react";
 import { outboxManager } from "../utils/outboxManager";
 import type {
@@ -76,7 +74,7 @@ export const useOutbox = (): UseOutboxReturn => {
     async <T = unknown>(
       endpoint: string,
       data: unknown,
-      options: SubmitOptions = {}
+      options: SubmitOptions = {},
     ): Promise<SubmitResult> => {
       const method = (options.method || "POST") as HttpMethod;
       const config = outboxManager.getConfig();
@@ -90,6 +88,7 @@ export const useOutbox = (): UseOutboxReturn => {
               "Content-Type": "application/json",
               ...options.headers,
             },
+            credentials: "include", // 👈 Include cookies for authentication
             body: JSON.stringify(data),
           });
 
@@ -102,7 +101,7 @@ export const useOutbox = (): UseOutboxReturn => {
               endpoint,
               method,
               data,
-              options
+              options,
             );
           }
         } else {
@@ -111,7 +110,7 @@ export const useOutbox = (): UseOutboxReturn => {
             endpoint,
             method,
             data,
-            options
+            options,
           );
         }
       } catch (error) {
@@ -121,25 +120,25 @@ export const useOutbox = (): UseOutboxReturn => {
           endpoint,
           method,
           data,
-          options
+          options,
         );
       }
     },
-    [isOnline]
+    [isOnline],
   );
 
   const retryFailed = useCallback(
     async (transactionId: string): Promise<boolean> => {
       return await outboxManager.retryFailed(transactionId);
     },
-    []
+    [],
   );
 
   const deleteTransaction = useCallback(
     async (transactionId: string): Promise<void> => {
       return await outboxManager.deleteTransaction(transactionId);
     },
-    []
+    [],
   );
 
   const clearCompleted = useCallback(async (): Promise<string[]> => {

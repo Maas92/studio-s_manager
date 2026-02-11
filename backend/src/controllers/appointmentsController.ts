@@ -265,3 +265,36 @@ export const getAvailability = catchAsync(
     });
   },
 );
+
+/**
+ *  Get today's appointments for POS
+ *  GET /api/v1/appointments/today
+ */
+export const getTodayForPOS = catchAsync(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
+    try {
+      const appointments = await appointmentService.getTodayForPOS();
+
+      if (!appointments || appointments.length === 0) {
+        return res.status(200).json({
+          status: "success",
+          results: 0,
+          data: {
+            appointments: [],
+          },
+        });
+      }
+
+      res.status(200).json({
+        status: "success",
+        results: appointments.length,
+        data: {
+          appointments: appointments.map(transformAppointmentForFrontend),
+        },
+      });
+    } catch (error) {
+      logger.error(error, "Failed to fetch today's POS appointments");
+      return next(AppError.internal("Failed to fetch today's appointments"));
+    }
+  },
+);

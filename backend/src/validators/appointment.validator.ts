@@ -30,7 +30,7 @@ export const updateAppointmentSchema = z.object({
       .string()
       .refine(
         (date) => !isNaN(new Date(date).getTime()),
-        "Invalid booking date"
+        "Invalid booking date",
       )
       .optional(),
 
@@ -88,7 +88,7 @@ export const availabilityQuerySchema = z.object({
       .string()
       .refine(
         (date) => !isNaN(new Date(date).getTime()),
-        "Invalid date format"
+        "Invalid date format",
       ),
     duration_minutes: z.coerce
       .number()
@@ -107,13 +107,13 @@ export const calendarQuerySchema = z.object({
       .string()
       .refine(
         (date) => !isNaN(new Date(date).getTime()),
-        "Invalid start_date format"
+        "Invalid start_date format",
       ),
     end_date: z
       .string()
       .refine(
         (date) => !isNaN(new Date(date).getTime()),
-        "Invalid end_date format"
+        "Invalid end_date format",
       ),
     staffId: z.string().uuid("Invalid staff ID").optional(),
   }),
@@ -170,3 +170,32 @@ export const completeAppointmentSchema = z.object({
     id: z.string().uuid("Invalid appointment ID"),
   }),
 });
+
+/**
+ * Schema for today's appointments
+ */
+export const todaysAppointmentResponseSchema = z.array(
+  z.object({
+    id: z.string().uuid(),
+    client_id: z.string().uuid(),
+    treatment_id: z.string().uuid(),
+    staff_id: z.string().uuid().nullable().optional(),
+    booking_date: z.string(),
+    start_time: z.string(),
+    end_time: z.string(),
+    status: z.enum([
+      "pending",
+      "confirmed",
+      "in_progress",
+      "completed",
+      "cancelled",
+      "no_show",
+    ]),
+    duration_minutes: z.number(),
+    total_price: z.number(),
+    client_name: z.string(),
+    client_phone: z.string().nullable().optional(),
+    treatment_name: z.string(),
+    treatment_price: z.number(),
+  }),
+);

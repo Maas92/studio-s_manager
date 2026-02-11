@@ -1,3 +1,4 @@
+import { time } from "console";
 import { z } from "zod";
 
 // ============================================================================
@@ -121,6 +122,35 @@ export const CreateAppointmentSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Today's Appointments Query Schema
+export const TodaysAppointmentsQuerySchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  treatmentId: z.string(),
+  staffId: z.string().nullable(),
+  bookingDate: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  status: z.enum([
+    "pending",
+    "confirmed",
+    "in_progress",
+    "completed",
+    "cancelled",
+    "no_show",
+  ]),
+  durationMinutes: z.coerce.number(), // Convert string to number
+  totalPrice: z.coerce.number(), // Convert string to number
+  clientName: z.string().optional(),
+  clientPhone: z.string(),
+  treatmentName: z.string(),
+  treatmentPrice: z.coerce.number(), // Convert string to number
+  datetimeISO: z.string(),
+  time: z.string(),
+  duration: z.string(),
+  price: z.coerce.number(), // Convert string to number
+});
+
 // Treatment Schema
 export const TreatmentSchema = z.object({
   id: z.string(),
@@ -178,6 +208,9 @@ export type Client = z.infer<typeof ClientSchema>;
 export type CreateClientInput = z.infer<typeof CreateClientSchema>;
 export type Appointment = z.infer<typeof AppointmentSchema>;
 export type CreateAppointmentInput = z.infer<typeof CreateAppointmentSchema>;
+export type TodaysAppointmentsQuery = z.infer<
+  typeof TodaysAppointmentsQuerySchema
+>;
 export type Treatment = z.infer<typeof TreatmentSchema>;
 export type Product = z.infer<typeof ProductSchema>;
 export type Staff = z.infer<typeof StaffSchema>;
