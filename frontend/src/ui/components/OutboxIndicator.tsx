@@ -1,5 +1,3 @@
-// Visual indicator for network status and pending transactions
-
 import React from "react";
 import styled from "styled-components";
 import { useOutbox } from "../../hooks/useOutbox";
@@ -26,7 +24,7 @@ const StatusBadge = styled.div<{
   padding: 0.25rem 0.625rem;
   border-radius: ${({ theme }) => theme.radii.round};
   font-weight: 600;
-  font-size: 0.8125rem;
+  font-size: 1rem;
   transition: all 0.2s ease;
   border: 1px solid;
 

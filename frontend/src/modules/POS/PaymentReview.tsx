@@ -70,7 +70,7 @@ const PageTitle = styled.h2`
 const PageSubtitle = styled.p`
   margin: 0;
   color: ${({ theme }) => theme.color.mutedText};
-  font-size: 0.95rem;
+  font-size: 1.2rem;
 `;
 
 const SectionCard = styled(Card)`
@@ -125,11 +125,11 @@ const OrderItemPrice = styled.div`
 const OrderItemAmount = styled.div`
   font-weight: 700;
   color: ${({ theme }) => theme.color.text};
-  font-size: 1.125rem;
+  font-size: 1.25rem;
 `;
 
 const OrderItemQty = styled.div`
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: ${({ theme }) => theme.color.mutedText};
   margin-top: 0.25rem;
 `;
@@ -193,7 +193,7 @@ const TotalDisplay = styled.div`
 `;
 
 const TotalLabel = styled.div`
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -234,7 +234,7 @@ const ErrorBox = styled.div`
   border: 1px solid ${({ theme }) => theme.color.red500 || "#ef4444"};
   border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.color.red600 || "#b91c1c"};
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   margin-bottom: 1rem;
 
   svg {
@@ -252,7 +252,7 @@ const WarningBox = styled.div`
   border: 1px solid ${({ theme }) => theme.color.yellow700 || "#a16207"};
   border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.color.grey900 || "#111827"};
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   margin-bottom: 1rem;
 
   svg {
@@ -270,7 +270,7 @@ const SuccessBox = styled.div`
   border: 1px solid ${({ theme }) => theme.color.green500 || "#22c55e"};
   border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.color.green700 || "#15803d"};
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   font-weight: 600;
   margin-top: 0.75rem;
 `;
@@ -284,7 +284,7 @@ const InfoBox = styled.div`
   border: 1px solid ${({ theme }) => theme.color.blue500 || "#3b82f6"};
   border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.color.blue500 || "#1d4ed8"};
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   margin-bottom: 1rem;
 `;
 
@@ -881,7 +881,7 @@ export default function PaymentReview({
             />
             {cashReceived && parseFloat(cashReceived) >= total && (
               <SuccessBox>
-                <Check size={16} />
+                <Check size={25} />
                 Change: ${cashChange.toFixed(2)}
               </SuccessBox>
             )}
@@ -926,7 +926,7 @@ export default function PaymentReview({
             </div>
             {creditRedemption > 0 && creditRedemption < totalBeforeCredit && (
               <InfoBox style={{ marginTop: "0.75rem" }}>
-                <AlertCircle size={16} />
+                <AlertCircle size={25} />
                 Remaining balance: $
                 {(totalBeforeCredit - creditRedemption).toFixed(2)} - Please
                 select additional payment method
@@ -937,10 +937,10 @@ export default function PaymentReview({
 
         {validationErrors.length > 0 && (
           <ErrorBox>
-            <AlertCircle size={18} />
+            <AlertCircle size={25} />
             <div>
               <strong>Cannot proceed:</strong>
-              <ul style={{ margin: "0.5rem 0 0 0", paddingLeft: "1.25rem" }}>
+              <ul style={{ margin: "0.5rem 0 0 0" }}>
                 {validationErrors.map((error, idx) => (
                   <li key={idx}>{error}</li>
                 ))}

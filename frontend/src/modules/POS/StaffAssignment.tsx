@@ -46,7 +46,7 @@ interface StaffAssignmentProps {
     itemId: string,
     itemType: string,
     staffId: string,
-    staffName: string
+    staffName: string,
   ) => void;
   onNext: () => void;
   onBack: () => void;
@@ -75,7 +75,7 @@ const Title = styled.h2`
 `;
 
 const Subtitle = styled.p`
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: ${({ theme }) => theme.color.mutedText};
   margin: 0;
 `;
@@ -148,13 +148,13 @@ const TreatmentInfo = styled.div`
 
 const TreatmentName = styled.div`
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: 1.3rem;
   color: ${({ theme }) => theme.color.text};
   margin-bottom: 0.375rem;
 `;
 
 const TreatmentMeta = styled.div`
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: ${({ theme }) => theme.color.mutedText};
 `;
 
@@ -334,7 +334,7 @@ const AvailabilityBadge = styled.div<{ $available: boolean }>`
     $available ? "rgba(52, 211, 153, 0.2)" : "rgba(107, 114, 128, 0.2)"};
   color: ${({ $available }) => ($available ? "#10b981" : "#6b7280")};
   border-radius: 999px;
-  font-size: 0.6875rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -367,7 +367,7 @@ const ErrorMessage = styled.div`
   border: 1px solid ${({ theme }) => theme.color.red500};
   border-radius: ${({ theme }) => theme.radii.md};
   color: ${({ theme }) => theme.color.red600};
-  font-size: 0.875rem;
+  font-size: 1rem;
   margin-top: 1rem;
 
   svg {
@@ -388,7 +388,7 @@ export default function StaffAssignment({
   onBack,
 }: StaffAssignmentProps) {
   const [expandedTreatment, setExpandedTreatment] = useState<string | null>(
-    null
+    null,
   );
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -396,26 +396,26 @@ export default function StaffAssignment({
   const treatments = useMemo(
     () =>
       cart.filter(
-        (item) => item.type === "treatment" || item.type === "appointment"
+        (item) => item.type === "treatment" || item.type === "appointment",
       ),
-    [cart]
+    [cart],
   );
 
   // Check assignment progress
   const assignedCount = useMemo(
     () => treatments.filter((item) => item.staffId).length,
-    [treatments]
+    [treatments],
   );
 
   const allAssigned = useMemo(
     () => treatments.every((item) => item.staffId),
-    [treatments]
+    [treatments],
   );
 
   const progress = useMemo(
     () =>
       treatments.length > 0 ? (assignedCount / treatments.length) * 100 : 0,
-    [assignedCount, treatments.length]
+    [assignedCount, treatments.length],
   );
 
   // Filter staff
@@ -426,7 +426,7 @@ export default function StaffAssignment({
       (s) =>
         s.name.toLowerCase().includes(query) ||
         s.role.toLowerCase().includes(query) ||
-        s.specialties?.some((spec) => spec.toLowerCase().includes(query))
+        s.specialties?.some((spec) => spec.toLowerCase().includes(query)),
     );
   }, [staff, searchQuery]);
 
@@ -436,7 +436,7 @@ export default function StaffAssignment({
       setExpandedTreatment(null);
       setSearchQuery("");
     },
-    [onAssignStaff]
+    [onAssignStaff],
   );
 
   const handleNext = useCallback(() => {

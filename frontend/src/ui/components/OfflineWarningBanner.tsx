@@ -1,5 +1,3 @@
-// Banner to show offline status and pending transactions
-
 import React from "react";
 import styled from "styled-components";
 import { WifiOff, AlertCircle, Clock, CheckCircle } from "lucide-react";
@@ -14,7 +12,8 @@ const Banner = styled.div<{ $variant: "offline" | "pending" | "success" }>`
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem 1.5rem;
+  padding: 0.5rem 1rem;
+  margin-right: 1.8rem;
   border-radius: ${({ theme }) => theme.radii.md};
   margin-bottom: 1rem;
   animation: slideDown 0.3s ease-out;
@@ -67,12 +66,12 @@ const BannerContent = styled.div`
 
 const BannerTitle = styled.div`
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: 1.2rem;
   margin-bottom: 0.25rem;
 `;
 
 const BannerMessage = styled.div`
-  font-size: 0.875rem;
+  font-size: 1rem;
   opacity: 0.9;
 `;
 

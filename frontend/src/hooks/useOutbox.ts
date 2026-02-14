@@ -96,8 +96,22 @@ export const useOutbox = (): UseOutboxReturn => {
 
           if (response.ok) {
             const result = await response.json();
-            // Extract data from backend response wrapper (e.g., { status, data: { ... } })
-            const actualData = result?.data || result;
+            // Backend returns: { status: "success", data: { transaction: {...} } }
+            // Extract the actual transaction object
+            let actualData = result;
+
+            // First unwrap: check for data property
+            if (actualData?.data) {
+              actualData = actualData.data;
+            }
+
+            // Second unwrap: check for transaction property (for single transaction)
+            if (actualData?.transaction) {
+              actualData = actualData.transaction;
+            }
+
+            console.log("🔍 Unwrapped transaction data:", actualData);
+
             return { success: true, data: actualData, queued: false };
           } else {
             // Failed, queue it

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import styled from "styled-components";
-import { ArrowLeft, Save, AlertTriangle, Check } from "lucide-react";
+import { ArrowLeft, Save, AlertTriangle, Check, Info } from "lucide-react";
 
 import Button from "../../ui/components/Button";
 import POSStepIndicator from "./POSStepIndicator";
@@ -97,6 +97,28 @@ const DraftContent = styled.div`
 const DraftActions = styled.div`
   display: flex;
   gap: 0.5rem;
+`;
+
+const InfoBanner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: ${({ theme }) => theme.color.blue100 || "#E3F2FD"};
+  border: 1px solid ${({ theme }) => theme.color.blue500 || "#2196F3"};
+  border-radius: ${({ theme }) => theme.radii.md};
+  margin-bottom: 1.5rem;
+  color: ${({ theme }) => theme.color.grey900};
+`;
+
+const InfoContent = styled.div`
+  flex: 1;
+  line-height: 1.5;
+
+  strong {
+    font-weight: 700;
+    color: ${({ theme }) => theme.color.blue500 || "#1976D2"};
+  }
 `;
 
 // ============================================================================
@@ -651,12 +673,22 @@ export default function PointOfSale() {
 
         <StepContent>
           {currentStep === 1 && (
-            <ClientSelection
-              clients={clients}
-              appointments={todaysAppointmentsQuery.data ?? []}
-              onSelectClient={handleSelectClient}
-              onCreateNew={() => setShowCreateClient(true)}
-            />
+            <>
+              <InfoBanner>
+                <Info size={20} />
+                <InfoContent>
+                  Select either <strong>Walk-in Client</strong> or{" "}
+                  <strong>Booked Client</strong>, then click{" "}
+                  <strong>Verify & Continue</strong> to proceed.
+                </InfoContent>
+              </InfoBanner>
+              <ClientSelection
+                clients={clients}
+                appointments={todaysAppointmentsQuery.data ?? []}
+                onSelectClient={handleSelectClient}
+                onCreateNew={() => setShowCreateClient(true)}
+              />
+            </>
           )}
 
           {currentStep === 2 && (

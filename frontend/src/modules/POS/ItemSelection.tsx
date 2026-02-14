@@ -79,7 +79,7 @@ const Title = styled.h2`
 `;
 
 const Subtitle = styled.div`
-  font-size: 0.875rem;
+  font-size: 1.2rem;
   color: ${({ theme }) => theme.color.mutedText};
 `;
 
@@ -104,7 +104,7 @@ const Tab = styled.button<{ $active?: boolean }>`
   border-radius: ${({ theme }) => theme.radii.sm};
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   box-shadow: ${({ $active, theme }) => ($active ? theme.shadowSm : "none")};
 
   &:hover {
@@ -184,7 +184,7 @@ const ItemName = styled.div`
 `;
 
 const ItemMeta = styled.div`
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: ${({ theme }) => theme.color.mutedText};
   margin-bottom: 0.5rem;
   display: flex;
@@ -366,7 +366,7 @@ const QuantityButton = styled.button`
   }
 
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -444,7 +444,7 @@ const EditablePrice = styled(CartItemPrice)`
 
   .edit-icon {
     opacity: 0.4;
-    font-size: 0.7rem;
+    font-size: 1rem;
     transition: opacity 0.2s;
   }
 `;
@@ -560,9 +560,9 @@ export default function ItemSelection({
       appointments.filter((a) =>
         (a.clientName + " " + a.treatmentName)
           .toLowerCase()
-          .includes(searchQuery.toLowerCase())
+          .includes(searchQuery.toLowerCase()),
       ),
-    [appointments, searchQuery]
+    [appointments, searchQuery],
   );
 
   const filteredTreatments = useMemo(
@@ -570,9 +570,9 @@ export default function ItemSelection({
       treatments.filter((t) =>
         (t.name + " " + (t.category || ""))
           .toLowerCase()
-          .includes(searchQuery.toLowerCase())
+          .includes(searchQuery.toLowerCase()),
       ),
-    [treatments, searchQuery]
+    [treatments, searchQuery],
   );
 
   const filteredStock = useMemo(
@@ -580,9 +580,9 @@ export default function ItemSelection({
       stockItems.filter((p) =>
         (p.name + " " + (p.category || ""))
           .toLowerCase()
-          .includes(searchQuery.toLowerCase())
+          .includes(searchQuery.toLowerCase()),
       ),
-    [stockItems, searchQuery]
+    [stockItems, searchQuery],
   );
 
   // Check if item is in cart
@@ -594,7 +594,7 @@ export default function ItemSelection({
     const stock = productStock[productId] ?? 0;
     const inCartQty = cart
       .filter(
-        (i) => (i.productId ?? i.id) === productId && i.type === "product"
+        (i) => (i.productId ?? i.id) === productId && i.type === "product",
       )
       .reduce((sum, i) => sum + i.quantity, 0);
     const available = Math.max(0, stock - inCartQty);
@@ -608,7 +608,7 @@ export default function ItemSelection({
   // Calculate cart total
   const cartTotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cart]
+    [cart],
   );
 
   const canProceed = cart.length > 0;

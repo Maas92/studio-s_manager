@@ -54,7 +54,7 @@ const Option = styled.li<{ $active?: boolean }>`
   padding: 8px 10px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: ${({ theme }) => theme.color.text};
   background: ${({ $active, theme }) =>
     $active ? theme.color.brand50 : "transparent"};
@@ -90,7 +90,7 @@ const SearchableSelect = React.forwardRef<
       hasError = false,
       required = false,
     },
-    forwardedRef
+    forwardedRef,
   ) => {
     const internalRef = useRef<HTMLInputElement>(null);
     const inputRef = (forwardedRef ||
@@ -119,7 +119,7 @@ const SearchableSelect = React.forwardRef<
         }
         const newFiltered = options.filter(
           (o) =>
-            o.label.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
+            o.label.toLowerCase().includes(q) || o.id.toLowerCase().includes(q),
         );
         setFiltered(newFiltered);
         setHighlightIndex(0);
@@ -145,7 +145,7 @@ const SearchableSelect = React.forwardRef<
         setQuery(opt.label);
         closeDropdown();
       },
-      [onChange, closeDropdown]
+      [onChange, closeDropdown],
     );
 
     const scrollIntoView = useCallback((index: number) => {
@@ -216,7 +216,7 @@ const SearchableSelect = React.forwardRef<
         selectOption,
         onChange,
         scrollIntoView,
-      ]
+      ],
     );
 
     // Click outside handler - CRITICAL FIX: Use capture phase to intercept before Modal
@@ -275,7 +275,7 @@ const SearchableSelect = React.forwardRef<
           onChange("");
         }
       },
-      [allowFreeInput, onChange]
+      [allowFreeInput, onChange],
     );
 
     return (
@@ -310,7 +310,7 @@ const SearchableSelect = React.forwardRef<
         </Dropdown>
       </Wrapper>
     );
-  }
+  },
 );
 
 SearchableSelect.displayName = "SearchableSelect";

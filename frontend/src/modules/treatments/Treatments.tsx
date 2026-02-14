@@ -112,7 +112,7 @@ const TreatmentHeader = styled.div`
 
 const TreatmentTitle = styled.h3`
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1.3rem;
   font-weight: 600;
   color: ${({ theme }) => theme.color.text};
   line-height: 1.3;
@@ -122,7 +122,7 @@ const TreatmentTitle = styled.h3`
 const Description = styled.p`
   margin: 0;
   color: ${({ theme }) => theme.color.mutedText};
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -143,8 +143,8 @@ const MetaItem = styled.div`
   align-items: center;
   gap: 0.5rem;
   color: ${({ theme }) => theme.color.text};
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
 
   svg {
     color: ${({ theme }) => theme.color.brand600};
@@ -155,7 +155,7 @@ const MetaItem = styled.div`
 const TagsList = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 0.375rem;
+  gap: 0.6rem;
   margin-top: 0.5rem;
 `;
 
@@ -163,7 +163,7 @@ const PriceText = styled.span<{ $isFromPrice?: boolean }>`
   ${({ $isFromPrice, theme }) =>
     $isFromPrice &&
     `
-    font-size: 0.8em;
+    font-size: 1em;
     color: ${theme.color.mutedText};
   `}
 `;

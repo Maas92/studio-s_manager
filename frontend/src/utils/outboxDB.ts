@@ -1,5 +1,3 @@
-// IndexedDB wrapper for persistent outbox storage
-
 import type {
   OutboxTransaction,
   OutboxStatus,
@@ -37,7 +35,7 @@ class OutboxDB {
   }
 
   async addTransaction(
-    transaction: Partial<OutboxTransaction>
+    transaction: Partial<OutboxTransaction>,
   ): Promise<OutboxTransaction> {
     if (!this.db) throw new Error("Database not initialized");
 
@@ -94,7 +92,7 @@ class OutboxDB {
 
   async updateTransaction(
     id: string,
-    updates: Partial<OutboxTransaction>
+    updates: Partial<OutboxTransaction>,
   ): Promise<OutboxTransaction> {
     if (!this.db) throw new Error("Database not initialized");
 

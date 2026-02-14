@@ -43,19 +43,20 @@ export function unwrapResponse<T = any>(raw: unknown): T | T[] | null {
 
   // Common wrapper keys to check (in order of priority)
   const wrapperKeys = [
+    "transaction", // Single transaction response (MUST BE BEFORE 'items')
     "staff", // Added specific resource keys first
     "clients",
     "treatments",
     "appointments",
     "products",
     "transactions",
-    "items",
     "results",
     "records",
     "data", // Generic keys last
     "payload",
     "content",
     "body",
+    "items", // MOVED TO END - so it doesn't extract items array from transaction
   ];
 
   // Check for common wrapper keys
@@ -95,7 +96,7 @@ export function unwrapResponse<T = any>(raw: unknown): T | T[] | null {
     "lastName",
   ];
   const hasDataIndicators = dataIndicators.some(
-    (key) => key in (payload as object)
+    (key) => key in (payload as object),
   );
 
   if (hasDataIndicators) {
@@ -105,7 +106,7 @@ export function unwrapResponse<T = any>(raw: unknown): T | T[] | null {
   // Check if this object has pagination metadata (total, page, etc.)
   // If so, look for the actual data in common array keys
   const hasPaginationMetadata = ["total", "page", "totalPages", "limit"].some(
-    (key) => key in (payload as object)
+    (key) => key in (payload as object),
   );
 
   if (hasPaginationMetadata) {
@@ -149,7 +150,7 @@ export function unwrapAndValidate<T>(raw: unknown, schema: ZodType<T[]>): T[];
 export function unwrapAndValidate<T>(raw: unknown, schema: ZodType<T>): T;
 export function unwrapAndValidate<T>(
   raw: unknown,
-  schema: ZodType<T> | ZodType<T[]>
+  schema: ZodType<T> | ZodType<T[]>,
 ): T | T[] {
   const unwrapped = unwrapResponse<T>(raw);
 
@@ -185,7 +186,7 @@ export function unwrapAndValidate<T>(
       devError("Expected schema type:", isArraySchema ? "Array" : "Object");
       devError(
         "Received data type:",
-        Array.isArray(unwrapped) ? "Array" : typeof unwrapped
+        Array.isArray(unwrapped) ? "Array" : typeof unwrapped,
       );
       devError("Raw response:", JSON.stringify(raw, null, 2));
       devError("Unwrapped data:", JSON.stringify(unwrapped, null, 2));
@@ -269,7 +270,7 @@ export interface PaginationMetadata {
 }
 
 export function extractPaginationMetadata(
-  raw: unknown
+  raw: unknown,
 ): PaginationMetadata | null {
   if (!raw || typeof raw !== "object") return null;
 

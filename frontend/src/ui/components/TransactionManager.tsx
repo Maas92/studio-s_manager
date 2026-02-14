@@ -29,7 +29,7 @@ const Header = styled.div`
 
 const Title = styled.h2`
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 2.5rem;
   font-weight: 700;
 `;
 
@@ -68,7 +68,7 @@ const StatCard = styled(Card)<{
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   color: ${({ theme }) => theme.color.mutedText};
   text-transform: uppercase;
   font-weight: 700;
@@ -94,7 +94,7 @@ const FilterTab = styled.button<{ $active: boolean }>`
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: ${({ $active, theme }) =>
     $active ? theme.color.brand600 : theme.color.mutedText};
@@ -137,7 +137,7 @@ const TransactionHeaderLeft = styled.div`
 const StatusBadge = styled.div<{ $status: OutboxStatus }>`
   padding: 0.25rem 0.625rem;
   border-radius: ${({ theme }) => theme.radii.round};
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
   text-transform: uppercase;
   background-color: ${({ $status, theme }) => {
@@ -166,7 +166,7 @@ const MethodBadge = styled.div`
   padding: 0.25rem 0.5rem;
   background: ${({ theme }) => theme.color.grey200};
   border-radius: ${({ theme }) => theme.radii.sm};
-  font-size: 0.6875rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: ${({ theme }) => theme.color.mutedText};
 `;

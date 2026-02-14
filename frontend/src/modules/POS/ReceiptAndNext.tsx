@@ -298,7 +298,7 @@ const PromptTitle = styled.h3`
 `;
 
 const PromptSubtitle = styled.p`
-  font-size: 1rem;
+  font-size: 1.5rem;
   color: ${({ theme }) => theme.color.mutedText};
   margin: 0 0 1.5rem 0;
 `;
@@ -348,7 +348,9 @@ const Select = styled.select`
   line-height: 1.5;
   outline: none;
   cursor: pointer;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  transition:
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
   box-sizing: border-box;
 
   &:focus {
@@ -436,7 +438,7 @@ export default function ReceiptAndNext({
 
   const activeTreatments = useMemo(
     () => treatments.filter((t) => t.isActive),
-    [treatments]
+    [treatments],
   );
 
   const minDate = useMemo(() => {
@@ -451,7 +453,7 @@ export default function ReceiptAndNext({
       console.log(`Sending receipt via ${method} to:`, client);
       alert(`Receipt would be sent via ${method}!`);
     },
-    [client]
+    [client],
   );
 
   const handleOpenAppointmentModal = useCallback(() => {
@@ -605,7 +607,7 @@ export default function ReceiptAndNext({
       <AppointmentPrompt>
         <PromptTitle>Book Your Next Appointment?</PromptTitle>
         <PromptSubtitle>
-          Schedule your next visit with {client.name} now
+          Schedule the next visit with {client.name} now
         </PromptSubtitle>
         <PromptActions>
           <Button

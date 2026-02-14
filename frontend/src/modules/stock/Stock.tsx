@@ -64,7 +64,7 @@ const LocationBadge = styled.span<{ $location: string }>`
   align-items: center;
   padding: 0.25rem 0.625rem;
   border-radius: ${({ theme }) => theme.radii.round};
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 600;
   text-transform: capitalize;
   background: ${({ $location, theme }) => {
@@ -122,6 +122,7 @@ const TableWrapper = styled.div`
 `;
 
 function getStockLevel(
+  // TODO get stock levels this is doing nothing
   quantity: number,
   minQuantity?: number,
 ): "low" | "medium" | "high" {
@@ -354,7 +355,7 @@ export default function StockPage() {
                         <strong>{item.name}</strong>
                       </div>
                     </td>
-                    <td>{item.sku || "—"}</td>
+                    <td style={{ fontSize: "1.1rem" }}>{item.sku || "—"}</td>
                     <td>{item.category || "—"}</td>
                     <td>
                       <LocationBadge $location={item.location}>
@@ -365,11 +366,6 @@ export default function StockPage() {
                       <StockLevel $level={stockLevel}>
                         {stockLevel === "low" && <TrendingDown size={14} />}
                         {item.quantity} {item.unit || "units"}
-                        {item.minQuantity && (
-                          <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-                            (min: {item.minQuantity})
-                          </span>
-                        )}
                       </StockLevel>
                     </td>
                     <td>{item.retailPrice ? `$${item.retailPrice}` : "—"}</td>

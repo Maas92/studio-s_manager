@@ -83,8 +83,8 @@ const StepCircle = styled.div<{ $active: boolean; $completed: boolean }>`
     $completed
       ? theme.color.green500
       : $active
-      ? theme.color.brand500
-      : theme.color.grey200};
+        ? theme.color.brand500
+        : theme.color.grey200};
   color: ${({ $active, $completed }) =>
     $completed || $active ? "#ffffff" : "#6b7280"};
   border: 3px solid
@@ -92,8 +92,8 @@ const StepCircle = styled.div<{ $active: boolean; $completed: boolean }>`
       $completed
         ? theme.color.green500
         : $active
-        ? theme.color.brand600
-        : theme.color.grey300};
+          ? theme.color.brand600
+          : theme.color.grey300};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: ${({ $active, $completed, theme }) =>
     $active || $completed ? theme.shadowMd : theme.shadowSm};
@@ -106,7 +106,7 @@ const StepCircle = styled.div<{ $active: boolean; $completed: boolean }>`
 `;
 
 const StepLabel = styled.div<{ $active: boolean }>`
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: ${({ $active }) => ($active ? 700 : 500)};
   color: ${({ $active, theme }) =>
     $active ? theme.color.text : theme.color.mutedText};

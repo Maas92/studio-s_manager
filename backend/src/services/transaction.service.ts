@@ -280,35 +280,29 @@ export class TransactionService {
 
       const transaction = transactionResult.rows[0];
 
-      // Parse JSONB fields back to objects/arrays for frontend
-      const parsedTransaction = {
+      // Convert string numbers to actual numbers for frontend
+      const formattedTransaction = {
         ...transaction,
-        items:
-          typeof transaction.items === "string"
-            ? JSON.parse(transaction.items)
-            : transaction.items,
-        discount:
-          typeof transaction.discount === "string"
-            ? JSON.parse(transaction.discount)
-            : transaction.discount,
-        tips:
-          typeof transaction.tips === "string"
-            ? JSON.parse(transaction.tips)
-            : transaction.tips,
-        payments:
-          typeof transaction.payments === "string"
-            ? JSON.parse(transaction.payments)
-            : transaction.payments,
+        subtotal: parseFloat(transaction.subtotal),
+        discount_amount: parseFloat(transaction.discount_amount),
+        loyalty_value: parseFloat(transaction.loyalty_value),
+        tax: parseFloat(transaction.tax),
+        tax_rate: parseFloat(transaction.tax_rate),
+        tips_total: parseFloat(transaction.tips_total),
+        total: parseFloat(transaction.total),
       };
 
       await client.query("COMMIT");
 
       logger.info(
-        { transactionId: parsedTransaction.id, total },
+        {
+          transactionId: formattedTransaction.id,
+          total: formattedTransaction.total,
+        },
         "✅ Transaction created",
       );
 
-      return parsedTransaction;
+      return formattedTransaction;
     } catch (error) {
       await client.query("ROLLBACK");
       logger.error(
