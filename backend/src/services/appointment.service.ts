@@ -22,6 +22,18 @@ interface CreateAppointmentData {
   created_by?: string;
 }
 
+interface UpdateAppointmentData {
+  client_id?: string;
+  staff_id?: string;
+  treatment_id?: string;
+  datetime_iso?: string;
+  booking_date?: string;
+  start_time?: string;
+  end_time?: string;
+  notes?: string;
+  status?: string;
+}
+
 export class AppointmentService {
   private async getServiceDuration(treatment_id: string): Promise<number> {
     const result = await pool.query(
@@ -331,7 +343,7 @@ export class AppointmentService {
    * Update appointment
    * FIXED: Use 'bookings' table
    */
-  async update(id: string, data: Partial<CreateAppointmentData>) {
+  async update(id: string, data: UpdateAppointmentData) {
     const fields: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -346,6 +358,32 @@ export class AppointmentService {
       "notes",
       "status",
     ];
+
+    // Parse datetime_iso into booking_date + start_time, exactly like create does
+    if (data.datetime_iso) {
+      const [datePart, timePart] = data.datetime_iso.split("T");
+      data.booking_date = datePart;
+      data.start_time = timePart.slice(0, 5);
+      delete data.datetime_iso;
+    }
+
+    // Recalculate end_time if start_time or treatment_id changed
+    if (data.start_time) {
+      const treatmentId =
+        data.treatment_id ??
+        (
+          await pool.query(`SELECT treatment_id FROM bookings WHERE id = $1`, [
+            id,
+          ])
+        ).rows[0]?.treatment_id;
+
+      const duration = await this.getServiceDuration(treatmentId);
+      const [startHours, startMinutes] = data.start_time.split(":").map(Number);
+      const totalMinutes = startHours * 60 + startMinutes + duration;
+      const endHours = Math.floor(totalMinutes / 60);
+      const endMinutes = totalMinutes % 60;
+      data.end_time = `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
+    }
 
     for (const [key, value] of Object.entries(data)) {
       if (allowedFields.includes(key) && value !== undefined) {
@@ -362,10 +400,10 @@ export class AppointmentService {
 
     const result = await pool.query(
       `
-      UPDATE bookings
-      SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $${paramIndex}
-      RETURNING *
+    UPDATE bookings
+    SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $${paramIndex}
+    RETURNING *
     `,
       values,
     );

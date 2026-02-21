@@ -271,9 +271,7 @@ export default function Appointments() {
     ) => {
       const payload: any = {};
       if ((updates as any).datetimeLocal)
-        payload.datetimeISO = new Date(
-          (updates as any).datetimeLocal,
-        ).toISOString();
+        payload.datetimeISO = (updates as any).datetimeLocal;
       if ((updates as any).client) payload.clientId = (updates as any).client;
       if ((updates as any).treatment)
         payload.treatmentId = (updates as any).treatment;

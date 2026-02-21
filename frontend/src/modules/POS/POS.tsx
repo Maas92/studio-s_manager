@@ -24,6 +24,7 @@ import { useOutbox } from "../../hooks/useOutbox";
 import {
   useCreateTransactionWithOutbox,
   useCreateClientWithOutbox,
+  useCompleteAppointmentWithOutbox,
 } from "./apiWithOutbox";
 
 import type { CartItem } from "./POSSchema";
@@ -175,6 +176,7 @@ export default function PointOfSale() {
     useStock();
   // const { createMutation: createTransactionMutation } = usePos();
   const createTransactionMutation = useCreateTransactionWithOutbox();
+  const completeAppointmentMutation = useCompleteAppointmentWithOutbox();
   const { isOnline, stats } = useOutbox();
 
   const clients = clientsQuery.data ?? [];
@@ -529,6 +531,14 @@ export default function PointOfSale() {
               });
             }),
           );
+
+          // Complete any appointment items in the cart
+          const appointmentItems = cart.filter((i) => i.type === "appointment");
+          await Promise.allSettled(
+            appointmentItems.map((a) =>
+              completeAppointmentMutation.mutateAsync({ appointmentId: a.id }),
+            ),
+          );
         } else {
           // If offline, show message that stock will be updated on sync
           toast.error(
@@ -559,6 +569,7 @@ export default function PointOfSale() {
       tips,
       loyaltyPointsToRedeem,
       createTransactionMutation,
+      completeAppointmentMutation,
       stockItems,
       stockUpdateMutation,
       qc,

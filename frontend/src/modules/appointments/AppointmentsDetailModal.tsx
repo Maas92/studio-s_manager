@@ -288,7 +288,7 @@ function joinDateTimeLocal(date: string, time: string): string {
 }
 
 function mapToSimpleOptions<T extends { id: string; name: string }>(
-  items: T[]
+  items: T[],
 ): SimpleOption[] {
   return items.map((item) => ({
     id: item.id,
@@ -297,7 +297,7 @@ function mapToSimpleOptions<T extends { id: string; name: string }>(
 }
 
 function mapStaffToSimpleOptions(
-  items: Array<{ id: string; firstName: string; lastName: string }>
+  items: Array<{ id: string; firstName: string; lastName: string }>,
 ): SimpleOption[] {
   return items.map((item) => ({
     id: item.id,
@@ -332,7 +332,7 @@ export default function AppointmentDetailModal({
   const clientOptions = useMemo(() => mapToSimpleOptions(clients), [clients]);
   const treatmentOptions = useMemo(
     () => mapToSimpleOptions(treatments),
-    [treatments]
+    [treatments],
   );
   const staffOptions = useMemo(() => mapStaffToSimpleOptions(staff), [staff]);
 
@@ -352,7 +352,7 @@ export default function AppointmentDetailModal({
 
   const { date, time } = useMemo(
     () => splitDatetimeLocal(formValues.datetimeLocal),
-    [formValues.datetimeLocal]
+    [formValues.datetimeLocal],
   );
 
   const handleDateChange = useCallback(
@@ -362,7 +362,7 @@ export default function AppointmentDetailModal({
       const newDateTime = joinDateTimeLocal(newDate, currentParts.time);
       setFormValues((prev) => ({ ...prev, datetimeLocal: newDateTime }));
     },
-    [formValues.datetimeLocal]
+    [formValues.datetimeLocal],
   );
 
   const handleTimeChange = useCallback(
@@ -372,7 +372,7 @@ export default function AppointmentDetailModal({
       const newDateTime = joinDateTimeLocal(currentParts.date, newTime);
       setFormValues((prev) => ({ ...prev, datetimeLocal: newDateTime }));
     },
-    [formValues.datetimeLocal]
+    [formValues.datetimeLocal],
   );
 
   const handleSave = useCallback(() => {
@@ -386,7 +386,7 @@ export default function AppointmentDetailModal({
     const localDate = new Date(year, month - 1, day, hour, minute, 0);
 
     const updates: Partial<AppointmentDetailFormValues> = {
-      datetimeLocal: localDate.toISOString(), // Convert to UTC ISO for storage
+      datetimeLocal: formValues.datetimeLocal,
       status: formValues.status,
       notes: formValues.notes,
     };
@@ -435,7 +435,7 @@ export default function AppointmentDetailModal({
 
   const statusVariant = (
     ["confirmed", "pending", "cancelled", "completed"].includes(
-      formValues.status
+      formValues.status,
     )
       ? formValues.status
       : "pending"
