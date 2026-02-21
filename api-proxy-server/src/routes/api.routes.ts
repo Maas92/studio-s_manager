@@ -40,6 +40,7 @@ const inventoryRoutes = [
   "stock",
   "cash-ups",
   "transactions",
+  "credits",
 ];
 
 inventoryRoutes.forEach((route) => {

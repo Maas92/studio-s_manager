@@ -49,6 +49,36 @@ const PageWrapper = styled.div`
   margin: 0 auto;
 `;
 
+const CreditTransaction = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: ${({ theme }) => theme.color.panel};
+  border: 1px solid ${({ theme }) => theme.color.border};
+  border-radius: ${({ theme }) => theme.radii.sm};
+`;
+
+const TransactionType = styled.div<{ $type: "add" | "redeem" | "adjust" }>`
+  font-weight: 700;
+  font-size: 1rem;
+  color: ${({ $type, theme }) =>
+    $type === "add" ? theme.color.green700 : theme.color.red600};
+  min-width: 80px;
+`;
+
+const TransactionDetails = styled.div`
+  flex: 1;
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.color.mutedText};
+`;
+
+const TransactionBalance = styled.div`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.color.text};
+`;
+
 const Content = styled.div`
   display: grid;
   gap: 1.5rem;
