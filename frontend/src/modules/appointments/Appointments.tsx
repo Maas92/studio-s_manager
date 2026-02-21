@@ -205,20 +205,14 @@ export default function Appointments() {
 
   const handleSubmitCreate = useCallback(async () => {
     try {
-      // Parse LOCAL datetime from form (format: "2024-01-15T10:00")
-      const [datePart, timePart] = formValues.datetimeLocal.split("T");
-      const [year, month, day] = datePart.split("-").map(Number);
-      const [hour, minute] = timePart.split(":").map(Number);
-
-      // Create Date using LOCAL timezone
-      const startDate = new Date(year, month - 1, day, hour, minute, 0);
-
-      if (isNaN(startDate.getTime())) {
-        toast.error("Invalid date/time selected");
+      // formValues.datetimeLocal is already in the format "2024-01-15T10:00"
+      // We want to send this AS-IS to the backend without timezone conversion
+      if (!formValues.datetimeLocal) {
+        toast.error("Please select a date and time");
         return;
       }
 
-      let currentTimeMs = startDate.getTime();
+      let currentDateTime = formValues.datetimeLocal; // e.g., "2026-02-17T12:00"
 
       for (let i = 0; i < formValues.treatments.length; i++) {
         const treatmentId = formValues.treatments[i];
@@ -230,10 +224,19 @@ export default function Appointments() {
           treatmentId: treatmentId,
           staffId: formValues.staff || undefined,
           status: "confirmed",
-          datetimeISO: new Date(currentTimeMs).toISOString(), // Converts to UTC for storage
+          datetimeISO: currentDateTime, // Send local datetime string as-is
         });
 
-        currentTimeMs += durationMinutes * 60 * 1000;
+        // Calculate next appointment time by adding duration
+        const [datePart, timePart] = currentDateTime.split("T");
+        const [year, month, day] = datePart.split("-").map(Number);
+        const [hour, minute] = timePart.split(":").map(Number);
+
+        const totalMinutes = hour * 60 + minute + durationMinutes;
+        const newHour = Math.floor(totalMinutes / 60);
+        const newMinute = totalMinutes % 60;
+
+        currentDateTime = `${datePart}T${String(newHour).padStart(2, "0")}:${String(newMinute).padStart(2, "0")}`;
       }
 
       const treatmentCount = formValues.treatments.length;

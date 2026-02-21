@@ -12,12 +12,12 @@ import { toCamelCase, toSnakeCase } from "../utils/fieldMapper.js";
 function transformAppointmentForFrontend(appointment: any) {
   const transformed = toCamelCase(appointment);
 
-  // Construct datetimeISO from booking_date and start_time
+  // Construct datetimeISO from booking_date and start_time WITHOUT timezone conversion
   if (appointment.booking_date && appointment.start_time) {
-    const date = new Date(appointment.booking_date);
+    // booking_date is "2026-02-17", start_time is "12:00:00"
+    // Just combine them as-is, don't convert to UTC
     const [hours, minutes] = appointment.start_time.split(":");
-    date.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
-    transformed.datetimeISO = date.toISOString();
+    transformed.datetimeISO = `${appointment.booking_date}T${hours}:${minutes}:00`;
 
     // Add formatted time for display
     transformed.time = appointment.start_time;
@@ -121,7 +121,7 @@ export const updateAppointment = catchAsync(
   async (req: UserRequest, res: Response, next: NextFunction) => {
     const appointment = await appointmentService.update(
       req.params.id,
-      req.body,
+      toSnakeCase(req.body),
     );
 
     logger.info(

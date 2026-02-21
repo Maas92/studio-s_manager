@@ -97,10 +97,10 @@ export const CreateClientSchema = z.object({
 export const AppointmentSchema = z.object({
   id: z.string(),
   clientId: z.string(),
-  clientName: z.string().optional(),
+  clientName: z.string(),
   treatmentId: z.string(),
-  treatmentName: z.string().optional(),
-  datetimeISO: z.string().datetime(),
+  treatmentName: z.string(),
+  datetimeISO: z.string(),
   status: z.enum(["confirmed", "pending", "cancelled", "completed"]).optional(),
   staffId: z.string().optional(),
   staffName: z.string().optional(),
@@ -113,7 +113,7 @@ export const AppointmentSchema = z.object({
 export const CreateAppointmentSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
   treatmentId: z.string().min(1, "Treatment is required"),
-  datetimeISO: z.string().datetime(),
+  datetimeISO: z.string(),
   status: z
     .enum(["confirmed", "pending", "cancelled", "completed"])
     .default("confirmed"),
@@ -126,7 +126,7 @@ export const TodaysAppointmentsQuerySchema = z.object({
   id: z.string(),
   clientId: z.string(),
   treatmentId: z.string(),
-  staffId: z.string().nullable(),
+  staffId: z.string().optional(),
   bookingDate: z.string(),
   startTime: z.string(),
   endTime: z.string(),
@@ -138,16 +138,17 @@ export const TodaysAppointmentsQuerySchema = z.object({
     "cancelled",
     "no_show",
   ]),
-  durationMinutes: z.coerce.number(), // Convert string to number
-  totalPrice: z.coerce.number(), // Convert string to number
+  durationMinutes: z.coerce.number().optional(),
+  totalPrice: z.coerce.number().optional(),
   clientName: z.string().optional(),
-  clientPhone: z.string(),
-  treatmentName: z.string(),
-  treatmentPrice: z.coerce.number(), // Convert string to number
-  datetimeISO: z.string(),
-  time: z.string(),
-  duration: z.string(),
-  price: z.coerce.number(), // Convert string to number
+  clientPhone: z.string().optional(),
+  staffName: z.string().optional(),
+  treatmentName: z.string().optional(),
+  treatmentPrice: z.coerce.number().optional(),
+  datetimeISO: z.string().optional(),
+  time: z.string().optional(),
+  duration: z.string().optional(),
+  price: z.coerce.number().optional(),
 });
 
 // Treatment Schema
@@ -155,7 +156,7 @@ export const TreatmentSchema = z.object({
   id: z.string(),
   name: z.string(),
   durationMinutes: z.number(),
-  price: z.number().optional(),
+  price: z.number(),
   category: z.string().optional(),
   isActive: z.boolean().optional(),
 });

@@ -405,19 +405,35 @@ export default function PointOfSale() {
 
       // If booked appointment, add it to cart automatically
       if (type === "booked" && appointmentId) {
-        const apt = appointments.find((a) => a.id === appointmentId);
+        const apt = (todaysAppointmentsQuery.data ?? []).find(
+          (a) => a.id === appointmentId,
+        );
         if (apt) {
+          // Only look up staff name if staffId exists
+          let staffName = undefined;
+          if (apt.staffId) {
+            const staffMember = staff.find((s) => s.id === apt.staffId);
+            staffName = staffMember
+              ? `${staffMember.firstName} ${staffMember.lastName}`
+              : undefined;
+          }
+
           addToCart({
             id: apt.id,
             type: "appointment",
             name: apt.treatmentName,
             price: apt.price || 0,
+            originalPrice: apt.price || 0,
             quantity: 1,
             clientName: apt.clientName,
             treatmentId: apt.treatmentId,
-            staffId: apt.staffId,
-            staffName: apt.staffName,
-            duration: apt.duration,
+            staffId: apt.staffId || undefined, // Keep it undefined if not assigned
+            staffName: staffName, // Will be undefined if no staff assigned
+            duration:
+              typeof apt.duration === "string"
+                ? parseInt(apt.duration)
+                : apt.durationMinutes,
+            time: apt.time,
             isAppointmentCheckin: true,
           });
         }
@@ -425,7 +441,7 @@ export default function PointOfSale() {
 
       setCurrentStep(2);
     },
-    [clients, appointments, addToCart],
+    [clients, todaysAppointmentsQuery.data, staff, addToCart],
   );
 
   // ============================================================================
@@ -695,7 +711,7 @@ export default function PointOfSale() {
             <ItemSelection
               clientType={clientType}
               clientName={selectedClient?.name}
-              appointments={appointments}
+              appointments={todaysAppointmentsQuery.data ?? []}
               treatments={treatments}
               stockItems={stockItems}
               cart={cart}

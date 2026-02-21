@@ -8,7 +8,7 @@ export const createAppointmentSchema = z.object({
     clientId: z.string().uuid("Invalid client ID"),
     treatmentId: z.string().uuid("Invalid service ID"),
     staffId: z.string().uuid("Invalid staff ID").optional().default(""),
-    datetimeISO: z.string().datetime("Invalid appointment datetime"),
+    datetimeISO: z.string(),
     notes: z
       .string()
       .max(1000, "Notes must be less than 1000 characters")

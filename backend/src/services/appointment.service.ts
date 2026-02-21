@@ -238,23 +238,36 @@ export class AppointmentService {
    * FIXED: Use 'bookings' table
    */
   async create(data: CreateAppointmentData) {
-    // 1. Parse start datetime
-    const start = new Date(data.datetime_iso);
-    if (isNaN(start.getTime())) {
+    // 1. Parse as local datetime (not UTC)
+    // The datetime_iso from frontend is like "2026-02-16T10:00"
+    // We want to extract date and time AS-IS without timezone conversion
+
+    if (!data.datetime_iso || typeof data.datetime_iso !== "string") {
       throw AppError.badRequest("Invalid appointment datetime");
     }
 
-    const booking_date = start.toISOString().slice(0, 10); // YYYY-MM-DD
-    const start_time = start.toTimeString().slice(0, 5); // HH:MM
+    // Extract date and time directly from the ISO string without Date object
+    // This avoids any timezone conversion
+    const [datePart, timePart] = data.datetime_iso.split("T");
+
+    if (!datePart || !timePart) {
+      throw AppError.badRequest("Invalid appointment datetime format");
+    }
+
+    const booking_date = datePart; // YYYY-MM-DD
+    const start_time = timePart.slice(0, 5); // HH:MM (extract first 5 chars)
 
     // 2. Get service duration
     const duration_minutes = await this.getServiceDuration(data.treatment_id);
 
-    // 3. Calculate end time
-    const end = new Date(start.getTime() + duration_minutes * 60000);
-    const end_time = end.toTimeString().slice(0, 5);
+    // 3. Calculate end time using simple time arithmetic
+    const [startHours, startMinutes] = start_time.split(":").map(Number);
+    const totalMinutes = startHours * 60 + startMinutes + duration_minutes;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    const end_time = `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
 
-    // 4. Conflict check (UNCHANGED logic, new inputs)
+    // 4. Conflict check (rest remains the same)
     if (data.staff_id) {
       const conflictCheck = await pool.query(
         `
@@ -304,8 +317,8 @@ export class AppointmentService {
         start_time,
         end_time,
         duration_minutes,
-        0, // total_price (can also be fetched from services)
-        "confirmed", // default status
+        0,
+        "confirmed",
         data.notes || null,
       ],
     );

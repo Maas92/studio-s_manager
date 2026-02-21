@@ -558,7 +558,7 @@ export default function ItemSelection({
   const filteredAppointments = useMemo(
     () =>
       appointments.filter((a) =>
-        (a.clientName + " " + a.treatmentName)
+        ((a.clientName || "") + " " + (a.treatmentName || ""))
           .toLowerCase()
           .includes(searchQuery.toLowerCase()),
       ),
@@ -568,7 +568,7 @@ export default function ItemSelection({
   const filteredTreatments = useMemo(
     () =>
       treatments.filter((t) =>
-        (t.name + " " + (t.category || ""))
+        ((t.name || "") + " " + (t.category || ""))
           .toLowerCase()
           .includes(searchQuery.toLowerCase()),
       ),
@@ -578,7 +578,7 @@ export default function ItemSelection({
   const filteredStock = useMemo(
     () =>
       stockItems.filter((p) =>
-        (p.name + " " + (p.category || ""))
+        ((p.name || "") + " " + (p.category || ""))
           .toLowerCase()
           .includes(searchQuery.toLowerCase()),
       ),

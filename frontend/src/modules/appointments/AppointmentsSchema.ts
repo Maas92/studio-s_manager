@@ -7,7 +7,7 @@ export const AppointmentSchema = z.object({
   clientName: z.string().optional(),
   treatmentId: z.string(),
   treatmentName: z.string().optional(),
-  datetimeISO: z.string().datetime(),
+  datetimeISO: z.string(),
   status: z
     .enum(["confirmed", "pending", "cancelled", "completed", "no_show"])
     .optional(),
@@ -22,7 +22,7 @@ export const AppointmentSchema = z.object({
 export const CreateAppointmentSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
   treatmentId: z.string().min(1, "Treatment is required"),
-  datetimeISO: z.string().datetime(),
+  datetimeISO: z.string(),
   status: z
     .enum(["confirmed", "pending", "cancelled", "completed", "no_show"])
     .default("confirmed"),

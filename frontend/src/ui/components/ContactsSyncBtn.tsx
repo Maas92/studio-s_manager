@@ -60,7 +60,6 @@ export function SyncButton() {
       const result = await syncGoogleContacts();
 
       setLastSync(new Date());
-      console.log("Sync result:", result);
 
       // Show success message
       alert(`✅ Sync completed!\n

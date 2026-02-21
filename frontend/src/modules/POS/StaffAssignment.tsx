@@ -449,6 +449,7 @@ export default function StaffAssignment({
 
   // Get staff initials for avatar
   const getInitials = (name: string) => {
+    if (!name) return "??";
     return name
       .split(" ")
       .map((n) => n[0])

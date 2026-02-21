@@ -110,8 +110,6 @@ export const useOutbox = (): UseOutboxReturn => {
               actualData = actualData.transaction;
             }
 
-            console.log("🔍 Unwrapped transaction data:", actualData);
-
             return { success: true, data: actualData, queued: false };
           } else {
             // Failed, queue it

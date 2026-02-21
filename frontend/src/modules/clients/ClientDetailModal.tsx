@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
+import ClientAppointmentsModal from "./ClientAppointmentsModal";
 import Modal from "../../ui/components/Modal";
 import Button from "../../ui/components/Button";
 import Input from "../../ui/components/Input";
@@ -15,6 +16,7 @@ import {
   X,
   Trash2,
   Calendar,
+  CalendarDays,
   Mail,
   Phone,
   MapPin,
@@ -40,6 +42,12 @@ interface ClientDetailModalProps {
   appointments?: Appointment[];
   isAdmin?: boolean;
 }
+
+const PageWrapper = styled.div`
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+`;
 
 const Content = styled.div`
   display: grid;
@@ -134,6 +142,7 @@ export default function ClientDetailModal({
   isAdmin = false,
 }: ClientDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showAppointmentsModal, setShowAppointmentsModal] = useState(false);
   const { data: creditBalance = 0 } = useClientBalance(client?.id);
   const { data: creditHistory = [] } = useCreditHistory(client?.id);
   const [formValues, setFormValues] = useState<CreateClientInput>({
@@ -226,325 +235,350 @@ export default function ClientDetailModal({
   if (!client) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={isEditing ? "Edit Client" : client.name}
-      size="lg"
-      ariaLabel="Client details"
-    >
-      <Content>
-        {/* Client Stats - Owner Only */}
-        {isAdmin && clientStats && !isEditing && (
-          <StatsSection
-            title="Client Statistics"
-            icon={<TrendingUp size={18} />}
-            columns={4}
-          >
-            {/* Total Appointments */}
-            <StatCard
-              label="Appointments"
-              icon={<Calendar size={18} />}
-              iconColor="#2563eb"
-              variant="info"
-              valueColor="#2563eb"
-              value={clientStats.totalAppointments}
-              subtext={`${clientStats.completed} completed`}
-            />
-
-            {/* Total Spent */}
-            <StatCard
-              label="Lifetime Value"
-              icon={<DollarSign size={18} />}
-              iconColor="#15803d"
-              value={clientStats.totalSpent.toLocaleString()}
-              valueColor="#15803d"
-              subtext="total revenue"
-              variant="success"
-            />
-
-            {/* Upcoming */}
-            <StatCard
-              label="Upcoming"
-              icon={<Clock size={18} />}
-              iconColor="#ca8a04"
-              value={clientStats.upcoming}
-              valueColor="#ca8a04"
-              subtext="appointments"
-              variant="warning"
-            />
-
-            {/* Loyalty Points */}
-            <StatCard
-              label="Loyalty Points"
-              icon={<Gift size={18} />}
-              iconColor="#c2a56f"
-              value={client.loyaltyPoints || 0}
-              valueColor="#c2a56f"
-              subtext="points earned"
-              variant="info"
-            />
-          </StatsSection>
-        )}
-
-        {isAdmin && clientStats && !isEditing && (
-          <StatsSection
-            title="Credit Account"
-            icon={<DollarSign />}
-            columns={3}
-          >
-            <StatCard
-              label="Current Balance"
-              value={`$${creditBalance.toFixed(2)}`}
-              icon={<Wallet size={16} />}
-              variant={creditBalance > 0 ? "success" : "info"}
-            />
-            <StatCard
-              label="Lifetime Added"
-              value={`$${client.lifetimeCredits?.toFixed(2) || "0.00"}`}
-              icon={<TrendingUp size={16} />}
-            />
-            <StatCard
-              label="Lifetime Redeemed"
-              value={`$${client.lifetimeCreditsRedeemed?.toFixed(2) || "0.00"}`}
-              icon={<TrendingDown size={16} />}
-            />
-          </StatsSection>
-        )}
-        {creditHistory.length > 0 && (
-          <StatsSection
-            title="Recent Credit Activity"
-            icon={<Wallet />}
-            columns={3}
-          >
-            {creditHistory.slice(0, 5).map((tx) => (
-              <CreditTransaction key={tx.id}>
-                <TransactionType $type={tx.type}>
-                  {tx.type === "add" ? "+" : "-"}${tx.amount.toFixed(2)}
-                </TransactionType>
-                <TransactionDetails>
-                  <div>{tx.sourceType}</div>
-                  <div>{new Date(tx.createdAt).toLocaleDateString()}</div>
-                </TransactionDetails>
-                <TransactionBalance>
-                  Balance: ${tx.balanceAfter.toFixed(2)}
-                </TransactionBalance>
-              </CreditTransaction>
-            ))}
-          </StatsSection>
-        )}
-
-        <Form>
-          {/* Name */}
-          <FormField>
-            <Label htmlFor="client-name">Name</Label>
-            {isEditing ? (
-              <Input
-                id="client-name"
-                value={formValues.name}
-                onChange={(e) =>
-                  setFormValues((prev) => ({ ...prev, name: e.target.value }))
-                }
-                required
+    <PageWrapper>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={isEditing ? "Edit Client" : client.name}
+        size="lg"
+        ariaLabel="Client details"
+      >
+        <Content>
+          {/* Client Stats - Owner Only */}
+          {isAdmin && clientStats && !isEditing && (
+            <StatsSection
+              title="Client Statistics"
+              icon={<TrendingUp size={18} />}
+              columns={4}
+            >
+              {/* Total Appointments */}
+              <StatCard
+                label="Appointments"
+                icon={<Calendar size={18} />}
+                iconColor="#2563eb"
+                variant="info"
+                valueColor="#2563eb"
+                value={clientStats.totalAppointments}
+                subtext={`${clientStats.completed} completed`}
               />
-            ) : (
-              <ReadOnlyField>{client.name}</ReadOnlyField>
-            )}
-          </FormField>
 
-          <InfoGrid
-            items={[
-              {
-                label: "Email",
-                value: client.email || "Not provided",
-                icon: <Mail size={20} />,
-              },
-              {
-                label: "Phone",
-                value: client.phone || "Not provided",
-                icon: <Phone size={20} />,
-              },
-              {
-                label: "Address",
-                value: client.address || "Not provided",
-                icon: <MapPin size={20} />,
-              },
-              {
-                label: "Loyalty Points",
-                value: `${client.loyaltyPoints || 0} points`,
-                icon: <Gift size={20} />,
-              },
-            ]}
-            columns={2}
-          />
-
-          {/* Address */}
-          <FormField>
-            <Label htmlFor="client-address">Address</Label>
-            {isEditing ? (
-              <Input
-                id="client-address"
-                value={formValues.address ?? ""}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    address: e.target.value,
-                  }))
-                }
+              {/* Total Spent */}
+              <StatCard
+                label="Lifetime Value"
+                icon={<DollarSign size={18} />}
+                iconColor="#15803d"
+                value={clientStats.totalSpent.toLocaleString()}
+                valueColor="#15803d"
+                subtext="total revenue"
+                variant="success"
               />
-            ) : (
-              <ReadOnlyField>
-                <MapPin size={16} />
-                {client.address || "Not provided"}
-              </ReadOnlyField>
-            )}
-          </FormField>
 
-          {/* Date of Birth */}
-          <FormField>
-            <Label htmlFor="client-dob">Date of Birth</Label>
-            {isEditing ? (
-              <Input
-                id="client-dob"
-                type="date"
-                value={formValues.dateOfBirth ?? ""}
-                onChange={(e) =>
-                  setFormValues((prev) => ({
-                    ...prev,
-                    dateOfBirth: e.target.value,
-                  }))
-                }
+              {/* Upcoming */}
+              <StatCard
+                label="Upcoming"
+                icon={<Clock size={18} />}
+                iconColor="#ca8a04"
+                value={clientStats.upcoming}
+                valueColor="#ca8a04"
+                subtext="appointments"
+                variant="warning"
               />
-            ) : (
-              <ReadOnlyField>
-                <Gift size={16} />
-                {client.dateOfBirth
-                  ? new Date(client.dateOfBirth).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
-                  : "Not provided"}
-              </ReadOnlyField>
-            )}
-          </FormField>
 
-          {/* Loyalty Points (Read-only) */}
-          {!isEditing && isAdmin && (
-            <FormField>
-              <Label>Loyalty Points</Label>
-              <ReadOnlyField>
-                <Gift size={16} />
-                {client.loyaltyPoints || 0} points
-              </ReadOnlyField>
-            </FormField>
+              {/* Loyalty Points */}
+              <StatCard
+                label="Loyalty Points"
+                icon={<Gift size={18} />}
+                iconColor="#c2a56f"
+                value={client.loyaltyPoints || 0}
+                valueColor="#c2a56f"
+                subtext="points earned"
+                variant="info"
+              />
+            </StatsSection>
           )}
 
-          {/* Last Visit */}
-          {!isEditing && clientStats?.lastVisit && (
-            <FormField>
-              <Label>Last Visit</Label>
-              <ReadOnlyField>
-                <Calendar size={16} />
-                {clientStats.lastVisit.toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </ReadOnlyField>
-            </FormField>
+          {isAdmin && clientStats && !isEditing && (
+            <StatsSection
+              title="Credit Account"
+              icon={<DollarSign />}
+              columns={3}
+            >
+              <StatCard
+                label="Current Balance"
+                value={`$${creditBalance.toFixed(2)}`}
+                icon={<Wallet size={16} />}
+                variant={creditBalance > 0 ? "success" : "info"}
+              />
+              <StatCard
+                label="Lifetime Added"
+                value={`$${client.lifetimeCredits?.toFixed(2) || "0.00"}`}
+                icon={<TrendingUp size={16} />}
+              />
+              <StatCard
+                label="Lifetime Redeemed"
+                value={`$${client.lifetimeCreditsRedeemed?.toFixed(2) || "0.00"}`}
+                icon={<TrendingDown size={16} />}
+              />
+            </StatsSection>
+          )}
+          {creditHistory.length > 0 && (
+            <StatsSection
+              title="Recent Credit Activity"
+              icon={<Wallet />}
+              columns={3}
+            >
+              {creditHistory.slice(0, 5).map((tx) => (
+                <CreditTransaction key={tx.id}>
+                  <TransactionType $type={tx.type}>
+                    {tx.type === "add" ? "+" : "-"}${tx.amount.toFixed(2)}
+                  </TransactionType>
+                  <TransactionDetails>
+                    <div>{tx.sourceType}</div>
+                    <div>{new Date(tx.createdAt).toLocaleDateString()}</div>
+                  </TransactionDetails>
+                  <TransactionBalance>
+                    Balance: ${tx.balanceAfter.toFixed(2)}
+                  </TransactionBalance>
+                </CreditTransaction>
+              ))}
+            </StatsSection>
           )}
 
-          {/* Notes */}
-          <FormField>
-            <Label htmlFor="client-notes">Notes</Label>
-            {isEditing ? (
-              <TextArea
-                id="client-notes"
-                value={formValues.notes ?? ""}
-                onChange={(e) =>
-                  setFormValues((prev) => ({ ...prev, notes: e.target.value }))
-                }
-                placeholder="Add notes about this client..."
-              />
-            ) : (
-              <ReadOnlyField>
-                <FileText size={16} />
-                {client.notes || "No notes"}
-              </ReadOnlyField>
-            )}
-          </FormField>
-
-          {/* Actions */}
-          <Actions>
-            <LeftActions>
-              {!isEditing && (
-                <>
-                  <Button
-                    variation="primary"
-                    type="button"
-                    onClick={handleCreateAppointment}
-                  >
-                    <Calendar size={16} />
-                    New Appointment
-                  </Button>
-                  {isAdmin && (
-                    <Button
-                      variation="danger"
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={deleting}
-                    >
-                      <Trash2 size={16} />
-                      {deleting ? "Deleting..." : "Delete"}
-                    </Button>
-                  )}
-                </>
-              )}
-            </LeftActions>
-
-            <RightActions>
+          <Form>
+            {/* Name */}
+            <FormField>
+              <Label htmlFor="client-name">Name</Label>
               {isEditing ? (
-                <>
-                  <Button
-                    variation="secondary"
-                    type="button"
-                    onClick={handleCancel}
-                  >
-                    <X size={16} />
-                    Cancel
-                  </Button>
-                  <Button
-                    variation="primary"
-                    type="button"
-                    onClick={handleSave}
-                    disabled={updating || !formValues.name}
-                  >
-                    <Save size={16} />
-                    {updating ? "Saving..." : "Save Changes"}
-                  </Button>
-                </>
+                <Input
+                  id="client-name"
+                  value={formValues.name}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  required
+                />
               ) : (
-                <>
-                  <Button variation="secondary" type="button" onClick={onClose}>
-                    Close
-                  </Button>
-                  {isAdmin && (
+                <ReadOnlyField>{client.name}</ReadOnlyField>
+              )}
+            </FormField>
+
+            <InfoGrid
+              items={[
+                {
+                  label: "Email",
+                  value: client.email || "Not provided",
+                  icon: <Mail size={20} />,
+                },
+                {
+                  label: "Phone",
+                  value: client.phone || "Not provided",
+                  icon: <Phone size={20} />,
+                },
+                {
+                  label: "Address",
+                  value: client.address || "Not provided",
+                  icon: <MapPin size={20} />,
+                },
+                {
+                  label: "Loyalty Points",
+                  value: `${client.loyaltyPoints || 0} points`,
+                  icon: <Gift size={20} />,
+                },
+              ]}
+              columns={2}
+            />
+
+            {/* Address */}
+            <FormField>
+              <Label htmlFor="client-address">Address</Label>
+              {isEditing ? (
+                <Input
+                  id="client-address"
+                  value={formValues.address ?? ""}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <ReadOnlyField>
+                  <MapPin size={16} />
+                  {client.address || "Not provided"}
+                </ReadOnlyField>
+              )}
+            </FormField>
+
+            {/* Date of Birth */}
+            <FormField>
+              <Label htmlFor="client-dob">Date of Birth</Label>
+              {isEditing ? (
+                <Input
+                  id="client-dob"
+                  type="date"
+                  value={formValues.dateOfBirth ?? ""}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      dateOfBirth: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <ReadOnlyField>
+                  <Gift size={16} />
+                  {client.dateOfBirth
+                    ? new Date(client.dateOfBirth).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Not provided"}
+                </ReadOnlyField>
+              )}
+            </FormField>
+
+            {/* Loyalty Points (Read-only) */}
+            {!isEditing && isAdmin && (
+              <FormField>
+                <Label>Loyalty Points</Label>
+                <ReadOnlyField>
+                  <Gift size={16} />
+                  {client.loyaltyPoints || 0} points
+                </ReadOnlyField>
+              </FormField>
+            )}
+
+            {/* Last Visit */}
+            {!isEditing && clientStats?.lastVisit && (
+              <FormField>
+                <Label>Last Visit</Label>
+                <ReadOnlyField>
+                  <Calendar size={16} />
+                  {clientStats.lastVisit.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </ReadOnlyField>
+              </FormField>
+            )}
+
+            {/* Notes */}
+            <FormField>
+              <Label htmlFor="client-notes">Notes</Label>
+              {isEditing ? (
+                <TextArea
+                  id="client-notes"
+                  value={formValues.notes ?? ""}
+                  onChange={(e) =>
+                    setFormValues((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="Add notes about this client..."
+                />
+              ) : (
+                <ReadOnlyField>
+                  <FileText size={16} />
+                  {client.notes || "No notes"}
+                </ReadOnlyField>
+              )}
+            </FormField>
+
+            {/* Actions */}
+            <Actions>
+              <LeftActions>
+                {!isEditing && (
+                  <>
                     <Button
                       variation="primary"
                       type="button"
-                      onClick={() => setIsEditing(true)}
+                      onClick={handleCreateAppointment}
                     >
-                      <Edit2 size={16} />
-                      Edit
+                      <Calendar size={16} />
+                      New Appointment
                     </Button>
-                  )}
-                </>
-              )}
-            </RightActions>
-          </Actions>
-        </Form>
-      </Content>
-    </Modal>
+                    <Button
+                      variation="secondary"
+                      type="button"
+                      onClick={() => setShowAppointmentsModal(true)}
+                    >
+                      <CalendarDays size={16} />
+                      View Appointments
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variation="danger"
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                      >
+                        <Trash2 size={16} />
+                        {deleting ? "Deleting..." : "Delete"}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </LeftActions>
+
+              <RightActions>
+                {isEditing ? (
+                  <>
+                    <Button
+                      variation="secondary"
+                      type="button"
+                      onClick={handleCancel}
+                    >
+                      <X size={16} />
+                      Cancel
+                    </Button>
+                    <Button
+                      variation="primary"
+                      type="button"
+                      onClick={handleSave}
+                      disabled={updating || !formValues.name}
+                    >
+                      <Save size={16} />
+                      {updating ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variation="secondary"
+                      type="button"
+                      onClick={onClose}
+                    >
+                      Close
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variation="primary"
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Edit2 size={16} />
+                        Edit
+                      </Button>
+                    )}
+                  </>
+                )}
+              </RightActions>
+            </Actions>
+          </Form>
+        </Content>
+      </Modal>
+
+      <ClientAppointmentsModal
+        isOpen={showAppointmentsModal}
+        onClose={() => setShowAppointmentsModal(false)}
+        client={client}
+        appointments={appointments}
+        onCreateAppointment={onCreateAppointment}
+      />
+    </PageWrapper>
   );
 }
