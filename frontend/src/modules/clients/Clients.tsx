@@ -10,6 +10,7 @@ import {
   Mail,
   TrendingUp,
   Gift,
+  DollarSign,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -20,6 +21,8 @@ import SearchBar from "../../ui/components/SearchBar";
 import EmptyState from "../../ui/components/EmptyState";
 import Card from "../../ui/components/Card";
 import { SyncButton } from "../../ui/components/ContactsSyncBtn";
+import FilterChip from "../../ui/components/FilterChip";
+import FilterChipsContainer from "../../ui/components/FilterChipsContainer";
 
 import { useClients } from "./useClient";
 import { useAppointments } from "../appointments/useAppointments";
@@ -159,11 +162,12 @@ const LoyaltyBadge = styled.div`
 `;
 
 const CreditBadge = styled.span<{ $hasCredit: boolean }>`
-  display: inline-block;
+  display: inline-flex;
   padding: 0.25rem 0.75rem;
   border-radius: ${({ theme }) => theme.radii.round};
+  margin: 0.5rem 0.5rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   background: ${({ $hasCredit, theme }) =>
     $hasCredit ? theme.color.green100 : theme.color.grey100};
   color: ${({ $hasCredit, theme }) =>
@@ -238,11 +242,23 @@ export default function ClientsPage() {
   const error = listQuery.error;
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCreditOnly, setShowCreditOnly] = useState(false);
 
-  const { filteredItems } = useListFilter<Client>(clients, {
+  const { filteredItems: searchFiltered } = useListFilter<Client>(clients, {
     searchFields: ["name", "email", "phone"],
     searchQuery,
   });
+
+  // Apply credit filter on top of search results
+  const filteredItems = useMemo(() => {
+    if (!showCreditOnly) return searchFiltered;
+    return searchFiltered.filter((client) => (client.creditBalance ?? 0) > 0);
+  }, [searchFiltered, showCreditOnly]);
+
+  // Count clients with credit for the badge
+  const creditClientsCount = useMemo(() => {
+    return clients.filter((client) => (client.creditBalance ?? 0) > 0).length;
+  }, [clients]);
 
   const detailModal = useModalState<Client>();
   const createModal = useModalState();
@@ -386,6 +402,18 @@ export default function ClientsPage() {
           onChange={setSearchQuery}
           placeholder="Search clients by name, email, or phone..."
         />
+
+        <FilterChipsContainer>
+          <FilterChip
+            active={showCreditOnly}
+            onClick={() => setShowCreditOnly(!showCreditOnly)}
+            icon={<DollarSign size={16} />}
+            count={showCreditOnly ? filteredItems.length : creditClientsCount}
+            showCountWhenInactive={creditClientsCount > 0}
+          >
+            Clients with Credit
+          </FilterChip>
+        </FilterChipsContainer>
       </ControlsWrapper>
 
       {filteredItems.length === 0 ? (

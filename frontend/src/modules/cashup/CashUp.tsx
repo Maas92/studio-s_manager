@@ -442,13 +442,6 @@ export default function CashUpModule({
     deleteSafeDropMutation,
   } = useCashUp();
 
-  // Use the appropriate query hook based on whether we have a cashUpId
-  const cashUpByIdQuery = useCashUpById(cashUpId ?? "");
-  const dailySnapshotQuery = useDailySnapshot(true);
-
-  const cashUpQuery = cashUpId ? cashUpByIdQuery : dailySnapshotQuery;
-  const { data: cashUpData, isLoading } = cashUpQuery;
-
   // Local state
   const [sessionId, setSessionId] = useState<string | null>(cashUpId || null);
   const [openingFloatInput, setOpeningFloatInput] = useState("0");
@@ -462,22 +455,26 @@ export default function CashUpModule({
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [safeDrops, setSafeDrops] = useState<SafeDrop[]>([]);
 
+  // Use the appropriate query hook based on whether we have a cashUpId
+  const dailySnapshotQuery = useDailySnapshot(!sessionId);
+  const cashUpByIdQuery = useCashUpById(sessionId ?? undefined);
+
+  // Once we have a sessionId, always use the full detail query
+  const cashUpQuery = sessionId ? cashUpByIdQuery : dailySnapshotQuery;
+  const { data: cashUpData, isLoading } = cashUpQuery;
+
   // Initialize from backend data
   useEffect(() => {
     if (cashUpData) {
-      setSessionId(cashUpData.id);
+      setSessionId(cashUpData.id); // This triggers switch to cashUpById
       setOpeningFloatInput(cashUpData.openingFloat?.toString() || "0");
 
-      // Update expenses from backend
       if (cashUpData.expenses && Array.isArray(cashUpData.expenses)) {
         setExpenses(cashUpData.expenses);
       }
-
-      // Update safe drops from backend
       if (cashUpData.safeDrops && Array.isArray(cashUpData.safeDrops)) {
         setSafeDrops(cashUpData.safeDrops);
       }
-
       if (cashUpData.actualCash) {
         setActualCash(cashUpData.actualCash.toString());
       }

@@ -278,7 +278,7 @@ export class CreditService {
         COALESCE(SUM(amount) FILTER (WHERE type = 'add'), 0) as total_credits_added,
         COALESCE(SUM(amount) FILTER (WHERE type = 'redeem'), 0) as total_credits_redeemed
        FROM credit_transactions
-       WHERE DATE(created_at) = $2`,
+       WHERE DATE(created_at) = $1`,
       [sessionDate],
     );
 
