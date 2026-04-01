@@ -26,6 +26,7 @@ import FilterChipsContainer from "../../ui/components/FilterChipsContainer";
 
 import { useClients } from "./useClient";
 import { useAppointments } from "../appointments/useAppointments";
+import { useClientsWithCredit } from "../credits/useCredits";
 import { useListFilter } from "../../hooks/useListFilter";
 import { useModalState } from "../../hooks/useModalState";
 import CreateClientModal from "./CreateClientModal";
@@ -47,6 +48,22 @@ const ControlsWrapper = styled.div`
   z-index: 5;
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
+`;
+
+const SearchAndFilterRow = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const SearchBarWrapper = styled.div`
+  flex: 1;
+  min-width: 0;
 `;
 
 const Grid = styled.div`
@@ -162,12 +179,11 @@ const LoyaltyBadge = styled.div`
 `;
 
 const CreditBadge = styled.span<{ $hasCredit: boolean }>`
-  display: inline-flex;
+  display: inline-block;
   padding: 0.25rem 0.75rem;
   border-radius: ${({ theme }) => theme.radii.round};
-  margin: 0.5rem 0.5rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   background: ${({ $hasCredit, theme }) =>
     $hasCredit ? theme.color.green100 : theme.color.grey100};
   color: ${({ $hasCredit, theme }) =>
@@ -234,6 +250,7 @@ export default function ClientsPage() {
   const { listQuery, createMutation, updateMutation, deleteMutation } =
     useClients();
   const { listQuery: apptQuery } = useAppointments();
+  const { data: clientsWithCredit = [] } = useClientsWithCredit();
 
   const clients = listQuery.data ?? [];
   const appointments = apptQuery.data ?? [];
@@ -244,6 +261,11 @@ export default function ClientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreditOnly, setShowCreditOnly] = useState(false);
 
+  // Create a Set of client IDs that have credit for efficient lookup
+  const clientIdsWithCredit = useMemo(() => {
+    return new Set(clientsWithCredit.map((c) => c.id));
+  }, [clientsWithCredit]);
+
   const { filteredItems: searchFiltered } = useListFilter<Client>(clients, {
     searchFields: ["name", "email", "phone"],
     searchQuery,
@@ -252,13 +274,13 @@ export default function ClientsPage() {
   // Apply credit filter on top of search results
   const filteredItems = useMemo(() => {
     if (!showCreditOnly) return searchFiltered;
-    return searchFiltered.filter((client) => (client.creditBalance ?? 0) > 0);
-  }, [searchFiltered, showCreditOnly]);
+    return searchFiltered.filter((client) =>
+      clientIdsWithCredit.has(client.id),
+    );
+  }, [searchFiltered, showCreditOnly, clientIdsWithCredit]);
 
-  // Count clients with credit for the badge
-  const creditClientsCount = useMemo(() => {
-    return clients.filter((client) => (client.creditBalance ?? 0) > 0).length;
-  }, [clients]);
+  // Count for the badge
+  const creditClientsCount = clientsWithCredit.length;
 
   const detailModal = useModalState<Client>();
   const createModal = useModalState();
@@ -397,23 +419,27 @@ export default function ClientsPage() {
           )}
         </PageHeader>
 
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search clients by name, email, or phone..."
-        />
+        <SearchAndFilterRow>
+          <SearchBarWrapper>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search clients by name, email, or phone..."
+            />
+          </SearchBarWrapper>
 
-        <FilterChipsContainer>
-          <FilterChip
-            active={showCreditOnly}
-            onClick={() => setShowCreditOnly(!showCreditOnly)}
-            icon={<DollarSign size={16} />}
-            count={showCreditOnly ? filteredItems.length : creditClientsCount}
-            showCountWhenInactive={creditClientsCount > 0}
-          >
-            Clients with Credit
-          </FilterChip>
-        </FilterChipsContainer>
+          <FilterChipsContainer>
+            <FilterChip
+              active={showCreditOnly}
+              onClick={() => setShowCreditOnly(!showCreditOnly)}
+              icon={<DollarSign size={16} />}
+              count={showCreditOnly ? filteredItems.length : creditClientsCount}
+              showCountWhenInactive={creditClientsCount > 0}
+            >
+              Clients with Credit
+            </FilterChip>
+          </FilterChipsContainer>
+        </SearchAndFilterRow>
       </ControlsWrapper>
 
       {filteredItems.length === 0 ? (

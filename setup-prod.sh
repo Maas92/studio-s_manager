@@ -108,22 +108,6 @@ else
 fi
 
 # =============================================================================
-# Configure AWS
-# =============================================================================
-
-echo ""
-echo -e "${BLUE}=== AWS Configuration ===${NC}"
-
-if [ ! -f ~/.aws/credentials ]; then
-    echo -e "${YELLOW}AWS credentials not found. Configuring...${NC}"
-    aws configure
-else
-    echo -e "${GREEN}✅ AWS already configured${NC}"
-    echo -e "${YELLOW}Current AWS identity:${NC}"
-    aws sts get-caller-identity
-fi
-
-# =============================================================================
 # Setup Pulumi
 # =============================================================================
 

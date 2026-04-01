@@ -21,6 +21,15 @@ export function useCreditHistory(clientId?: string) {
   });
 }
 
+export function useClientsWithCredit() {
+  return useQuery({
+    queryKey: ["credits", "clients-with-credit"],
+    queryFn: () =>
+      creditClient.getClientsWithCredit().then((res) => res.data.data.clients),
+    staleTime: 30000, // Cache for 30 seconds
+  });
+}
+
 export function useCredit() {
   const qc = useQueryClient();
 

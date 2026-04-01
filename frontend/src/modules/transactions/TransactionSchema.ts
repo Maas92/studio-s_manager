@@ -1,44 +1,40 @@
 import { z } from "zod";
 
-// Schemas
-export const TransactionTypeSchema = z.enum(["sale", "purchase", "adjustment"]);
-
 export const TransactionSchema = z.object({
   id: z.string(),
-  type: TransactionTypeSchema,
-  date: z.string(),
-  items: z.array(
-    z.object({
-      name: z.string(),
-      sku: z.string().optional(),
-      quantity: z.number(),
-      unit: z.string().optional(),
-      cost: z.coerce.number().optional(),
-      retailPrice: z.coerce.number().optional(),
-    }),
-  ),
-  totalCost: z.coerce.number().optional(),
-  totalRetailPrice: z.coerce.number().optional(),
-  notes: z.string().nullable().optional(),
-});
 
-export const CreateTransactionSchema = z.object({
-  type: TransactionTypeSchema,
-  date: z.string(),
-  items: z.array(
-    z.object({
-      name: z.string(),
-      sku: z.string().optional(),
-      quantity: z.number(),
-      unit: z.string().optional(),
-      cost: z.coerce.number().optional(),
-      retailPrice: z.coerce.number().optional(),
-    }),
-  ),
-  notes: z.string().nullable().optional(),
+  // Client
+  clientId: z.string().optional().nullable(),
+  clientName: z.string().optional().nullable(),
+
+  // Financials — DB returns numeric strings, coerce to number
+  subtotal: z.coerce.number().default(0),
+  discountAmount: z.coerce.number().default(0),
+  loyaltyValue: z.coerce.number().default(0),
+  tax: z.coerce.number().default(0),
+  tipsTotal: z.coerce.number().default(0),
+  total: z.coerce.number().default(0),
+  loyaltyPointsEarned: z.coerce.number().default(0),
+  loyaltyPointsRedeemed: z.coerce.number().default(0),
+
+  // Payment method
+  paymentMethod: z.string().optional().nullable(),
+  paymentStatus: z.string().optional().nullable(),
+
+  // Status
+  status: z
+    .enum(["pending", "completed", "cancelled", "refunded"])
+    .default("completed"),
+
+  // Notes / reference
+  notes: z.string().optional().nullable(),
+  reference: z.string().optional().nullable(),
+
+  // Timestamps
+  createdAt: z.string().optional().nullable(),
+  completedAt: z.string().optional().nullable(),
+  createdBy: z.string().optional().nullable(),
 });
 
 // Types
-export type TransactionType = z.infer<typeof TransactionTypeSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
-export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;

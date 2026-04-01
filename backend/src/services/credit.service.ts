@@ -250,7 +250,7 @@ export class CreditService {
         lifetime_credits_redeemed,
         last_visit_date
        FROM clients
-       WHERE credit_balance > 0
+       WHERE credit_balance != 0
        ORDER BY credit_balance DESC`,
       [],
     );
