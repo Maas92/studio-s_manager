@@ -233,7 +233,7 @@ fi
 
 echo ""
 echo -e "${YELLOW}GitHub Secrets to Add:${NC}"
-echo -e "Go to: https://github.com/YOUR_USERNAME/YOUR_REPO/settings/secrets/actions"
+echo -e "Go to: https://github.com/Maas92/studio-s_manager/settings/secrets/actions"
 echo ""
 echo -e "${GREEN}Required Secrets:${NC}"
 echo "1. AWS_ACCESS_KEY_ID"

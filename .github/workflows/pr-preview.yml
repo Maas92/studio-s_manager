@@ -15,6 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > kubeconfig.yaml
+          echo "KUBECONFIG=$(pwd)/kubeconfig.yaml" >> $GITHUB_ENV
+      
       - name: Create preview namespace
         run: |
           kubectl create namespace pr-${{ github.event.pull_request.number }} --dry-run=client -o yaml | kubectl apply -f -

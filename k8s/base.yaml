@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: auth
-          image: YOUR_DOCKER_REGISTRY/studio-s-auth:latest
+          image: ghcr.io/Maas92/studio-s-auth:latest
           ports:
             - containerPort: 5002
               name: http
@@ -119,7 +119,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: YOUR_DOCKER_REGISTRY/studio-s-backend:latest
+          image: ghcr.io/Maas92/studio-s-backend:latest
           ports:
             - containerPort: 5003
               name: http
@@ -190,7 +190,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: YOUR_DOCKER_REGISTRY/studio-s-gateway:latest
+          image: ghcr.io/Maas92/studio-s-gateway:latest
           ports:
             - containerPort: 4000
               name: http
@@ -260,7 +260,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: YOUR_DOCKER_REGISTRY/studio-s-frontend:latest
+          image: ghcr.io/Maas92/studio-s-frontend:latest
           ports:
             - containerPort: 80
               name: http

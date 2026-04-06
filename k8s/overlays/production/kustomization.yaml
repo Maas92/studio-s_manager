@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: studio-s
+
+bases:
+  - ../../base
+
+replicas:
+  - name: auth
+    count: 3
+  - name: backend
+    count: 3
+  - name: gateway
+    count: 3
+  - name: frontend
+    count: 3
+
+images:
+  - name: ghcr.io/Maas92/studio-s-auth
+    newTag: v1.0.0 # Use semantic versioning in production
+  - name: ghcr.io/Maas92/studio-s-backend
+    newTag: v1.0.0
+  - name: ghcr.io/Maas92/studio-s-gateway
+    newTag: v1.0.0
+  - name: ghcr.io/Maas92/studio-s-frontend
+    newTag: v1.0.0
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+
+# Production-specific patches
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+      spec:
+        template:
+          spec:
+            containers:
+            - name: backend
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "400m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "800m"
+    target:
+      kind: Deployment
+      name: backend

@@ -11,12 +11,12 @@ const projectName = "studio-s";
 const environment = pulumi.getStack();
 
 // VPS Configuration (manually provision VPS first)
-const vpsIp = config.require("vpsIp"); // Your VPS IP address
-const vpsUser = config.get("vpsUser") || "root"; // SSH user
+const vpsIp = config.require("160.119.249.3"); // Your VPS IP address
+const vpsUser = config.get("deploy") || "root"; // SSH user
 const sshPrivateKey = config.requireSecret("sshPrivateKey"); // Your SSH private key
 
 // Application Configuration
-const domain = config.require("domain");
+const domain = config.require("app.studiosbeautybar.com");
 const enableArgoCD = config.getBoolean("enableArgoCD") ?? true;
 const enableMonitoring = config.getBoolean("enableMonitoring") ?? true;
 
@@ -149,7 +149,6 @@ apt-get install -y \\
     htop \\
     iotop \\
     nethogs \\
-    vim \\
     jq \\
     net-tools \\
     ca-certificates \\
@@ -626,7 +625,6 @@ const setupVPS = new command.remote.Command("setup-vps", {
       /\${mongodbUri}/g,
       mongodbUri.apply((v) => v),
     )
-    .replace(/\${redisUrl}/g, redisUrl)
     .replace(
       /\${jwtSecret}/g,
       jwtSecret.apply((v) => v),

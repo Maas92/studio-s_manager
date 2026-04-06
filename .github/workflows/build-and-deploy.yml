@@ -77,7 +77,7 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
-            echo "tag=v${{ github.run_number }}" >> $GITHUB_OUTPUT
+            echo "tag=v${{ github.sha }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "tag=staging-${{ github.sha }}" >> $GITHUB_OUTPUT
@@ -91,7 +91,9 @@ jobs:
           cd k8s/overlays/${{ steps.env.outputs.environment }}
           
           # Update kustomization.yaml with new image tags
-          sed -i 's|newTag: .*|newTag: ${{ steps.env.outputs.tag }}|g' kustomization.yaml
+          # sed -i 's|newTag: .*|newTag: ${{ steps.env.outputs.tag }}|g' kustomization.yaml
+          kustomize edit set image \
+            ${{ env.IMAGE_PREFIX }}-${SERVICE}=${{ env.IMAGE_PREFIX }}-${SERVICE}:${TAG}
           
       - name: Commit and push changes
         run: |
