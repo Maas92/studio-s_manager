@@ -1,20 +1,20 @@
 config:
-  studio-s-infrastructure:vpsIp: "YOUR_PRODUCTION_VPS_IP"
-  studio-s-infrastructure:vpsUser: "root"
+  studio-s-infrastructure:vpsIp: "160.119.249.3"
+  studio-s-infrastructure:vpsUser: "deploy"
   studio-s-infrastructure:domain: "studiosbeautybar.com"
   studio-s-infrastructure:enableArgoCD: "true"
   studio-s-infrastructure:enableMonitoring: "true"
   studio-s-infrastructure:sshPrivateKey:
-    secure: "YOUR_ENCRYPTED_SSH_KEY_HERE"
+    secure: "AAABAO0oT/wAmcGXnMtlidDqqwB7GvsedbB/6YYNCLlqGbCd0jtHTJTlMctyl7fy0v1Wr+xYTQiJp82fvG/+Ey5viJSn7cQ2NAaouQkVLrvuLPa4IcTk1H1v6K1W/uWrfmeQa9zgLRZcLjfw1TcnYF2vgfMglRWuSpTP+VDAU4+TLokg8Ou0KO1EKnU6sQFkiKS2nr7a+zQQxVItpDFM9YAGbNDql2MGGliR7n5kXxBULIu2cN10u5303I1Qtp2esvgEWywlLV4H33T4GovluSqZ8QOgVjgdV1r/SW4LEN0OUmmFWHoYlDwXqTguE49KByUq7dyOFxmCJBtaYPHqFYt7Wy4NMToTXEHq/ywkx15Lr5pffezbPnLaiNg6sx/0bKvE9Pz2UReq57l+A/vLpXbeqxEMZH4b8IgmCB7AlnGBeKbiwPmlNDw5Dv3pexmbtC+CQU8VCyapazB0eZK5h2oabB4HzebI6ud0IqMXuhew0RVC0NM6ISKPp+0m4uc8wu2HolZl3bwDqcxiTLsAEoNe9fCPOV1Qdefy2i/PFPs8Z7Tpc1TbdyJ1UNwMErS8j33NzOYFIZcXeA=="
   studio-s-infrastructure:databaseUrl:
-    secure: "YOUR_ENCRYPTED_DATABASE_URL_HERE"
+    secure: "AAABAOC/S8B04vuomvy3ck+8s5GZyHE5WTiGPmJyJTFBNOzjFHh+1vl+e6e1jhtI1X+uic9OrDvB/wXnNeb/794SvM2Eqw7G76yQF/bjOz8x4ZRvrOeHGPNqXD4Izuj9JuRqHsBqP+qdYuy5WPvBqNpNzD4qyUrTC2sUibc7bSAB4A+NplILHEkd7YuFlGKa"
   studio-s-infrastructure:mongodbUri:
-    secure: "YOUR_ENCRYPTED_MONGODB_URI_HERE"
+    secure: "AAABAKoq/tcK/uqJkiOdSF/IBeZJ3MLr5sStz5NKAmVjZGtGBLeQK66vs6SO62zPd4Q7oA5xFy6qxkekRZ9m4l1BtwDBUdStxaiDpGI2dH0wT1XvA660p2lCI4+79/QSyLKuSsm8IrJXXDD0TtZevmxQaXWd3/3PnBg2t2fA"
   studio-s-infrastructure:jwtSecret:
-    secure: "YOUR_ENCRYPTED_JWT_SECRET_HERE"
+    secure: "AAABAP778WDJzNZyHlvb7rR4Du1NGLvetyQC8Wg1VVPLlR83TUPYIe2mGPEkCBox/mAN3maWLUBI05GAhmItbRWQO35dDpbG6xmyYA77"
   studio-s-infrastructure:gatewaySecret:
-    secure: "YOUR_ENCRYPTED_GATEWAY_SECRET_HERE"
+    secure: "AAABAKrdtVgFR+vMPDjHDx6buoNDpLSmwkwrfwwyZQ8l2rbBc8odBTjDrYNDnl45rc5iVVasdCrBeM0MtppMleBI0z8I1YbcgnnRL9MHigconr7o"
   studio-s-infrastructure:argocdAdminPassword:
-    secure: "YOUR_ENCRYPTED_ARGOCD_PASSWORD_HERE"
+    secure: "AAABAGunWQPSLTSoIy2RKp/O6ogxV+w2VEiBXPbfgi8XoBvChhxSXRU="
   cloudflare:apiToken:
-    secure: "YOUR_ENCRYPTED_CLOUDFLARE_TOKEN_HERE"
+    secure: "AAABADt4WHaaWkQYAG3JG38Yl2nSqqiD3b5eitMCOjMpNK8BZlAK6tpTDnEgyNIP9fOm6f+4flKBFxkRMic4CKfNGBcW6+2rXkBCn4RxEfzWIT6O9w=="

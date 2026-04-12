@@ -1,0 +1,187 @@
+---
+- name: Install ArgoCD and create application Kubernetes secrets
+  hosts: vps
+  become: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+  tasks:
+    # ── ArgoCD install ────────────────────────────────────────────────────────
+
+    - name: Create argocd namespace
+      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Check if ArgoCD is already installed
+      shell: kubectl get deployment argocd-server -n argocd 2>/dev/null
+      register: argocd_installed
+      failed_when: false
+
+    - name: Install ArgoCD
+      shell: |
+        kubectl apply -n argocd --server-side \
+          -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      when: argocd_installed.rc != 0
+
+    - name: Wait for ArgoCD deployments to be ready
+      shell: kubectl wait --for=condition=Available --timeout=600s deployment --all -n argocd
+
+    # ── ArgoCD admin password ─────────────────────────────────────────────────
+
+    - name: Hash ArgoCD admin password with bcrypt
+      shell: |
+        htpasswd -nbBC 10 admin "{{ argocd_admin_password }}" | awk -F: '{print $2}'
+      register: argocd_bcrypt
+      no_log: true
+
+    - name: Patch ArgoCD secret with new admin password
+      shell: |
+        kubectl -n argocd patch secret argocd-secret \
+          -p "{\"stringData\": {
+            \"admin.password\": \"{{ argocd_bcrypt.stdout }}\",
+            \"admin.passwordMtime\": \"$(date +%FT%T%Z)\"
+          }}"
+      no_log: true
+
+    # ── ArgoCD ingress ────────────────────────────────────────────────────────
+
+    - name: Create ArgoCD ingress
+      shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: argocd-server-ingress
+          namespace: argocd
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+        spec:
+          ingressClassName: nginx
+          tls:
+          - hosts:
+            - argocd.{{ domain }}
+            secretName: argocd-tls
+          rules:
+          - host: argocd.{{ domain }}
+            http:
+              paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: argocd-server
+                    port:
+                      number: 443
+        EOF
+
+    # ── Application namespace + secrets ───────────────────────────────────────
+    # These are the secrets your services read at runtime.
+    # They are created here by Ansible (secrets come from GitHub Secrets / env vars)
+    # and are never stored in git.
+
+    - name: Create studio-s namespace
+      shell: kubectl create namespace studio-s --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Create database-credentials secret
+      shell: |
+        kubectl create secret generic database-credentials \
+          --from-literal=connectionString="{{ database_url }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    - name: Create mongodb-credentials secret
+      shell: |
+        kubectl create secret generic mongodb-credentials \
+          --from-literal=connectionString="{{ mongodb_uri }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    - name: Create jwt-secrets secret
+      shell: |
+        kubectl create secret generic jwt-secrets \
+          --from-literal=secret="{{ jwt_secret }}" \
+          --from-literal=gatewaySecret="{{ gateway_secret }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    # ── ArgoCD Application ────────────────────────────────────────────────────
+    # Register production + staging apps so ArgoCD starts watching the repo.
+
+    - name: Apply ArgoCD Application manifests
+      shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: studio-s-production
+          namespace: argocd
+          finalizers:
+            - resources-finalizer.argocd.argoproj.io
+        spec:
+          project: default
+          source:
+            repoURL: "{{ lookup('env', 'GIT_REPO_URL') }}"
+            targetRevision: main
+            path: k8s/overlays/production
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: studio-s
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=true
+              - PrunePropagationPolicy=foreground
+            retry:
+              limit: 3
+              backoff:
+                duration: 5s
+                factor: 2
+                maxDuration: 3m
+        ---
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: studio-s-staging
+          namespace: argocd
+          finalizers:
+            - resources-finalizer.argocd.argoproj.io
+        spec:
+          project: default
+          source:
+            repoURL: "{{ lookup('env', 'GIT_REPO_URL') }}"
+            targetRevision: develop
+            path: k8s/overlays/staging
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: studio-s
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - CreateNamespace=true
+            retry:
+              limit: 3
+              backoff:
+                duration: 5s
+                factor: 2
+                maxDuration: 3m
+        EOF
+
+    # ── Summary ───────────────────────────────────────────────────────────────
+
+    - name: Print access details
+      debug:
+        msg:
+          - "ArgoCD is ready at https://argocd.{{ domain }}"
+          - "Username: admin"
+          - "Password: (the ARGOCD_ADMIN_PASSWORD you supplied)"
+          - ""
+          - "To get kubeconfig locally:"
+          - "  scp root@{{ vps_ip }}:/opt/k3s/kubeconfig.yaml ./kubeconfig.yaml"

@@ -1,0 +1,135 @@
+---
+- name: Install k3s and Helm
+  hosts: vps
+  become: true
+
+  tasks:
+    # ── k3s ───────────────────────────────────────────────────────────────────
+
+    - name: Check if k3s is already installed
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: Install k3s
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -s - server \
+          --write-kubeconfig-mode=644 \
+          --disable traefik \
+          --disable servicelb \
+          --tls-san={{ vps_ip }} \
+          --tls-san={{ domain }} \
+          --node-name=master \
+          --cluster-init
+      when: not k3s_binary.stat.exists
+      # shell is acceptable here — the k3s installer is a well-known curl|sh
+      # pattern and there is no Ansible module for it
+
+    - name: Wait for k3s to be ready
+      wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: present
+        timeout: 120
+
+    - name: Wait for node to reach Ready state
+      shell: kubectl get nodes | grep -q "Ready"
+      register: node_ready
+      retries: 24
+      delay: 5
+      until: node_ready.rc == 0
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # ── kubeconfig ────────────────────────────────────────────────────────────
+
+    - name: Create kubeconfig export directory
+      file:
+        path: /opt/k3s
+        state: directory
+        mode: "0755"
+
+    - name: Copy kubeconfig with public IP substituted
+      shell: |
+        cp /etc/rancher/k3s/k3s.yaml {{ k3s_kubeconfig_path }}
+        sed -i "s/127.0.0.1/{{ vps_ip }}/g" {{ k3s_kubeconfig_path }}
+        chmod 644 {{ k3s_kubeconfig_path }}
+
+    - name: Copy kubeconfig to root home
+      shell: |
+        mkdir -p /root/.kube
+        cp /etc/rancher/k3s/k3s.yaml /root/.kube/config
+        chmod 600 /root/.kube/config
+
+    # ── kubectl alias ─────────────────────────────────────────────────────────
+
+    - name: Install k shortcut for kubectl
+      copy:
+        dest: /usr/local/bin/k
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          kubectl "$@"
+
+    # ── studio-status helper ──────────────────────────────────────────────────
+
+    - name: Install studio-status script
+      copy:
+        dest: /usr/local/bin/studio-status
+        mode: "0755"
+        content: |
+          #!/bin/bash
+          echo "════════════════════════════════════════"
+          echo "  Studio-S Cluster Status"
+          echo "════════════════════════════════════════"
+          echo ""
+          echo "Nodes:"
+          kubectl get nodes
+          echo ""
+          echo "Pods (studio-s):"
+          kubectl get pods -n studio-s
+          echo ""
+          echo "Ingresses:"
+          kubectl get ingress -n studio-s
+          echo ""
+          echo "Resource usage:"
+          kubectl top nodes  2>/dev/null || echo "(metrics-server not ready yet)"
+          kubectl top pods -n studio-s 2>/dev/null || true
+
+    # ── Helm ──────────────────────────────────────────────────────────────────
+
+    - name: Check if Helm is already installed
+      stat:
+        path: /usr/local/bin/helm
+      register: helm_binary
+
+    - name: Install Helm
+      shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: not helm_binary.stat.exists
+
+    # ── metrics-server ────────────────────────────────────────────────────────
+
+    - name: Install metrics-server
+      shell: |
+        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Patch metrics-server for k3s (disable TLS verification)
+      shell: |
+        kubectl patch deployment metrics-server -n kube-system --type='json' \
+          -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # ── Record install info ───────────────────────────────────────────────────
+
+    - name: Save installation info
+      shell: |
+        cat > /opt/studio-s/install-info.txt <<EOF
+        Installation Date : $(date)
+        k3s Version       : $(k3s --version | head -n1)
+        Domain            : {{ domain }}
+        VPS IP            : {{ vps_ip }}
+        EOF
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml

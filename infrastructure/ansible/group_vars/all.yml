@@ -1,0 +1,18 @@
+---
+# These are read from environment variables at runtime.
+# Locally: export them in your shell before running ansible-playbook.
+# In CI: they come from GitHub Secrets passed as env vars in the workflow.
+
+domain: "{{ lookup('env', 'DOMAIN') | default('studiosbeautybar.com', true) }}"
+vps_ip: "160.119.249.3"
+
+# k3s
+k3s_version: "v1.28.5+k3s1"
+k3s_kubeconfig_path: /opt/k3s/kubeconfig.yaml
+
+# Secrets — all sourced from environment variables, never hardcoded
+argocd_admin_password: "{{ lookup('env', 'ARGOCD_ADMIN_PASSWORD') }}"
+database_url: "{{ lookup('env', 'DATABASE_URL') }}"
+mongodb_uri: "{{ lookup('env', 'MONGODB_URI') }}"
+jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"
+gateway_secret: "{{ lookup('env', 'GATEWAY_SECRET') }}"

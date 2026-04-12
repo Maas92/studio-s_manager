@@ -1,0 +1,190 @@
+---
+- name: Install cluster tools — cert-manager, nginx-ingress, monitoring
+  hosts: vps
+  become: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+  tasks:
+    # ── cert-manager ──────────────────────────────────────────────────────────
+
+    - name: Check if cert-manager is already installed
+      shell: kubectl get namespace cert-manager 2>/dev/null
+      register: cert_manager_ns
+      failed_when: false
+
+    - name: Install cert-manager
+      shell: |
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+      when: cert_manager_ns.rc != 0
+
+    - name: Wait for cert-manager deployments to be available
+      shell: kubectl wait --for=condition=Available --timeout=300s deployment --all -n cert-manager
+      retries: 3
+      delay: 10
+
+    - name: Create Let's Encrypt ClusterIssuers
+      shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: letsencrypt-prod
+        spec:
+          acme:
+            server: https://acme-v02.api.letsencrypt.org/directory
+            email: admin@{{ domain }}
+            privateKeySecretRef:
+              name: letsencrypt-prod
+            solvers:
+            - http01:
+                ingress:
+                  class: nginx
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: letsencrypt-staging
+        spec:
+          acme:
+            server: https://acme-staging-v02.api.letsencrypt.org/directory
+            email: admin@{{ domain }}
+            privateKeySecretRef:
+              name: letsencrypt-staging
+            solvers:
+            - http01:
+                ingress:
+                  class: nginx
+        EOF
+
+    # ── MetalLB (bare-metal load balancer) ───────────────────────────────────
+
+    - name: Add MetalLB Helm repo
+      shell: |
+        helm repo add metallb https://metallb.github.io/metallb
+        helm repo update
+
+    - name: Check if MetalLB is already installed
+      shell: helm status metallb -n metallb-system 2>/dev/null
+      register: metallb_installed
+      failed_when: false
+
+    - name: Install MetalLB
+      shell: |
+        helm install metallb metallb/metallb \
+          --namespace metallb-system --create-namespace
+      when: metallb_installed.rc != 0
+
+    - name: Wait for MetalLB to be ready
+      shell: kubectl wait --for=condition=Available --timeout=120s deployment --all -n metallb-system
+
+    - name: Configure MetalLB IP pool
+      shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: metallb.io/v1beta1
+        kind: IPAddressPool
+        metadata:
+          name: vps-pool
+          namespace: metallb-system
+        spec:
+          addresses:
+            - {{ vps_ip }}/32
+        ---
+        apiVersion: metallb.io/v1beta1
+        kind: L2Advertisement
+        metadata:
+          name: vps-advertisement
+          namespace: metallb-system
+        spec:
+          ipAddressPools:
+            - vps-pool
+        EOF
+
+    # ── nginx-ingress ─────────────────────────────────────────────────────────
+
+    - name: Add ingress-nginx Helm repo
+      shell: |
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+
+    - name: Check if nginx-ingress is already installed
+      shell: helm status ingress-nginx -n ingress-nginx 2>/dev/null
+      register: nginx_installed
+      failed_when: false
+
+    - name: Install nginx-ingress
+      shell: |
+        helm install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx --create-namespace \
+          --set controller.service.type=LoadBalancer \
+          --set controller.metrics.enabled=true \
+          --set controller.metrics.serviceMonitor.enabled=false
+      when: nginx_installed.rc != 0
+
+    - name: Wait for nginx-ingress controller
+      shell: kubectl wait --for=condition=Available --timeout=300s deployment ingress-nginx-controller -n ingress-nginx
+
+    # ── Monitoring (kube-prometheus-stack) ────────────────────────────────────
+
+    - name: Add prometheus-community Helm repo
+      shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+
+    - name: Check if prometheus stack is already installed
+      shell: helm status prometheus -n monitoring 2>/dev/null
+      register: prometheus_installed
+      failed_when: false
+
+    - name: Install kube-prometheus-stack
+      shell: |
+        helm install prometheus prometheus-community/kube-prometheus-stack \
+          --namespace monitoring --create-namespace \
+          --set grafana.ingress.enabled=true \
+          --set grafana.ingress.ingressClassName=nginx \
+          --set grafana.ingress.hosts[0]=grafana.{{ domain }} \
+          --set grafana.ingress.tls[0].secretName=grafana-tls \
+          --set grafana.ingress.tls[0].hosts[0]=grafana.{{ domain }} \
+          --set "grafana.ingress.annotations.cert-manager\.io/cluster-issuer=letsencrypt-prod" \
+          --set grafana.adminPassword="{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default(lookup('env', 'ARGOCD_ADMIN_PASSWORD'), true) }}"
+      when: prometheus_installed.rc != 0
+
+    # ── Node exporter (host-level metrics) ───────────────────────────────────
+
+    - name: Check if node_exporter binary exists
+      stat:
+        path: /usr/local/bin/node_exporter
+      register: node_exporter_bin
+
+    - name: Download and install node_exporter
+      shell: |
+        cd /tmp
+        wget -q https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
+        tar xzf node_exporter-1.7.0.linux-amd64.tar.gz
+        mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
+        rm -rf node_exporter-1.7.0.linux-amd64*
+      when: not node_exporter_bin.stat.exists
+
+    - name: Create node_exporter systemd service
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start node_exporter
+      systemd:
+        name: node_exporter
+        daemon_reload: true
+        enabled: true
+        state: started
