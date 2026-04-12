@@ -4,7 +4,6 @@
   "description": "",
   "license": "ISC",
   "author": "Mansoor",
-  "type": "module",
   "main": "index.ts",
   "scripts": {
     "build": "tsc",
