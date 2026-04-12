@@ -88,40 +88,44 @@ jobs:
       - name: Run bootstrap playbook
         working-directory: infrastructure/ansible
         run: |
-          ansible-playbook -i inventory.yml playbooks/bootstrap.yml
+          ansible-playbook -i inventory.yml playbooks/bootstrap.yml \
+            --private-key /tmp/deploy_key
         env:
           VPS_IP: ${{ secrets.VPS_IP }}
           DOMAIN: ${{ vars.DOMAIN }}
-          SSH_KEY_PATH: /tmp/deploy_key
+          ANSIBLE_HOST_KEY_CHECKING: "False"
 
       - name: Run k3s playbook
         working-directory: infrastructure/ansible
         run: |
-          ansible-playbook -i inventory.yml playbooks/k3s.yml
+          ansible-playbook -i inventory.yml playbooks/k3s.yml \
+            --private-key /tmp/deploy_key
         env:
           VPS_IP: ${{ secrets.VPS_IP }}
           DOMAIN: ${{ vars.DOMAIN }}
-          SSH_KEY_PATH: /tmp/deploy_key
+          ANSIBLE_HOST_KEY_CHECKING: "False"
 
       - name: Run cluster-tools playbook
         working-directory: infrastructure/ansible
         run: |
-          ansible-playbook -i inventory.yml playbooks/cluster-tools.yml
+          ansible-playbook -i inventory.yml playbooks/cluster-tools.yml \
+            --private-key /tmp/deploy_key
         env:
           VPS_IP: ${{ secrets.VPS_IP }}
           DOMAIN: ${{ vars.DOMAIN }}
-          SSH_KEY_PATH: /tmp/deploy_key
+          ANSIBLE_HOST_KEY_CHECKING: "False"
           ARGOCD_ADMIN_PASSWORD: ${{ secrets.ARGOCD_ADMIN_PASSWORD }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
 
       - name: Run argocd playbook
         working-directory: infrastructure/ansible
         run: |
-          ansible-playbook -i inventory.yml playbooks/argocd.yml
+          ansible-playbook -i inventory.yml playbooks/argocd.yml \
+            --private-key /tmp/deploy_key
         env:
           VPS_IP: ${{ secrets.VPS_IP }}
           DOMAIN: ${{ vars.DOMAIN }}
-          SSH_KEY_PATH: /tmp/deploy_key
+          ANSIBLE_HOST_KEY_CHECKING: "False"
           ARGOCD_ADMIN_PASSWORD: ${{ secrets.ARGOCD_ADMIN_PASSWORD }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
