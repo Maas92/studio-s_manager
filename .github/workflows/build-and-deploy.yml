@@ -63,6 +63,8 @@ jobs:
           
   # Update Kubernetes manifests
   update-manifests:
+    permissions:
+      contents: write
     name: Update K8s Manifests
     runs-on: ubuntu-latest
     needs: build
@@ -91,9 +93,12 @@ jobs:
           cd k8s/overlays/${{ steps.env.outputs.environment }}
           
           # Update kustomization.yaml with new image tags
-          # sed -i 's|newTag: .*|newTag: ${{ steps.env.outputs.tag }}|g' kustomization.yaml
-          kustomize edit set image \
-            ${{ env.IMAGE_PREFIX }}-${SERVICE}=${{ env.IMAGE_PREFIX }}-${SERVICE}:${TAG}
+          TAG=${{ steps.env.outputs.tag }}
+
+          for SERVICE in auth backend api-proxy-server frontend; do
+            kustomize edit set image \
+              ${{ env.IMAGE_PREFIX }}-$SERVICE=${{ env.IMAGE_PREFIX }}-$SERVICE:$TAG
+          done
           
       - name: Commit and push changes
         run: |
