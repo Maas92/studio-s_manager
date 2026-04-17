@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: studio-s
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "warn"
+
+  # Internal cluster service URLs
+  AUTH_SERVICE_URL: "http://auth:5002"
+  INVENTORY_SERVICE_URL: "http://backend:5003"
+  BACKEND_SERVICE_URL: "http://backend:5003"
+  GOOGLE_CONTACTS_SERVICE_URL: "http://google-contacts:5004"
+  NOTIFICATION_API_URL: "http://notification-api:8000"
+  JWKS_URL: "http://auth:5002/.well-known/jwks.json"
+  SELF_JWKS_URL: "http://auth:5002/.well-known/jwks.json"
+
+  # JWT (non-secret settings)
+  JWT_ISSUER: "studio-s-auth"
+  JWT_AUDIENCE: "studio-s-clients"
+  JWT_KID: "studio-s-auth-1"
+  ACCESS_TOKEN_TTL_SEC: "172800"
+  REFRESH_TOKEN_TTL_SEC: "1209600"
+
+  # Cookie / proxy
+  COOKIE_SECURE: "true"
+  COOKIE_SAMESITE: "lax"
+  TRUST_PROXY: "loopback"
+
+  # CORS / URLs — production values, overridden per overlay
+  CORS_ORIGIN: "https://studiosbeautybar.com"
+  FRONTEND_URL: "https://studiosbeautybar.com"
+  FRONTEND_URLS: "https://studiosbeautybar.com"
+  ALLOWED_ORIGINS: "https://studiosbeautybar.com,http://gateway:4000"
+  GOOGLE_REDIRECT_URL: "https://studiosbeautybar.com/api/google-contacts/callback"
+
+  # Rate limiting
+  RATE_LIMIT_MAX_REQUESTS: "100"
+  RATE_LIMIT_WINDOW_MS: "900000"
+
+  # Database flags
+  DB_SSL: "true"
+  DB_POOL_LOGGING: "false"
+
+  # mTLS cert paths (inside container)
+  MTLS_ENABLED: "true"
+  MTLS_CA_CERT: "/app/certs/ca-cert.pem"
+  MTLS_CERT: "/app/certs/backend-cert.pem"
+  MTLS_KEY: "/app/certs/backend-key.pem"
+  BACKEND_MTLS_CERT: "/app/certs/google-contacts-cert.pem"
+  BACKEND_MTLS_KEY: "/app/certs/google-contacts-key.pem"
+  BACKEND_CA_CERT: "/app/certs/ca-cert.pem"
+
+  # Temporal
+  TEMPORAL_HOST: "temporal:7233"
+  TEMPORAL_NAMESPACE: "default"
+  TEMPORAL_CORS_ORIGINS: "https://studiosbeautybar.com"
+
+  # Business info
+  BUSINESS_NAME: "STUDIO S BEAUTY BAR"
+  BUSINESS_PHONE: "+263775268694"
+  BUSINESS_ADDRESS: "2 Kingsmead Road, Borrowdale, Harare"
+
+  ENVIRONMENT: "production"

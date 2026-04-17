@@ -8,23 +8,39 @@ bases:
 
 replicas:
   - name: auth
-    count: 3
+    count: 2
   - name: backend
-    count: 3
+    count: 2
   - name: gateway
-    count: 3
+    count: 2
   - name: frontend
-    count: 3
+    count: 2
+  - name: google-contacts
+    count: 1
+  - name: notification-api
+    count: 1
+  - name: temporal-worker
+    count: 2
+  - name: temporal
+    count: 1
+  - name: temporal-ui
+    count: 1
 
 images:
-  - name: ghcr.io/Maas92/studio-s-auth
-    newTag: v1.0.0 # Use semantic versioning in production
-  - name: ghcr.io/Maas92/studio-s-backend
-    newTag: v1.0.0
-  - name: ghcr.io/Maas92/studio-s-gateway
-    newTag: v1.0.0
-  - name: ghcr.io/Maas92/studio-s-frontend
-    newTag: v1.0.0
+  - name: ghcr.io/maas92/studio-s-auth
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-backend
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-gateway
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-frontend
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-google-contacts
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-api
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-worker
+    newTag: latest
 
 configMapGenerator:
   - name: app-config
@@ -33,7 +49,9 @@ configMapGenerator:
       - NODE_ENV=production
       - LOG_LEVEL=warn
 
-# Production-specific patches
+resources:
+  - hpa.yaml
+
 patches:
   - patch: |-
       apiVersion: apps/v1

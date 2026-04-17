@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: studio-s
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - auth-deployment.yaml
+  - backend-deployment.yaml
+  - gateway-deployment.yaml
+  - frontend-deployment.yaml
+  - google-contacts-deployment.yaml
+  - notification-api-deployment.yaml
+  - temporal-worker-deployment.yaml
+  - temporal-postgresql-deployment.yaml
+  - temporal-deployment.yaml
+  - services.yaml
+  - ingress.yaml

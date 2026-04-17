@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: studio-s
+  labels:
+    app: auth
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+        tier: backend
+    spec:
+      containers:
+        - name: auth
+          image: ghcr.io/maas92/studio-s-auth:latest
+          ports:
+            - containerPort: 5002
+              name: http
+          env:
+            - name: PORT
+              value: "5002"
+            - name: SERVICE_NAME
+              value: "auth-service"
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: NODE_ENV
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: COOKIE_SECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: COOKIE_SECURE
+            - name: COOKIE_SAMESITE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: COOKIE_SAMESITE
+            - name: TRUST_PROXY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: TRUST_PROXY
+            - name: CORS_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CORS_ORIGIN
+            - name: SELF_JWKS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SELF_JWKS_URL
+            - name: JWT_ISSUER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JWT_ISSUER
+            - name: JWT_AUDIENCE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JWT_AUDIENCE
+            - name: JWT_KID
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JWT_KID
+            - name: ACCESS_TOKEN_TTL_SEC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ACCESS_TOKEN_TTL_SEC
+            - name: REFRESH_TOKEN_TTL_SEC
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: REFRESH_TOKEN_TTL_SEC
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: connectionString
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secrets
+                  key: secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5002
+            initialDelaySeconds: 10
+            periodSeconds: 5

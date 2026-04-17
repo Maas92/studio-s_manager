@@ -25,7 +25,23 @@ jobs:
       
     strategy:
       matrix:
-        service: [auth, backend, api-proxy-server, frontend]
+        include:
+          - service: auth
+            context: ./auth
+          - service: backend
+            context: ./backend
+          - service: gateway
+            context: ./api-proxy-server
+          - service: frontend
+            context: ./frontend
+          - service: google-contacts
+            context: ./google-contacts-service
+          - service: whatsapp-api
+            context: ./whatsapp-notification-service
+            dockerfile: ./whatsapp-notification-service/Dockerfile.api
+          - service: whatsapp-worker
+            context: ./whatsapp-notification-service
+            dockerfile: ./whatsapp-notification-service/Dockerfile.worker
         
     steps:
       - uses: actions/checkout@v4

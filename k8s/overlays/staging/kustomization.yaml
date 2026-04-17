@@ -17,15 +17,31 @@ replicas:
     count: 2
   - name: frontend
     count: 2
+  - name: google-contacts
+    count: 1
+  - name: notification-api
+    count: 1
+  - name: temporal-worker
+    count: 2
+  - name: temporal
+    count: 1
+  - name: temporal-ui
+    count: 1
 
 images:
-  - name: ghcr.io/Maas92/studio-s-auth
+  - name: ghcr.io/maas92/studio-s-auth
     newTag: staging-latest
-  - name: ghcr.io/Maas92/studio-s-backend
+  - name: ghcr.io/maas92/studio-s-backend
     newTag: staging-latest
-  - name: ghcr.io/Maas92/studio-s-gateway
+  - name: ghcr.io/maas92/studio-s-gateway
     newTag: staging-latest
-  - name: ghcr.io/Maas92/studio-s-frontend
+  - name: ghcr.io/maas92/studio-s-frontend
+    newTag: staging-latest
+  - name: ghcr.io/maas92/studio-s-google-contacts
+    newTag: staging-latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-api
+    newTag: staging-latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-worker
     newTag: staging-latest
 
 configMapGenerator:

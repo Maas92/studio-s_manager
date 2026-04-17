@@ -107,6 +107,42 @@
           --namespace studio-s \
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true
+    
+    - name: Create google-oauth secret
+      shell: |
+        kubectl create secret generic google-oauth \
+          --from-literal=clientId="{{ lookup('env', 'GOOGLE_CLIENT_ID') }}" \
+          --from-literal=clientSecret="{{ lookup('env', 'GOOGLE_CLIENT_SECRET') }}" \
+          --from-literal=encryptionKey="{{ lookup('env', 'ENCRYPTION_KEY') }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    - name: Create chakra-api secret
+      shell: |
+        kubectl create secret generic chakra-api \
+          --from-literal=apiKey="{{ lookup('env', 'CHAKRA_API_KEY') }}" \
+          --from-literal=apiUrl="{{ lookup('env', 'CHAKRA_API_URL') }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    - name: Create supabase secret
+      shell: |
+        kubectl create secret generic supabase \
+          --from-literal=url="{{ lookup('env', 'SUPABASE_URL') }}" \
+          --from-literal=serviceRoleKey="{{ lookup('env', 'SUPABASE_SERVICE_ROLE_KEY') }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    - name: Create temporal-postgresql secret
+      shell: |
+        kubectl create secret generic temporal-postgresql \
+          --from-literal=password="{{ lookup('env', 'TEMPORAL_DB_PASSWORD') }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
 
     # ── ArgoCD Application ────────────────────────────────────────────────────
     # Register production + staging apps so ArgoCD starts watching the repo.

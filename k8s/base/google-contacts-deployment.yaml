@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: google-contacts
+  namespace: studio-s
+  labels:
+    app: google-contacts
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: google-contacts
+  template:
+    metadata:
+      labels:
+        app: google-contacts
+        tier: backend
+    spec:
+      containers:
+        - name: google-contacts
+          image: ghcr.io/maas92/studio-s-google-contacts:latest
+          ports:
+            - containerPort: 5004
+              name: http
+          env:
+            - name: PORT
+              value: "5004"
+            - name: SERVICE_NAME
+              value: "google-contacts-service"
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: BACKEND_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: BACKEND_SERVICE_URL
+            - name: BACKEND_MTLS_CERT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: BACKEND_MTLS_CERT
+            - name: BACKEND_MTLS_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: BACKEND_MTLS_KEY
+            - name: BACKEND_CA_CERT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: BACKEND_CA_CERT
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ALLOWED_ORIGINS
+            - name: FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: FRONTEND_URL
+            - name: GOOGLE_REDIRECT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GOOGLE_REDIRECT_URL
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: connectionString
+            - name: GATEWAY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secrets
+                  key: gatewaySecret
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: google-oauth
+                  key: clientId
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: google-oauth
+                  key: clientSecret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-oauth
+                  key: encryptionKey
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5004
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5004
+            initialDelaySeconds: 10
+            periodSeconds: 5

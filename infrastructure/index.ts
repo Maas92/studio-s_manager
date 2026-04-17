@@ -71,6 +71,15 @@ new cloudflare.DnsRecord(`${projectName}-dns-wildcard`, {
   ttl: 1,
 });
 
+new cloudflare.DnsRecord(`${projectName}-dns-temporal`, {
+  zoneId: zone.id,
+  name: "temporal",
+  type: "A",
+  content: vpsIp,
+  proxied: false,
+  ttl: 1,
+});
+
 // =============================================================================
 // Outputs
 // =============================================================================
@@ -80,6 +89,7 @@ export const sshCommand = `ssh ${vpsUser}@${vpsIp}`;
 export const argocdUrl = `https://argocd.${domain}`;
 export const grafanaUrl = `https://grafana.${domain}`;
 export const appUrl = `https://${domain}`;
+export const temporalUrl = `https://temporal.${domain}`;
 
 export const nextSteps = `
 ╔══════════════════════════════════════════════════════════════╗
@@ -104,4 +114,5 @@ export const nextSteps = `
    ArgoCD:  https://argocd.${domain}  (admin / your ARGOCD_ADMIN_PASSWORD)
    Grafana: https://grafana.${domain}
    App:     https://${domain}
+   Temporal: https://temporal.${domain}
 `;

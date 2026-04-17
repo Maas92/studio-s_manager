@@ -17,15 +17,31 @@ replicas:
     count: 1
   - name: frontend
     count: 1
+  - name: google-contacts
+    count: 1
+  - name: notification-api
+    count: 1
+  - name: temporal-worker
+    count: 1
+  - name: temporal
+    count: 1
+  - name: temporal-ui
+    count: 1
 
 images:
-  - name: ghcr.io/Maas92/studio-s-auth
+  - name: ghcr.io/maas92/studio-s-auth
     newTag: dev-latest
-  - name: ghcr.io/Maas92/studio-s-backend
+  - name: ghcr.io/maas92/studio-s-backend
     newTag: dev-latest
-  - name: ghcr.io/Maas92/studio-s-gateway
+  - name: ghcr.io/maas92/studio-s-gateway
     newTag: dev-latest
-  - name: ghcr.io/Maas92/studio-s-frontend
+  - name: ghcr.io/maas92/studio-s-frontend
+    newTag: dev-latest
+  - name: ghcr.io/maas92/studio-s-google-contacts
+    newTag: dev-latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-api
+    newTag: dev-latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-worker
     newTag: dev-latest
 
 configMapGenerator:
@@ -34,12 +50,9 @@ configMapGenerator:
     literals:
       - NODE_ENV=development
       - LOG_LEVEL=debug
-
-patches:
-  - patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/resources/requests/memory
-        value: "64Mi"
-    target:
-      kind: Deployment
-      name: auth
+      - COOKIE_SECURE=false
+      - FRONTEND_URL=http://localhost:5173
+      - FRONTEND_URLS=http://localhost:5173
+      - CORS_ORIGIN=http://localhost:5173
+      - ALLOWED_ORIGINS=http://localhost:5173,http://gateway:4000
+      - GOOGLE_REDIRECT_URL=http://localhost:4000/google-contacts/callback
