@@ -107,7 +107,7 @@
           --namespace studio-s \
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true
-    
+
     - name: Create google-oauth secret
       shell: |
         kubectl create secret generic google-oauth \
@@ -146,6 +146,18 @@
 
     # ── ArgoCD Application ────────────────────────────────────────────────────
     # Register production + staging apps so ArgoCD starts watching the repo.
+
+    - name: Register GitHub repo with ArgoCD
+      shell: |
+        argocd login argocd.{{ domain }} \
+          --username admin \
+          --password "{{ argocd_admin_password }}" \
+          --insecure
+        argocd repo add https://github.com/{{ lookup('env', 'GH_REPO') }} \
+          --username "{{ lookup('env', 'GH_USERNAME') }}" \
+          --password "{{ lookup('env', 'PAT_TOKEN') }}" \
+          --insecure
+      no_log: true
 
     - name: Apply ArgoCD Application manifests
       shell: |
