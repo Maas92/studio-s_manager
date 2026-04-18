@@ -154,7 +154,6 @@
 
     # ── ArgoCD Application ────────────────────────────────────────────────────
     # Register production + staging apps so ArgoCD starts watching the repo.
-
     - name: Register GitHub repo with ArgoCD
       shell: |
         argocd login argocd.{{ domain }} \
@@ -164,9 +163,9 @@
         argocd repo add https://github.com/{{ github_repo }} \
           --username "{{ github_username }}" \
           --password "{{ lookup('env', 'PAT_TOKEN') }}" \
+          --grpc-web \
           --insecure
-      # no_log:
-      ignore_errors: true # Don't fail if repo is already added
+      # no_log: true
 
     - name: Apply ArgoCD Application manifests
       shell: |
