@@ -16,3 +16,6 @@ database_url: "{{ lookup('env', 'DATABASE_URL') }}"
 mongodb_uri: "{{ lookup('env', 'MONGODB_URI') }}"
 jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"
 gateway_secret: "{{ lookup('env', 'GATEWAY_SECRET') }}"
+
+github_username: "{{ lookup('env', 'GH_USERNAME') }}"
+github_repo: "{{ lookup('env', 'GH_REPO') }}"
