@@ -30,7 +30,7 @@ jobs:
             context: ./auth
           - service: backend
             context: ./backend
-          - service: gateway
+          - service: api-proxy-server
             context: ./api-proxy-server
           - service: frontend
             context: ./frontend
