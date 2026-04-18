@@ -35,12 +35,12 @@ images:
     newTag: latest
   - name: ghcr.io/maas92/studio-s-frontend
     newTag: latest
-  - name: ghcr.io/maas92/studio-s-google-contacts
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-whatsapp-api
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-whatsapp-worker
-    newTag: latest
+  # - name: ghcr.io/maas92/studio-s-google-contacts
+  #   newTag: latest
+  # - name: ghcr.io/maas92/studio-s-whatsapp-api
+  #   newTag: latest
+  # - name: ghcr.io/maas92/studio-s-whatsapp-worker
+  #   newTag: latest
 
 configMapGenerator:
   - name: app-config
