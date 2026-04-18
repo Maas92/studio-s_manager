@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-api
+  namespace: studio-s
+  labels:
+    app: notification-api
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-api
+  template:
+    metadata:
+      labels:
+        app: notification-api
+        tier: backend
+    spec:
+      containers:
+        - name: notification-api
+          image: ghcr.io/maas92/studio-s-whatsapp-api:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: LOG_LEVEL
+              value: "WARNING"
+            - name: TEMPORAL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: TEMPORAL_HOST
+            - name: TEMPORAL_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: TEMPORAL_NAMESPACE
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: connectionString
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
