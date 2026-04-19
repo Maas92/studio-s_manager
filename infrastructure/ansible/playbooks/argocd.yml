@@ -172,7 +172,7 @@
           --grpc-web \
           --insecure
       when: repo_registered.rc != 0
-      no_log: true
+      # no_log: true
 
     - name: Apply ArgoCD Application manifests
       shell: |
