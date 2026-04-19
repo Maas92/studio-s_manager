@@ -171,7 +171,6 @@
           username: "{{ github_username }}"
           password: "{{ pat_token }}"
         EOF
-      when: repo_registered.rc != 0
       # no_log: true
 
     - name: Apply ArgoCD Application manifests
