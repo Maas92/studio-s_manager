@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: studio-s
 
-bases:
+resources:
   - ../../base
 
 namePrefix: staging-
@@ -33,7 +33,7 @@ images:
     newTag: staging-latest
   - name: ghcr.io/maas92/studio-s-backend
     newTag: staging-latest
-  - name: ghcr.io/maas92/studio-s-gateway
+  - name: ghcr.io/maas92/studio-s-api-proxy-server
     newTag: staging-latest
   - name: ghcr.io/maas92/studio-s-frontend
     newTag: staging-latest

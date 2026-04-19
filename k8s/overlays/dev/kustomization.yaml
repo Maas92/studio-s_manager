@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: studio-s
 
-bases:
+resources:
   - ../../base
 
 namePrefix: dev-
@@ -33,7 +33,7 @@ images:
     newTag: dev-latest
   - name: ghcr.io/maas92/studio-s-backend
     newTag: dev-latest
-  - name: ghcr.io/maas92/studio-s-gateway
+  - name: ghcr.io/maas92/studio-s-api-proxy-server
     newTag: dev-latest
   - name: ghcr.io/maas92/studio-s-frontend
     newTag: dev-latest

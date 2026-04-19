@@ -154,6 +154,12 @@
 
     # ── ArgoCD Application ────────────────────────────────────────────────────
     # Register production + staging apps so ArgoCD starts watching the repo.
+
+    - name: Check if repo is already registered with ArgoCD
+      shell: argocd repo list --grpc-web | grep "github.com/Maas92/studio-s_manager"
+      register: repo_registered
+      failed_when: false
+
     - name: Register GitHub repo with ArgoCD
       shell: |
         argocd login argocd.{{ domain }} \
@@ -165,7 +171,8 @@
           --password "{{ lookup('env', 'PAT_TOKEN') }}" \
           --grpc-web \
           --insecure
-      # no_log: true
+      when: repo_registered.rc != 0
+      no_log: true
 
     - name: Apply ArgoCD Application manifests
       shell: |

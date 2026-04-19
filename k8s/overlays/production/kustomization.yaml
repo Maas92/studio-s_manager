@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: studio-s
 
-bases:
+resources:
   - ../../base
 
 replicas:
@@ -31,16 +31,16 @@ images:
     newTag: latest
   - name: ghcr.io/maas92/studio-s-backend
     newTag: latest
-  - name: ghcr.io/maas92/studio-s-gateway
+  - name: ghcr.io/maas92/studio-s-api-proxy-server
     newTag: latest
   - name: ghcr.io/maas92/studio-s-frontend
     newTag: latest
-  # - name: ghcr.io/maas92/studio-s-google-contacts
-  #   newTag: latest
-  # - name: ghcr.io/maas92/studio-s-whatsapp-api
-  #   newTag: latest
-  # - name: ghcr.io/maas92/studio-s-whatsapp-worker
-  #   newTag: latest
+  - name: ghcr.io/maas92/studio-s-google-contacts
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-api
+    newTag: latest
+  - name: ghcr.io/maas92/studio-s-whatsapp-worker
+    newTag: latest
 
 configMapGenerator:
   - name: app-config
