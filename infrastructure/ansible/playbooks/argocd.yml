@@ -175,7 +175,7 @@
           --insecure
         argocd repo add https://github.com/{{ github_repo }} \
           --username "{{ github_username }}" \
-          --password "{{ pat_token }}" \
+          --password "{{ argocd_admin_password }}" \
           --grpc-web \
           --insecure
       when: repo_registered.rc != 0
