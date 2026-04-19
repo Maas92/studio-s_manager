@@ -43,10 +43,3 @@ images:
     newTag: staging-latest
   - name: ghcr.io/maas92/studio-s-whatsapp-worker
     newTag: staging-latest
-
-configMapGenerator:
-  - name: app-config
-    behavior: merge
-    literals:
-      - NODE_ENV=staging
-      - LOG_LEVEL=info

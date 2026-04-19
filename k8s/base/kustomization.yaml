@@ -3,6 +3,9 @@ kind: Kustomization
 
 namespace: studio-s
 
+generatorOptions:
+  disableNameSuffixHash: true
+
 resources:
   - namespace.yaml
   - configmap.yaml

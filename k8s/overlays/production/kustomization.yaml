@@ -42,13 +42,6 @@ images:
   - name: ghcr.io/maas92/studio-s-whatsapp-worker
     newTag: latest
 
-configMapGenerator:
-- behavior: merge
-  literals:
-  - NODE_ENV=production
-  - LOG_LEVEL=warn
-  name: app-config
-
 resources:
 - hpa.yaml
 - ../../base

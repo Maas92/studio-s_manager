@@ -171,7 +171,7 @@
           username: "{{ github_username }}"
           password: "{{ pat_token }}"
         EOF
-      # no_log: true
+      no_log: true
 
     - name: Apply ArgoCD Application manifests
       shell: |
