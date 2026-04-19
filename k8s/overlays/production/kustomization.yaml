@@ -7,24 +7,24 @@ resources:
   - ../../base
 
 replicas:
-  - name: auth
-    count: 2
-  - name: backend
-    count: 2
-  - name: gateway
-    count: 2
-  - name: frontend
-    count: 2
-  - name: google-contacts
-    count: 1
-  - name: notification-api
-    count: 1
-  - name: temporal-worker
-    count: 2
-  - name: temporal
-    count: 1
-  - name: temporal-ui
-    count: 1
+- count: 2
+  name: auth
+- count: 2
+  name: backend
+- count: 2
+  name: gateway
+- count: 2
+  name: frontend
+- count: 1
+  name: google-contacts
+- count: 1
+  name: notification-api
+- count: 2
+  name: temporal-worker
+- count: 1
+  name: temporal
+- count: 1
+  name: temporal-ui
 
 images:
   - name: ghcr.io/maas92/studio-s-auth
@@ -43,33 +43,34 @@ images:
     newTag: latest
 
 configMapGenerator:
-  - name: app-config
-    behavior: merge
-    literals:
-      - NODE_ENV=production
-      - LOG_LEVEL=warn
+- behavior: merge
+  literals:
+  - NODE_ENV=production
+  - LOG_LEVEL=warn
+  name: app-config
 
 resources:
-  - hpa.yaml
+- hpa.yaml
+- ../../base
 
 patches:
-  - patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: backend
-      spec:
-        template:
-          spec:
-            containers:
-            - name: backend
-              resources:
-                requests:
-                  memory: "512Mi"
-                  cpu: "400m"
-                limits:
-                  memory: "1Gi"
-                  cpu: "800m"
-    target:
-      kind: Deployment
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
       name: backend
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backend
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "400m"
+              limits:
+                memory: "1Gi"
+                cpu: "800m"
+  target:
+    kind: Deployment
+    name: backend
