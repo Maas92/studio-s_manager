@@ -67,11 +67,16 @@
         vtype: boolean
 
     # ── UFW firewall ───────────────────────────────────────────────────────────
-
+    - name: Check UFW status
+      shell: ufw status | grep -q "Status: active"
+      register: ufw_active
+      failed_when: false
+      
     - name: Reset UFW to defaults
       ufw:
         state: reset
-
+      when: ufw_active.rc != 0
+      
     - name: Set UFW default policies
       ufw:
         direction: "{{ item.direction }}"
@@ -79,6 +84,7 @@
       loop:
         - { direction: incoming, policy: deny }
         - { direction: outgoing, policy: allow }
+      when: ufw_active.rc != 0
 
     - name: Allow required ports
       ufw:
@@ -93,10 +99,12 @@
         - { port: "6443", comment: "Kubernetes API" }
         - { port: "9100", comment: "Node Exporter" }
         - { port: "10254", comment: "Nginx Ingress Metrics" }
+      when: ufw_active.rc != 0
 
     - name: Enable UFW
       ufw:
         state: enabled
+      when: ufw_active.rc != 0
 
     # ── Fail2ban ───────────────────────────────────────────────────────────────
 
