@@ -50,6 +50,12 @@
           }}"
       no_log: true
 
+    - name: Restart ArgoCD server to pick up new password
+      shell: kubectl rollout restart deployment argocd-server -n argocd
+
+    - name: Wait for ArgoCD server to be ready after restart
+      shell: kubectl rollout status deployment argocd-server -n argocd --timeout=120s
+
     # ── ArgoCD ingress ────────────────────────────────────────────────────────
 
     - name: Create ArgoCD ingress
@@ -165,10 +171,11 @@
         argocd login argocd.{{ domain }} \
           --username admin \
           --password "{{ argocd_admin_password }}" \
+          --grpc-web \
           --insecure
         argocd repo add https://github.com/{{ github_repo }} \
           --username "{{ github_username }}" \
-          --password "{{ lookup('env', 'PAT_TOKEN') }}" \
+          --password "{{ pat_token }}" \
           --grpc-web \
           --insecure
       when: repo_registered.rc != 0
