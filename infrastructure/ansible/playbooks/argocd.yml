@@ -35,26 +35,21 @@
 
     # ── ArgoCD admin password ─────────────────────────────────────────────────
 
-    - name: Hash ArgoCD admin password with bcrypt
+    - name: Set ArgoCD admin password via argocd-secret
       shell: |
-        htpasswd -nbBC 10 admin "{{ argocd_admin_password }}" | awk -F: '{print $2}'
-      register: argocd_bcrypt
-      no_log: true
-
-    - name: Patch ArgoCD secret with new admin password
-      shell: |
+        # Generate bcrypt hash
+        HASH=$(htpasswd -nbBC 10 admin "{{ argocd_admin_password }}" | awk -F: '{print $2}')
         kubectl -n argocd patch secret argocd-secret \
           -p "{\"stringData\": {
-            \"admin.password\": \"{{ argocd_bcrypt.stdout }}\",
+            \"admin.password\": \"${HASH}\",
             \"admin.passwordMtime\": \"$(date +%FT%T%Z)\"
           }}"
+        # Delete the auto-generated initial secret so ArgoCD uses our password
+        kubectl -n argocd delete secret argocd-initial-admin-secret --ignore-not-found
+        # Restart so it picks up the change
+        kubectl -n argocd rollout restart deployment argocd-server
+        kubectl -n argocd rollout status deployment argocd-server --timeout=120s
       no_log: true
-
-    - name: Restart ArgoCD server to pick up new password
-      shell: kubectl rollout restart deployment argocd-server -n argocd
-
-    - name: Wait for ArgoCD server to be ready after restart
-      shell: kubectl rollout status deployment argocd-server -n argocd --timeout=120s
 
     # ── ArgoCD ingress ────────────────────────────────────────────────────────
 
@@ -160,24 +155,22 @@
 
     # ── ArgoCD Application ────────────────────────────────────────────────────
     # Register production + staging apps so ArgoCD starts watching the repo.
-
-    - name: Check if repo is already registered with ArgoCD
-      shell: argocd repo list --grpc-web | grep "github.com/Maas92/studio-s_manager"
-      register: repo_registered
-      failed_when: false
-
-    - name: Register GitHub repo with ArgoCD
+    - name: Register GitHub repo with ArgoCD via Kubernetes secret
       shell: |
-        argocd login argocd.{{ domain }} \
-          --username admin \
-          --password "{{ argocd_admin_password }}" \
-          --grpc-web \
-          --insecure
-        argocd repo add https://github.com/{{ github_repo }} \
-          --username "{{ github_username }}" \
-          --password "{{ argocd_admin_password }}" \
-          --grpc-web \
-          --insecure
+        kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: studio-s-repo
+          namespace: argocd
+          labels:
+            argocd.argoproj.io/secret-type: repository
+        stringData:
+          type: git
+          url: https://github.com/{{ github_repo }}
+          username: "{{ github_username }}"
+          password: "{{ pat_token }}"
+        EOF
       when: repo_registered.rc != 0
       # no_log: true
 
