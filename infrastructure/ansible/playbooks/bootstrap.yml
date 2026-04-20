@@ -67,45 +67,61 @@
         vtype: boolean
 
     # ── UFW firewall ───────────────────────────────────────────────────────────
-    - name: Check UFW status
+    # Disabling UFW because k3s manages iptables directly and can conflict with UFW rules, leading to connectivity issues.
+    # Running UFW + Kubernetes on the same node is fragile by design
+
+    # Most production setups:
+    # ❌ do NOT use UFW
+    # ✅ rely on:
+    # cloud firewall (AWS SG / VPS firewall)
+    # or raw iptables rules
+    # or Kubernetes NetworkPolicies
+
+    - name: Disable UFW to prevent conflicts with k3s iptables rules
       shell: |
-        ufw status | grep -q "Status: active"
-      register: ufw_active
+        ufw --force disable || true
+        systemctl disable ufw || true
       failed_when: false
 
-    - name: Reset UFW to defaults
-      ufw:
-        state: reset
-      when: ufw_active.rc != 0
+    # - name: Check UFW status
+    #   shell: |
+    #     ufw status | grep -q "Status: active"
+    #   register: ufw_active
+    #   failed_when: false
 
-    - name: Set UFW default policies
-      ufw:
-        direction: "{{ item.direction }}"
-        policy: "{{ item.policy }}"
-      loop:
-        - { direction: incoming, policy: deny }
-        - { direction: outgoing, policy: allow }
-      when: ufw_active.rc != 0
+    # - name: Reset UFW to defaults
+    #   ufw:
+    #     state: reset
+    #   when: ufw_active.rc != 0
 
-    - name: Allow required ports
-      ufw:
-        rule: allow
-        port: "{{ item.port }}"
-        proto: tcp
-        comment: "{{ item.comment }}"
-      loop:
-        - { port: "22", comment: "SSH" }
-        - { port: "80", comment: "HTTP" }
-        - { port: "443", comment: "HTTPS" }
-        - { port: "6443", comment: "Kubernetes API" }
-        - { port: "9100", comment: "Node Exporter" }
-        - { port: "10254", comment: "Nginx Ingress Metrics" }
-      when: ufw_active.rc != 0
+    # - name: Set UFW default policies
+    #   ufw:
+    #     direction: "{{ item.direction }}"
+    #     policy: "{{ item.policy }}"
+    #   loop:
+    #     - { direction: incoming, policy: deny }
+    #     - { direction: outgoing, policy: allow }
+    #   when: ufw_active.rc != 0
 
-    - name: Enable UFW
-      ufw:
-        state: enabled
-      when: ufw_active.rc != 0
+    # - name: Allow required ports
+    #   ufw:
+    #     rule: allow
+    #     port: "{{ item.port }}"
+    #     proto: tcp
+    #     comment: "{{ item.comment }}"
+    #   loop:
+    #     - { port: "22", comment: "SSH" }
+    #     - { port: "80", comment: "HTTP" }
+    #     - { port: "443", comment: "HTTPS" }
+    #     - { port: "6443", comment: "Kubernetes API" }
+    #     - { port: "9100", comment: "Node Exporter" }
+    #     - { port: "10254", comment: "Nginx Ingress Metrics" }
+    #   when: ufw_active.rc != 0
+
+    # - name: Enable UFW
+    #   ufw:
+    #     state: enabled
+    #   when: ufw_active.rc != 0
 
     # ── Fail2ban ───────────────────────────────────────────────────────────────
 
