@@ -30,16 +30,16 @@ replicas:
 images:
 - name: Maas92/studio-s-api-proxy-server
   newName: Maas92/studio-s-api-proxy-server
-  newTag: va0ed5552bc0ff9b99de25160190f19222e4a2611
+  newTag: vf65e1624b7e59e3c44448511dae46df6334271b3
 - name: Maas92/studio-s-auth
   newName: Maas92/studio-s-auth
-  newTag: va0ed5552bc0ff9b99de25160190f19222e4a2611
+  newTag: vf65e1624b7e59e3c44448511dae46df6334271b3
 - name: Maas92/studio-s-backend
   newName: Maas92/studio-s-backend
-  newTag: va0ed5552bc0ff9b99de25160190f19222e4a2611
+  newTag: vf65e1624b7e59e3c44448511dae46df6334271b3
 - name: Maas92/studio-s-frontend
   newName: Maas92/studio-s-frontend
-  newTag: va0ed5552bc0ff9b99de25160190f19222e4a2611
+  newTag: vf65e1624b7e59e3c44448511dae46df6334271b3
 - name: ghcr.io/maas92/studio-s-api-proxy-server
   newTag: latest
 - name: ghcr.io/maas92/studio-s-auth
