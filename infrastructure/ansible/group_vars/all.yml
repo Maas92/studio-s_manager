@@ -19,4 +19,5 @@ gateway_secret: "{{ lookup('env', 'GATEWAY_SECRET') }}"
 
 github_username: "Maas92"
 github_repo: "Maas92/studio-s_manager"
+github_email: "mansoor_ghumra@outlook.com"
 pat_token: "{{ lookup('env', 'PAT_TOKEN') }}"

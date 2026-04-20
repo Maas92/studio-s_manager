@@ -6,6 +6,23 @@ namespace: studio-s
 generatorOptions:
   disableNameSuffixHash: true
 
+patches:
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+          - name: ghcr-pull-secret
+    target:
+      kind: Deployment
+
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/imagePullSecrets
+        value:
+          - name: ghcr-pull-secret
+    target:
+      kind: StatefulSet
+
 resources:
   - namespace.yaml
   - configmap.yaml
