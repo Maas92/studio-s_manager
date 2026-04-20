@@ -4,7 +4,8 @@ kind: Kustomization
 namespace: studio-s
 
 resources:
-  - ../../base
+- hpa.yaml
+- ../../base
 
 replicas:
 - count: 2
@@ -27,20 +28,32 @@ replicas:
   name: temporal-ui
 
 images:
-  - name: ghcr.io/maas92/studio-s-auth
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-backend
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-api-proxy-server
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-frontend
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-google-contacts
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-whatsapp-api
-    newTag: latest
-  - name: ghcr.io/maas92/studio-s-whatsapp-worker
-    newTag: latest
+- name: Maas92/studio-s-api-proxy-server
+  newName: Maas92/studio-s-api-proxy-server
+  newTag: v56374489dcd507670390d0bbe0f2f6056dca9991
+- name: Maas92/studio-s-auth
+  newName: Maas92/studio-s-auth
+  newTag: v56374489dcd507670390d0bbe0f2f6056dca9991
+- name: Maas92/studio-s-backend
+  newName: Maas92/studio-s-backend
+  newTag: v56374489dcd507670390d0bbe0f2f6056dca9991
+- name: Maas92/studio-s-frontend
+  newName: Maas92/studio-s-frontend
+  newTag: v56374489dcd507670390d0bbe0f2f6056dca9991
+- name: ghcr.io/maas92/studio-s-api-proxy-server
+  newTag: latest
+- name: ghcr.io/maas92/studio-s-auth
+  newTag: latest
+- name: ghcr.io/maas92/studio-s-backend
+  newTag: latest
+- name: ghcr.io/maas92/studio-s-frontend
+  newTag: latest
+- name: ghcr.io/maas92/studio-s-google-contacts
+  newTag: latest
+- name: ghcr.io/maas92/studio-s-whatsapp-api
+  newTag: latest
+- name: ghcr.io/maas92/studio-s-whatsapp-worker
+  newTag: latest
 
 resources:
 - hpa.yaml
