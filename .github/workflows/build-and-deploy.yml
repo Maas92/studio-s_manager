@@ -107,14 +107,20 @@ jobs:
           
       - name: Update image tags
         run: |
-          cd k8s/overlays/${{ steps.env.outputs.environment }}
-          
-          # Update kustomization.yaml with new image tags
-          TAG=${{ steps.env.outputs.tag }}
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          OVERLAY="${{ steps.overlay.outputs.path }}"
+          OVERLAY_DIR=$(dirname $OVERLAY)
 
-          for SERVICE in auth backend api-proxy-server frontend; do
-            kustomize edit set image \
-              ${{ env.IMAGE_PREFIX }}-$SERVICE=${{ env.IMAGE_PREFIX }}-$SERVICE:$TAG
+          cd $OVERLAY_DIR
+
+          for SERVICE in auth backend api-proxy-server frontend whatsapp-api whatsapp-worker; do
+            TAG_FILE="/tmp/tags/tag-${SERVICE}/tag-${SERVICE}.txt"
+            if [ -f "$TAG_FILE" ]; then
+              TAG=$(cat "$TAG_FILE")
+              kustomize edit set image \
+                ghcr.io/maas92/studio-s-${SERVICE}=ghcr.io/maas92/studio-s-${SERVICE}:${TAG}
+              echo "Updated $SERVICE to tag: $TAG"
+            fi
           done
           
       - name: Commit and push changes
