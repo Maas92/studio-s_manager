@@ -96,28 +96,22 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "environment=production" >> $GITHUB_OUTPUT
-            echo "tag=v${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "overlay_dir=k8s/overlays/production" >> $GITHUB_OUTPUT
+            echo "tag=main-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
             echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "tag=staging-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "overlay_dir=k8s/overlays/staging" >> $GITHUB_OUTPUT
+            echo "tag=staging-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
           else
             echo "environment=dev" >> $GITHUB_OUTPUT
-            echo "tag=dev-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "overlay_dir=k8s/overlays/dev" >> $GITHUB_OUTPUT
+            echo "tag=dev-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
           fi
           
       - name: Update image tags
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            OVERLAY_DIR="k8s/overlays/production"
-          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
-            OVERLAY_DIR="k8s/overlays/staging"
-          else
-            OVERLAY_DIR="k8s/overlays/dev"
-          fi
-
-          echo "Updating tags in $OVERLAY_DIR to $SHORT_SHA"
+          OVERLAY_DIR="${{ steps.env.outputs.overlay_dir }}"
+          echo "Updating tags in $OVERLAY_DIR"
           cd $OVERLAY_DIR
 
           for SERVICE in auth backend api-proxy-server frontend whatsapp-api whatsapp-worker; do
@@ -130,7 +124,7 @@ jobs:
             else
               echo "No tag file for $SERVICE, skipping"
             fi
-          done        
+          done     
       - name: Commit and push changes
         run: |
           git config user.name "GitHub Actions"
