@@ -108,9 +108,16 @@ jobs:
       - name: Update image tags
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          OVERLAY="${{ steps.overlay.outputs.path }}"
-          OVERLAY_DIR=$(dirname $OVERLAY)
 
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            OVERLAY_DIR="k8s/overlays/production"
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            OVERLAY_DIR="k8s/overlays/staging"
+          else
+            OVERLAY_DIR="k8s/overlays/dev"
+          fi
+
+          echo "Updating tags in $OVERLAY_DIR to $SHORT_SHA"
           cd $OVERLAY_DIR
 
           for SERVICE in auth backend api-proxy-server frontend whatsapp-api whatsapp-worker; do
@@ -120,9 +127,10 @@ jobs:
               kustomize edit set image \
                 ghcr.io/maas92/studio-s-${SERVICE}=ghcr.io/maas92/studio-s-${SERVICE}:${TAG}
               echo "Updated $SERVICE to tag: $TAG"
+            else
+              echo "No tag file for $SERVICE, skipping"
             fi
-          done
-          
+          done        
       - name: Commit and push changes
         run: |
           git config user.name "GitHub Actions"
