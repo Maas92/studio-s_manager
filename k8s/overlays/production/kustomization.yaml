@@ -39,7 +39,8 @@ images:
 - name: ghcr.io/maas92/studio-s-google-contacts
   newTag: latest
 - name: ghcr.io/maas92/studio-s-whatsapp-api
-  newTag: latest
+  newName: ghcr.io/maas92/studio-s-whatsapp-api
+  newTag: main-3828b61
 - name: ghcr.io/maas92/studio-s-whatsapp-worker
   newTag: latest
 
