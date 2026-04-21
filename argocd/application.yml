@@ -6,6 +6,27 @@ metadata:
   # Cascade delete: removing this Application will also remove all k8s resources it manages
   finalizers:
     - resources-finalizer.argocd.argoproj.io
+
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: |
+      backend=ghcr.io/maas92/studio-s-backend,
+      frontend=ghcr.io/maas92/studio-s-frontend,
+      auth=ghcr.io/maas92/studio-s-auth,
+      api-proxy-server=ghcr.io/maas92/studio-s-api-proxy-server,
+      whatsapp-api=ghcr.io/maas92/studio-s-whatsapp-api,
+      whatsapp-worker=ghcr.io/maas92/studio-s-whatsapp-worker
+
+    argocd-image-updater.argoproj.io/update-strategy: latest
+
+    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^main-.*
+    argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^main-.*
+    argocd-image-updater.argoproj.io/auth.allow-tags: regexp:^main-.*
+    argocd-image-updater.argoproj.io/api-proxy-server.allow-tags: regexp:^main-.*
+    argocd-image-updater.argoproj.io/whatsapp-api.allow-tags: regexp:^main-.*
+    argocd-image-updater.argoproj.io/whatsapp-worker.allow-tags: regexp:^main-.*
+
+    argocd-image-updater.argoproj.io/write-back-method: git
+
 spec:
   project: default
 
@@ -20,8 +41,8 @@ spec:
 
   syncPolicy:
     automated:
-      prune: true      # Delete resources removed from git
-      selfHeal: true   # Revert manual kubectl changes automatically
+      prune: true # Delete resources removed from git
+      selfHeal: true # Revert manual kubectl changes automatically
     syncOptions:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
@@ -46,7 +67,7 @@ spec:
 
   source:
     repoURL: https://github.com/Maas92/studio-s_manager.git
-    targetRevision: develop   # or a staging branch if you have one
+    targetRevision: develop # or a staging branch if you have one
     path: k8s/overlays/staging
 
   destination:
