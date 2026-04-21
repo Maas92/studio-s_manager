@@ -188,21 +188,21 @@
         daemon_reload: true
         enabled: true
         state: started
-    
+
     # ── GHCR Secret for ArgoCD & Image Updater ──────────────────────────
 
     - name: Create GHCR secret in argocd namespace
-    shell: |
-      kubectl apply -n argocd -f - <<EOF
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: ghcr-secret
-      type: kubernetes.io/dockerconfigjson
-      data:
-        .dockerconfigjson: $(echo -n '{"auths":{"ghcr.io":{"username":"{{ github_username }}","password":"{{ pat_token }}","auth":"$(echo -n {{ github_username }}:{{ pat_token }} | base64)"}}}' | base64 -w 0)
-      EOF
-      
+      shell: |
+        kubectl apply -n argocd -f - <<EOF
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ghcr-secret
+        type: kubernetes.io/dockerconfigjson
+        data:
+          .dockerconfigjson: $(echo -n '{"auths":{"ghcr.io":{"username":"{{ github_username }}","password":"{{ pat_token }}","auth":"$(echo -n {{ github_username }}:{{ pat_token }} | base64)"}}}' | base64 -w 0)
+        EOF
+
     - name: Patch ArgoCD repo credentials
       shell: |
         kubectl patch configmap argocd-cm -n argocd --type merge -p '
