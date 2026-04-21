@@ -221,7 +221,7 @@
 
     - name: Install ArgoCD Image Updater
       shell: |
-        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/master/manifests/install.yaml
+        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/stable/config/install.yaml
       when: image_updater_check.rc != 0
 
     - name: Wait for image updater to be ready
