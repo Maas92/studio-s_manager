@@ -67,25 +67,13 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             
-      - name: Save tag
-        run: |
-          TAG="main-$(echo ${{ github.sha }} | cut -c1-7)"
-          mkdir -p /tmp/tags/tag-${{ matrix.service }}
-          echo "$TAG" > /tmp/tags/tag-${{ matrix.service }}/tag-${{ matrix.service }}.txt
-            
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./${{ matrix.context }}
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile || format('{0}/Dockerfile', matrix.context) }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
-      - name: Upload tags
-        uses: actions/upload-artifact@v4
-        with:
-          name: tags
-          path: /tmp/tags

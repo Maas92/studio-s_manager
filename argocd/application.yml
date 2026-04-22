@@ -26,6 +26,7 @@ metadata:
     argocd-image-updater.argoproj.io/whatsapp-worker.allow-tags: regexp:^main-.*
 
     argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
 
 spec:
   project: default
