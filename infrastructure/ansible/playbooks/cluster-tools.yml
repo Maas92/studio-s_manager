@@ -190,16 +190,17 @@
         state: started
 
     # ── GHCR Secret for ArgoCD & Image Updater ──────────────────────────
-    - name: Create GHCR pull secret for image updater
+    - name: Create GHCR secret in argocd namespace
       shell: |
-        kubectl create secret docker-registry ghcr-secret \
-          --docker-server=ghcr.io \
-          --docker-username="{{ github_username }}" \
-          --docker-password="{{ pat_token }}" \
-          --docker-email="{{ github_email }}" \
-          -n argocd \
-          --dry-run=client -o yaml | kubectl apply -f -
-      # no_log: true
+        kubectl apply -n argocd -f - <<EOF
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ghcr-secret
+        type: kubernetes.io/dockerconfigjson
+        data:
+          .dockerconfigjson: $(echo -n '{"auths":{"ghcr.io":{"username":"{{ github_username }}","password":"{{ pat_token }}","auth":"$(echo -n {{ github_username }}:{{ pat_token }} | base64)"}}}' | base64 -w 0)
+        EOF
 
     # ── ArgoCD Image Updater ──────────────────────────────────────────
 
