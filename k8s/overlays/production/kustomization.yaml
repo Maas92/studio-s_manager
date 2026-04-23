@@ -29,20 +29,19 @@ replicas:
 
 images:
 - name: ghcr.io/maas92/studio-s-api-proxy-server
-  newTag: latest
+  newTag: main-0a9f9e5
 - name: ghcr.io/maas92/studio-s-auth
-  newTag: latest
+  newTag: main-0a9f9e5
 - name: ghcr.io/maas92/studio-s-backend
-  newTag: latest
+  newTag: main-0a9f9e5
 - name: ghcr.io/maas92/studio-s-frontend
-  newTag: latest
+  newTag: main-0a9f9e5
 - name: ghcr.io/maas92/studio-s-google-contacts
-  newTag: latest
+  newTag: main-0a9f9e5
 - name: ghcr.io/maas92/studio-s-whatsapp-api
-  newName: ghcr.io/maas92/studio-s-whatsapp-api
-  newTag: main-3828b61
+  newTag: main-0a9f9e5
 - name: ghcr.io/maas92/studio-s-whatsapp-worker
-  newTag: latest
+  newTag: main-0a9f9e5
 
 resources:
 - hpa.yaml

@@ -8,15 +8,9 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 
   annotations:
-    argocd-image-updater.argoproj.io/image-list: |
-      backend=ghcr.io/maas92/studio-s-backend,
-      frontend=ghcr.io/maas92/studio-s-frontend,
-      auth=ghcr.io/maas92/studio-s-auth,
-      api-proxy-server=ghcr.io/maas92/studio-s-api-proxy-server,
-      whatsapp-api=ghcr.io/maas92/studio-s-whatsapp-api,
-      whatsapp-worker=ghcr.io/maas92/studio-s-whatsapp-worker
+    argocd-image-updater.argoproj.io/image-list: "backend=ghcr.io/maas92/studio-s-backend,frontend=ghcr.io/maas92/studio-s-frontend,auth=ghcr.io/maas92/studio-s-auth,api-proxy-server=ghcr.io/maas92/studio-s-api-proxy-server,whatsapp-api=ghcr.io/maas92/studio-s-whatsapp-api,whatsapp-worker=ghcr.io/maas92/studio-s-whatsapp-worker"
 
-    argocd-image-updater.argoproj.io/update-strategy: latest
+    argocd-image-updater.argoproj.io/update-strategy: newest-build
 
     argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^main-.*
     argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^main-.*
