@@ -136,6 +136,7 @@ jobs:
           GATEWAY_SECRET: ${{ secrets.GATEWAY_SECRET }}
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
 
       - name: Clean up SSH key
         if: always()
