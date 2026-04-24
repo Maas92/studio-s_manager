@@ -12,28 +12,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - studiosbeautybar.com
-        - www.studiosbeautybar.com
+        - app.studiosbeautybar.com
       secretName: studio-s-tls
   rules:
-    - host: studiosbeautybar.com
-      http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: gateway
-                port:
-                  number: 4000
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
-    - host: www.studiosbeautybar.com
+    - host: app.studiosbeautybar.com
       http:
         paths:
           - path: /api

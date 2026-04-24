@@ -64,6 +64,31 @@ spec:
                 secretKeyRef:
                   name: chakra-api
                   key: apiUrl
+            - name: WHATSAPP_PROVIDER
+              valueFrom:
+                secretKeyRef:
+                  name: chakra-api
+                  key: whatsappProvider
+            - name: WHATSAPP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: chakra-api
+                  key: apiKey
+            - name: WHATSAPP_PHONE_NUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: chakra-api
+                  key: whatsappPhoneNumber
+            - name: CHAKRA_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: chakra-api
+                  key: apiUrl
+            - name: SUPPORT_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: chakra-api
+                  key: supportEmail
           resources:
             requests:
               memory: "128Mi"

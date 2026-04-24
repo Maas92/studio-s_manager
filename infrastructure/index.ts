@@ -80,6 +80,42 @@ new cloudflare.DnsRecord(`${projectName}-dns-temporal`, {
   ttl: 1,
 });
 
+new cloudflare.DnsRecord(`${projectName}-dns-app`, {
+  zoneId: zone.id,
+  name: "app",
+  type: "A",
+  content: vpsIp,
+  proxied: false,
+  ttl: 1,
+});
+
+new cloudflare.DnsRecord(`${projectName}-dns-prometheus`, {
+  zoneId: zone.id,
+  name: "prometheus",
+  type: "A",
+  content: vpsIp,
+  proxied: false,
+  ttl: 1,
+});
+
+new cloudflare.DnsRecord(`${projectName}-dns-portainer`, {
+  zoneId: zone.id,
+  name: "portainer",
+  type: "A",
+  content: vpsIp,
+  proxied: false,
+  ttl: 1,
+});
+
+new cloudflare.DnsRecord(`${projectName}-dns-admin`, {
+  zoneId: zone.id,
+  name: "admin",
+  type: "A",
+  content: vpsIp,
+  proxied: false,
+  ttl: 1,
+});
+
 // =============================================================================
 // Outputs
 // =============================================================================
@@ -88,8 +124,10 @@ export const vpsPublicIp = vpsIp;
 export const sshCommand = `ssh ${vpsUser}@${vpsIp}`;
 export const argocdUrl = `https://argocd.${domain}`;
 export const grafanaUrl = `https://grafana.${domain}`;
-export const appUrl = `https://${domain}`;
+export const appUrl = `https://$app.{domain}`;
 export const temporalUrl = `https://temporal.${domain}`;
+export const prometheusUrl = `https://prometheus.${domain}`;
+export const portainerUrl = `https://portainer.${domain}`;
 
 export const nextSteps = `
 ╔══════════════════════════════════════════════════════════════╗

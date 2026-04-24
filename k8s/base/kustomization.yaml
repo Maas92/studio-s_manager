@@ -37,3 +37,5 @@ resources:
   - temporal-deployment.yaml
   - services.yaml
   - ingress.yaml
+  - monitoring-ingress.yaml
+  - admin-dashboard.yaml

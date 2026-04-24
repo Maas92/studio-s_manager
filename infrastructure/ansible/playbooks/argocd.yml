@@ -103,6 +103,15 @@
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true
 
+    - name: Create monitoring basic auth secret
+      shell: |
+        HTPASSWD=$(htpasswd -nbBC 10 admin "{{ argocd_admin_password }}" | tr -d '\n')
+        kubectl create secret generic monitoring-basic-auth \
+          --from-literal=auth="${HTPASSWD}" \
+          --namespace monitoring \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
     - name: Create database-credentials secret
       shell: |
         kubectl create secret generic database-credentials \
