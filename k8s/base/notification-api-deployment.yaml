@@ -36,7 +36,7 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: TEMPORAL_NAMESPACE
-            - name: DATABASE_URL
+            - name: TEMPORAL_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: database-credentials

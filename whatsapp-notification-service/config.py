@@ -16,16 +16,16 @@ class Settings(BaseSettings):
     TEMPORAL_TASK_QUEUE: str = "notifications-queue"
 
     # Database Configuration
-    DATABASE_URL: str
+    TEMPORAL_DATABASE_URL: str = ""
 
     # WhatsApp Provider (ChakraHQ)
-    CHAKRA_API_KEY: str
+    CHAKRA_API_KEY: str = ""
     CHAKRA_API_URL: str = "https://api.chakrahq.com/v1"
 
     # Business Information
     BUSINESS_NAME: str = "STUDIO S BEAUTY BAR"
-    BUSINESS_PHONE: str
-    BUSINESS_ADDRESS: str
+    BUSINESS_PHONE: str = ""
+    BUSINESS_ADDRESS: str = ""
 
     # Notification Settings
     MAX_RETRY_ATTEMPTS: int = 5
@@ -47,12 +47,12 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
 
-    WHATSAPP_PROVIDER: str
-    WHATSAPP_API_KEY: str
-    WHATSAPP_PHONE_NUMBER: str
-    CHAKRA_BASE_URL: str
+    WHATSAPP_PROVIDER: str = "chakrahq"
+    WHATSAPP_API_KEY: str = ""
+    WHATSAPP_PHONE_NUMBER: str = ""
+    CHAKRA_BASE_URL: str = "https://api.chakrahq.com/v1"
 
-    SUPPORT_EMAIL: str
+    SUPPORT_EMAIL: str = ""
 
     MAX_RETRIES: int = 3
     RETRY_DELAY_SECONDS: int = 60

@@ -147,6 +147,7 @@ jobs:
           WHATSAPP_PROVIDER: ${{ secrets.WHATSAPP_PROVIDER }}
           WHATSAPP_PHONE_NUMBER: ${{ secrets.WHATSAPP_PHONE_NUMBER }}
           SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
+          TEMPORAL_DATABASE_URL: ${{ secrets.TEMPORAL_DATABASE_URL }}
           
 
       - name: Clean up SSH key

@@ -49,7 +49,7 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: BUSINESS_ADDRESS
-            - name: DATABASE_URL
+            - name: TEMPORAL_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: database-credentials

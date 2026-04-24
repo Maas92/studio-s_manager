@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 # Database engine (singleton)
 settings = get_settings()
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    settings.TEMPORAL_DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
     pool_size=10,
