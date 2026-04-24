@@ -14,6 +14,7 @@ k3s_kubeconfig_path: /opt/k3s/kubeconfig.yaml
 argocd_admin_password: "{{ lookup('env', 'ARGOCD_ADMIN_PASSWORD') }}"
 database_url: "{{ lookup('env', 'DATABASE_URL') }}"
 supabase_url: "{{ lookup('env', 'SUPABASE_URL') }}"
+supabase_service_role_key: "{{ lookup('env', 'SUPABASE_SERVICE_ROLE_KEY') }}"
 mongodb_uri: "{{ lookup('env', 'MONGODB_URI') }}"
 jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"
 gateway_secret: "{{ lookup('env', 'GATEWAY_SECRET') }}"

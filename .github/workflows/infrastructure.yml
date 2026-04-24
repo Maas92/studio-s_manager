@@ -137,6 +137,7 @@ jobs:
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Clean up SSH key
         if: always()
