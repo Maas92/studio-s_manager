@@ -150,8 +150,11 @@
     - name: Create chakra-api secret
       shell: |
         kubectl create secret generic chakra-api \
-          --from-literal=apiKey="{{ lookup('env', 'CHAKRA_API_KEY') }}" \
-          --from-literal=apiUrl="{{ lookup('env', 'CHAKRA_API_URL') }}" \
+          --from-literal=apiKey="{{ chakra_api_key }}" \
+          --from-literal=apiUrl="{{ chakra_base_url }}" \
+          --from-literal=whatsappProvider="{{ whatsapp_provider }}" \
+          --from-literal=whatsappPhoneNumber="{{ whatsapp_phone_number }}" \
+          --from-literal=supportEmail="{{ support_email }}" \
           --namespace studio-s \
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true

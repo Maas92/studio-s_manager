@@ -142,6 +142,11 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          CHAKRA_API_KEY: ${{ secrets.CHAKRA_API_KEY }}
+          CHAKRA_API_URL: ${{ secrets.CHAKRA_API_URL }}
+          WHATSAPP_PROVIDER: ${{ secrets.WHATSAPP_PROVIDER }}
+          WHATSAPP_PHONE_NUMBER: ${{ secrets.WHATSAPP_PHONE_NUMBER }}
+          SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
           
 
       - name: Clean up SSH key
