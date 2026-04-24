@@ -16,11 +16,11 @@ class Settings(BaseSettings):
     TEMPORAL_TASK_QUEUE: str = "notifications-queue"
 
     # Database Configuration
-    TEMPORAL_DATABASE_URL: str = ""
+    TEMPORAL_DATABASE_URL: str
 
     # WhatsApp Provider (ChakraHQ)
-    CHAKRA_API_KEY: str = ""
-    CHAKRA_API_URL: str = "https://api.chakrahq.com/v1"
+    CHAKRA_API_KEY: str
+    CHAKRA_API_URL: str
 
     # Business Information
     BUSINESS_NAME: str = "STUDIO S BEAUTY BAR"

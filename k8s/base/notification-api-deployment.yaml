@@ -40,7 +40,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: database-credentials
-                  key: connectionString
+                  key: temporalConnectionString
           resources:
             requests:
               memory: "128Mi"

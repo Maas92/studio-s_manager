@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
+from config import get_settings
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from temporalio.client import Client, WorkflowHandle
@@ -24,6 +25,8 @@ from workflow import (
 )
 
 logger = structlog.get_logger()
+
+settings = get_settings()
 
 app = FastAPI(title="Temporal Notification Service", version="1.0.0")
 
@@ -78,7 +81,7 @@ async def startup() -> None:
     global temporal_client
 
     # Connect to Temporal server
-    temporal_client = await Client.connect("temporal:7233")
+    temporal_client = await Client.connect(settings.TEMPORAL_HOST)
     logger.info("Connected to Temporal server")
 
 

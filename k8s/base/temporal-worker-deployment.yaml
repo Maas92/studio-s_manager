@@ -53,7 +53,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: database-credentials
-                  key: connectionString
+                  key: temporalConnectionString
             - name: CHAKRA_API_KEY
               valueFrom:
                 secretKeyRef:
