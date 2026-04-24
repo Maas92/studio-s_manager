@@ -128,6 +128,7 @@ export const appUrl = `https://$app.{domain}`;
 export const temporalUrl = `https://temporal.${domain}`;
 export const prometheusUrl = `https://prometheus.${domain}`;
 export const portainerUrl = `https://portainer.${domain}`;
+export const adminUrl = `https://admin.${domain}`;
 
 export const nextSteps = `
 ╔══════════════════════════════════════════════════════════════╗
