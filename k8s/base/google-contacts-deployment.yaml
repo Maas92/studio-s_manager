@@ -98,6 +98,10 @@ spec:
                 secretKeyRef:
                   name: google-oauth
                   key: encryptionKey
+          volumeMounts:
+            - name: certs
+              mountPath: /app/certs
+              readOnly: true
           resources:
             requests:
               memory: "128Mi"
@@ -118,3 +122,7 @@ spec:
               port: 5004
             initialDelaySeconds: 10
             periodSeconds: 5
+      volumes:
+        - name: certs
+          secret:
+            secretName: google-contacts-certs
