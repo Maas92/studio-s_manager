@@ -148,6 +148,11 @@ jobs:
           WHATSAPP_PHONE_NUMBER: ${{ secrets.WHATSAPP_PHONE_NUMBER }}
           SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
           TEMPORAL_DATABASE_URL: ${{ secrets.TEMPORAL_DATABASE_URL }}
+          CA_CERT: ${{ secrets.CA_CERT }}
+          GOOGLE_CONTACTS_CERT: ${{ secrets.GOOGLE_CONTACTS_CERT }}
+          GOOGLE_CONTACTS_KEY: ${{ secrets.GOOGLE_CONTACTS_KEY }}
+          BACKEND_CERT: ${{ secrets.BACKEND_CERT }}
+          BACKEND_KEY: ${{ secrets.BACKEND_KEY }}
           
 
       - name: Clean up SSH key

@@ -176,6 +176,26 @@
           --namespace studio-s \
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true
+      
+    - name: Create google-contacts-certs Kubernetes secret
+      shell: |
+        kubectl create secret generic google-contacts-certs \
+          --from-literal=google-contacts-cert.pem="{{ lookup('env', 'GOOGLE_CONTACTS_CERT') | b64decode }}" \
+          --from-literal=google-contacts-key.pem="{{ lookup('env', 'GOOGLE_CONTACTS_KEY') | b64decode }}" \
+          --from-literal=ca-cert.pem="{{ lookup('env', 'CA_CERT') | b64decode }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
+
+    - name: Create backend-certs Kubernetes secret
+      shell: |
+        kubectl create secret generic backend-certs \
+          --from-literal=backend-cert.pem="{{ lookup('env', 'BACKEND_CERT') | b64decode }}" \
+          --from-literal=backend-key.pem="{{ lookup('env', 'BACKEND_KEY') | b64decode }}" \
+          --from-literal=ca-cert.pem="{{ lookup('env', 'CA_CERT') | b64decode }}" \
+          --namespace studio-s \
+          --dry-run=client -o yaml | kubectl apply -f -
+      no_log: true
 
     # ── ArgoCD Application ────────────────────────────────────────────────────
     # Register production + staging apps so ArgoCD starts watching the repo.
