@@ -89,6 +89,7 @@ spec:
         app: temporal-ui
         tier: infrastructure
     spec:
+      enableServiceLinks: false
       containers:
         - name: temporal-ui
           image: temporalio/ui:2.21.3
