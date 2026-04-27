@@ -134,7 +134,7 @@ const userSchema = new Schema<IUser>(
         return ret;
       },
     },
-  }
+  },
 );
 
 // Virtual for full name
@@ -146,7 +146,7 @@ userSchema.virtual("fullName").get(function (this: IUser) {
 });
 
 // Indexes
-userSchema.index({ email: 1 });
+// userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ active: 1 });
 userSchema.index({ createdAt: -1 });
