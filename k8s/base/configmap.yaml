@@ -29,11 +29,11 @@ data:
   TRUST_PROXY: "loopback"
 
   # CORS / URLs — production values, overridden per overlay
-  CORS_ORIGIN: "https://studiosbeautybar.com"
-  FRONTEND_URL: "https://studiosbeautybar.com"
-  FRONTEND_URLS: "https://studiosbeautybar.com"
-  ALLOWED_ORIGINS: "https://studiosbeautybar.com,http://gateway:4000"
-  GOOGLE_REDIRECT_URL: "https://studiosbeautybar.com/api/google-contacts/callback"
+  CORS_ORIGIN: "https://app.studiosbeautybar.com"
+  FRONTEND_URL: "https://app.studiosbeautybar.com"
+  FRONTEND_URLS: "https://app.studiosbeautybar.com"
+  ALLOWED_ORIGINS: "https://app.studiosbeautybar.com,http://gateway:4000"
+  GOOGLE_REDIRECT_URL: "https://app.studiosbeautybar.com/api/google-contacts/callback"
 
   # Rate limiting
   RATE_LIMIT_MAX_REQUESTS: "100"
