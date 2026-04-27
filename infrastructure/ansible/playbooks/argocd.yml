@@ -134,6 +134,8 @@
         kubectl create secret generic jwt-secrets \
           --from-literal=secret="{{ jwt_secret }}" \
           --from-literal=gatewaySecret="{{ gateway_secret }}" \
+          --from-literal=privateKey="{{ jwt_private }}" \
+          --from-literal=publicKey="{{ jwt_public }}" \
           --namespace studio-s \
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true
@@ -176,7 +178,7 @@
           --namespace studio-s \
           --dry-run=client -o yaml | kubectl apply -f -
       no_log: true
-      
+
     - name: Create google-contacts-certs Kubernetes secret
       shell: |
         kubectl create secret generic google-contacts-certs \

@@ -133,6 +133,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_PRIVATE_PEM: ${{ secrets.JWT_PRIVATE_PEM }}
+          JWT_PUBLIC_PEM: ${{ secrets.JWT_PUBLIC_PEM }}
           GATEWAY_SECRET: ${{ secrets.GATEWAY_SECRET }}
           GIT_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}

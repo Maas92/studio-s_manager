@@ -98,6 +98,17 @@ spec:
                 secretKeyRef:
                   name: jwt-secrets
                   key: secret
+            - name: JWT_PRIVATE_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secrets
+                  key: privateKey
+
+            - name: JWT_PUBLIC_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secrets
+                  key: publicKey
           resources:
             requests:
               memory: "128Mi"
