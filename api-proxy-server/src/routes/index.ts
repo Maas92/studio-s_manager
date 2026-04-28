@@ -22,9 +22,9 @@ export const setupRoutes = (app: Application) => {
     createProxy({
       target: env.GOOGLE_CONTACTS_SERVICE_URL,
       isBackendService: false, // No gateway key for public callback
-    })
+    }),
   );
 
   // Protected API routes (JWT required)
-  app.use("/", apiLimiter, checkJwt, mapAuthToUser, apiRoutes);
+  app.use("/api", apiLimiter, checkJwt, mapAuthToUser, apiRoutes);
 };
