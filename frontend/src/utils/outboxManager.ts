@@ -23,7 +23,7 @@ class OutboxManager {
     this.config = {
       maxRetries: 3,
       retryDelays: [1000, 5000, 15000], // exponential backoff in ms
-      apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "/api",
+      apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
     };
   }
 

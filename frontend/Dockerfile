@@ -11,6 +11,9 @@ RUN npm ci
 # Copy all source files
 COPY . .
 
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Build the production version
 # Note: We don't set VITE_API_BASE_URL here because it will be set at runtime
 RUN npm run build
