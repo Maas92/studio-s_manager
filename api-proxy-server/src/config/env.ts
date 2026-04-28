@@ -10,7 +10,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   AUTH_SERVICE_URL: z.string().url(),
   INVENTORY_SERVICE_URL: z.string().url(),
-  FRONTEND_URL: z.string().url().default("http://localhost:3000"),
+  FRONTEND_URL: z.string().url(),
 
   // allow a comma-separated list of origins; transform into string[]
   // Example .env: FRONTEND_URLS=http://localhost:5173,http://frontend:5173
