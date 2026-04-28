@@ -26,5 +26,21 @@ export const setupRoutes = (app: Application) => {
   );
 
   // Protected API routes (JWT required)
-  app.use("/api", apiLimiter, checkJwt, mapAuthToUser, apiRoutes);
+  // app.use("/api", apiLimiter, checkJwt, mapAuthToUser, apiRoutes);
+
+  app.use(
+    "/",
+    apiLimiter,
+    checkJwt.unless({
+      path: [
+        "/auth/login",
+        "/auth/signup",
+        "/auth/refresh",
+        "/auth/logout",
+        "/health",
+      ],
+    }),
+    mapAuthToUser,
+    apiRoutes,
+  );
 };
