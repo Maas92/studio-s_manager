@@ -1,3 +1,4 @@
+# Ingress 1: API routes — strips /api prefix before forwarding to gateway
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,7 +10,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
     nginx.ingress.kubernetes.io/use-regex: "true"
-    # nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   tls:
@@ -27,6 +28,26 @@ spec:
                 name: gateway
                 port:
                   number: 4000
+
+---
+# Ingress 2: Frontend — no rewrite, serves static files including env.js
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: studio-s-frontend-ingress
+  namespace: studio-s
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - app.studiosbeautybar.com
+      secretName: studio-s-app-tls
+  rules:
+    - host: app.studiosbeautybar.com
+      http:
+        paths:
           - path: /
             pathType: Prefix
             backend:
