@@ -107,14 +107,14 @@ spec:
               cpu: "200m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: 4000
             initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 4000
             initialDelaySeconds: 30
             periodSeconds: 10
