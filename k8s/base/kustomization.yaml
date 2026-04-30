@@ -38,4 +38,8 @@ resources:
   - services.yaml
   - ingress.yaml
   - monitoring-ingress.yaml
-  - admin-dashboard.yaml
+  - servicemonitors.yaml
+  - loki.yaml
+  - grafana-loki-datasource.yaml
+  - promtail.yaml
+  - homer.yaml

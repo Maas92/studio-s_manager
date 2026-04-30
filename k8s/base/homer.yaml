@@ -1,0 +1,136 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homer-config
+  namespace: studio-s
+data:
+  config.yml: |
+    title: "Studio-S Operations"
+    subtitle: "Infrastructure & Services"
+    documentTitle: "Studio-S Ops"
+    logo: "assets/logo.png"
+
+    header: true
+    footer: false
+
+    connectivityCheck: true
+
+    defaults:
+      layout: columns
+      colorTheme: dark
+
+    services:
+      - name: "Application"
+        icon: "fas fa-store"
+        items:
+          - name: "Studio-S App"
+            subtitle: "Main application"
+            logo: "assets/tools/homelab.png"
+            url: "https://app.studiosbeautybar.com"
+            target: "_blank"
+            tag: "app"
+            type: "Ping"
+
+      - name: "GitOps & Deployments"
+        icon: "fas fa-code-branch"
+        items:
+          - name: "ArgoCD"
+            subtitle: "Continuous deployment"
+            logo: "https://argo-cd.readthedocs.io/en/stable/assets/logo.png"
+            url: "https://argocd.studiosbeautybar.com"
+            target: "_blank"
+            tag: "ops"
+            type: "Ping"
+
+      - name: "Observability"
+        icon: "fas fa-chart-line"
+        items:
+          - name: "Grafana"
+            subtitle: "Metrics & Logs"
+            logo: "https://grafana.com/static/img/menu/grafana2.svg"
+            url: "https://grafana.studiosbeautybar.com"
+            target: "_blank"
+            tag: "monitoring"
+            type: "Ping"
+          - name: "Prometheus"
+            subtitle: "Metrics store"
+            logo: "https://prometheus.io/assets/prometheus_logo_grey.svg"
+            url: "https://prometheus.studiosbeautybar.com"
+            target: "_blank"
+            tag: "monitoring"
+            type: "Ping"
+
+      - name: "Workflows"
+        icon: "fas fa-project-diagram"
+        items:
+          - name: "Temporal UI"
+            subtitle: "WhatsApp notification workflows"
+            logo: "https://temporal.io/favicon.ico"
+            url: "https://temporal.studiosbeautybar.com"
+            target: "_blank"
+            tag: "workflows"
+            type: "Ping"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homer
+  namespace: studio-s
+  labels:
+    app: homer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homer
+  template:
+    metadata:
+      labels:
+        app: homer
+    spec:
+      containers:
+        - name: homer
+          image: b4bz/homer:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /www/assets/config.yml
+              subPath: config.yml
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: homer-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homer
+  namespace: studio-s
+  labels:
+    app: homer
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: homer
