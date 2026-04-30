@@ -149,6 +149,17 @@
           --set grafana.adminPassword="{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default(lookup('env', 'ARGOCD_ADMIN_PASSWORD'), true) }}"
       when: prometheus_installed.rc != 0
 
+    - name: Upgrade kube-prometheus-stack with Grafana persistence
+      shell: |
+        helm upgrade prometheus prometheus-community/kube-prometheus-stack \
+          --namespace monitoring \
+          --reuse-values \
+          --set grafana.persistence.enabled=true \
+          --set grafana.persistence.size=2Gi \
+          --set grafana.persistence.storageClassName=local-path \
+          --set grafana.ingress.enabled=false
+      when: prometheus_installed.rc == 0
+
     # ── Node exporter (host-level metrics) ───────────────────────────────────
     # Node exporter is handled by kube-prometheus-stack DaemonSet
     # Standalone installation disabled to avoid port 9100 conflict
