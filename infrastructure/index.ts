@@ -21,25 +21,25 @@ const domain = config.require("domain");
 
 const zone = cloudflare.getZoneOutput({ filter: { name: domain } });
 
-// Root domain
-new cloudflare.DnsRecord(`${projectName}-dns-root`, {
-  zoneId: zone.id,
-  name: "@",
-  type: "A",
-  content: vpsIp,
-  proxied: false, // Must be false for Let's Encrypt HTTP-01 challenges
-  ttl: 1,
-});
+// Root domain — hosted on Truehost, do not manage via Pulumi
+// new cloudflare.DnsRecord(`${projectName}-dns-root`, {
+//   zoneId: zone.id,
+//   name: "@",
+//   type: "A",
+//   content: vpsIp,
+//   proxied: false, // Must be false for Let's Encrypt HTTP-01 challenges
+//   ttl: 1,
+// });
 
-// www
-new cloudflare.DnsRecord(`${projectName}-dns-www`, {
-  zoneId: zone.id,
-  name: "www",
-  type: "A",
-  content: vpsIp,
-  proxied: false,
-  ttl: 1,
-});
+// www — hosted on Truehost, do not manage via Pulumi
+// new cloudflare.DnsRecord(`${projectName}-dns-www`, {
+//   zoneId: zone.id,
+//   name: "www",
+//   type: "A",
+//   content: vpsIp,
+//   proxied: false,
+//   ttl: 1,
+// });
 
 // ArgoCD
 new cloudflare.DnsRecord(`${projectName}-dns-argocd`, {
